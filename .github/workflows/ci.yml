@@ -32,7 +32,7 @@ jobs:
       - name: Require immutable action references
         run: bash scripts/verify-actions-pinned.sh
       - name: Check shell scripts
-        run: shellcheck scripts/*.sh packaging/installer/*.sh packaging/waf/*.sh
+        run: shellcheck scripts/*.sh packaging/installer/*.sh packaging/waf/*.sh infra/host-tests/evaluate-pagespeed-nginx.sh
       - name: Check workflow syntax
         run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
 

@@ -19,7 +19,7 @@ func TestSupportedDistributionWorkerUsers(t *testing.T) {
 		}
 		configuration := Main(spec)
 		for _, required := range []string{
-			"user " + fixture.user + ";", "server_tokens off;",
+			"user " + fixture.user + ";", "worker_rlimit_nofile 65536;", "server_tokens off;",
 			"include /etc/nginx/stackfort/default/*.conf;",
 			"include /etc/nginx/stackfort/panel-enabled/*.conf;",
 			"include /etc/nginx/stackfort/sites-enabled/*.conf;",
@@ -106,9 +106,11 @@ func TestServiceAlwaysUsesOwnedConfigurationAndCoreSlice(t *testing.T) {
 	t.Parallel()
 	content := SystemdDropIn()
 	for _, required := range []string{
-		"Slice=stackfort-core.slice", "ExecStartPre=", "ExecStartPre=/usr/bin/rm -f /run/nginx.pid",
+		"Slice=stackfort-core.slice", "LimitNOFILE=65536", "ExecStartPre=", "ExecStartPre=/usr/bin/rm -f /run/nginx.pid",
 		"nginx -t -q -c " + MainConfiguration,
-		"ExecStart=", "nginx -c " + MainConfiguration,
+		"ExecStart=", "nginx -c " + MainConfiguration, "ExecReload=",
+		"ExecReload=/usr/sbin/nginx -t -q -c " + MainConfiguration,
+		"ExecReload=/usr/sbin/nginx -c " + MainConfiguration + " -s reload",
 	} {
 		if !strings.Contains(content, required) {
 			t.Fatalf("systemd drop-in omits %q", required)

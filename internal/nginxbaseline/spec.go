@@ -79,6 +79,7 @@ func main(spec Spec, sitesInclude string) string {
 	return fmt.Sprintf(`# Managed by Stackfort. Do not edit.
 user %s;
 worker_processes auto;
+worker_rlimit_nofile 65536;
 pid /run/nginx.pid;
 error_log /var/log/nginx/error.log notice;
 
@@ -245,10 +246,14 @@ func SystemdDropIn() string {
 	return `# Managed by Stackfort. Do not edit.
 [Service]
 Slice=stackfort-core.slice
+LimitNOFILE=65536
 ExecStartPre=
 ExecStartPre=/usr/bin/rm -f /run/nginx.pid
 ExecStartPre=/usr/sbin/nginx -t -q -c /etc/nginx/stackfort/nginx.conf
 ExecStart=
 ExecStart=/usr/sbin/nginx -c /etc/nginx/stackfort/nginx.conf
+ExecReload=
+ExecReload=/usr/sbin/nginx -t -q -c /etc/nginx/stackfort/nginx.conf
+ExecReload=/usr/sbin/nginx -c /etc/nginx/stackfort/nginx.conf -s reload
 `
 }

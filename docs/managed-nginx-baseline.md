@@ -30,8 +30,10 @@ vendor package before exercising the same production reconciler.
 └── 20-stackfort.conf
 ```
 
-The managed tree and both virtual-host include directories are root-owned mode
-`0750`. Configuration is root-owned mode `0640`; the systemd drop-in is `0644`.
+The managed root is root-owned mode `0755` so the unprivileged Coraza workers
+can traverse its fixed SecLang include chain. The virtual-host include
+directories remain root-owned mode `0750`. Configuration is root-owned mode
+`0640`; the systemd drop-in is `0644`.
 Hosting-account users cannot write or traverse either include directory.
 Panel and customer virtual hosts have separate include points, and future
 renderers may write only fixed, root-owned files into the appropriate one.
@@ -44,7 +46,13 @@ customer-port defaults described below.
 Stackfort does not edit or include the distribution's main configuration.
 Instead, the systemd drop-in replaces `ExecStartPre` and `ExecStart` with fixed
 commands that select `/etc/nginx/stackfort/nginx.conf`. The service joins
-`stackfort-core.slice`. On Rocky, the preflight first removes only the fixed
+`stackfort-core.slice`. It also replaces `ExecReload`, so a reload validates
+the same managed configuration before signalling the active master instead of
+validating the unused distribution configuration. The service and NGINX
+workers receive a 65,536-file limit; this safely covers the configured 4,096
+worker connections, including proxied requests that can consume two
+descriptors, without inheriting Debian's 1,024-file ceiling. On Rocky, the
+preflight first removes only the fixed
 `/run/nginx.pid`; this preserves the vendor unit's SELinux-safe stale-PID
 behavior after command-line configuration tests.
 

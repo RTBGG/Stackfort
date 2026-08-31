@@ -81,7 +81,7 @@ func TestDisposableHostManagedNGINXBaseline(t *testing.T) {
 	}
 
 	for path, mode := range map[string]os.FileMode{
-		nginxbaseline.ManagedRoot: 0o750, nginxbaseline.PanelDirectory: 0o750,
+		nginxbaseline.ManagedRoot: 0o755, nginxbaseline.PanelDirectory: 0o750,
 		nginxbaseline.SitesDirectory: 0o750, nginxbaseline.MainConfiguration: 0o640,
 		nginxbaseline.SystemdDropInPath: 0o644,
 	} {
@@ -105,6 +105,18 @@ func TestDisposableHostManagedNGINXBaseline(t *testing.T) {
 	}
 	if got := strings.TrimSpace(string(controlGroup)); got != "/stackfort.slice/stackfort-core.slice/nginx.service" {
 		t.Fatalf("NGINX control group = %q", got)
+	}
+	serviceProperties, err := exec.Command(
+		"/usr/bin/systemctl", "show", "--property=LimitNOFILE", "--property=ExecReload", "nginx.service",
+	).Output()
+	if err != nil {
+		t.Fatalf("inspect NGINX file limit and reload command: %v", err)
+	}
+	properties := string(serviceProperties)
+	if !strings.Contains(properties, "LimitNOFILE=65536") ||
+		!strings.Contains(properties, "-t -q -c "+nginxbaseline.MainConfiguration) ||
+		!strings.Contains(properties, "-c "+nginxbaseline.MainConfiguration+" -s reload") {
+		t.Fatalf("NGINX service performance/reload properties are incomplete: %s", properties)
 	}
 	enabled, err := exec.Command("/usr/bin/systemctl", "is-enabled", "nginx.service").Output()
 	if err != nil || strings.TrimSpace(string(enabled)) != "enabled" {
@@ -1117,12 +1129,20 @@ func assertRenderedAccountConfigurationParses(t *testing.T) {
 	}
 	temporary := t.TempDir()
 	accountConfiguration := filepath.Join(temporary, rendered.FileName)
-	if err := os.WriteFile(accountConfiguration, rendered.Content, 0o600); err != nil {
+	// This isolated syntax check has no reconciled account log directory. Keep
+	// the renderer's directives in the assertion above, but direct their file
+	// descriptors to test-safe sinks before asking the vendor parser to open
+	// them.
+	content := regexp.MustCompile(`(?m)^    access_log "[^"\r\n]+" stackfort_redacted;$`).
+		ReplaceAll(rendered.Content, []byte("    access_log off;"))
+	content = regexp.MustCompile(`(?m)^    error_log "[^"\r\n]+" warn;$`).
+		ReplaceAll(content, []byte("    error_log /dev/null warn;"))
+	if err := os.WriteFile(accountConfiguration, content, 0o600); err != nil {
 		t.Fatalf("write rendered account configuration: %v", err)
 	}
 	mainConfiguration := filepath.Join(temporary, "nginx.conf")
 	mainContent := fmt.Sprintf(
-		"pid %s;\nevents {}\nhttp {\n    include %s;\n}\n",
+		"pid %s;\nevents {}\nhttp {\n    log_format stackfort_redacted '$status';\n    include %s;\n}\n",
 		filepath.Join(temporary, "nginx.pid"), accountConfiguration,
 	)
 	if err := os.WriteFile(mainConfiguration, []byte(mainContent), 0o600); err != nil {

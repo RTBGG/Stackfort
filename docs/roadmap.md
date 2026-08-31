@@ -118,6 +118,8 @@ have deterministic recovery behavior.
 - [x] Implement opt-in cache presets, metrics, scoped purge, and safe bypass
   behavior (K-014).
 - [x] Publish repeatable NGINX FastCGI cache versus Vinyl results (K-014).
+- [x] Evaluate mod_pagespeed 1.15/Cyclone with loopback HTTPS origin mapping
+  and all WAF modes; reject it as a core cache/dependency after qualification.
 
 K-010 through K-014 complete the closed per-domain WAF and cache slice. The
 result includes sanitized event capture, validated rule-scoped administrator
@@ -137,6 +139,9 @@ sessions, and WAF placement/profiles behave consistently on all distributions.
 Status: passed on Debian 13, Ubuntu 26.04, and Rocky Linux 10. See the
 [cache foundation](cache-foundation.md) and
 [qualification matrix](../infra/host-tests/results/2026-08-31-vinyl-cache-hyper-v.md).
+The separate [PageSpeed evaluation](../infra/host-tests/results/2026-09-01-mod-pagespeed-nginx-evaluation.md)
+documents why Cyclone is a resource-optimization cache rather than a full-page
+replacement and why the proprietary module is not a Stackfort dependency.
 
 ## Phase 5: Rootless OCI applications
 

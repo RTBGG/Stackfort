@@ -138,11 +138,15 @@ personalized applications bypass it by default.
 Coraza more than doubled WAF-enabled throughput compared with the earlier
 ModSecurity workload on every supported guest. Vinyl Cache remains opt-in:
 NGINX FastCGI cache is currently the recommended production direction because
-it delivered substantially higher PHP-cache throughput in qualification.
+it delivered substantially higher PHP-cache throughput in qualification. A
+separate mod_pagespeed 1.15/Cyclone evaluation improved the tiny fixture's
+client resource shape, but was slower than both full-page caches and cannot be
+a free cross-platform dependency under its current license/package matrix.
 
 [Coraza benchmark](infra/host-tests/results/2026-08-31-coraza-runtime-hyper-v.md) ·
 [Cache design](docs/cache-foundation.md) ·
-[Cache benchmark](infra/host-tests/results/2026-08-31-vinyl-cache-hyper-v.md)
+[Cache benchmark](infra/host-tests/results/2026-08-31-vinyl-cache-hyper-v.md) ·
+[PageSpeed evaluation](infra/host-tests/results/2026-09-01-mod-pagespeed-nginx-evaluation.md)
 
 </details>
 
@@ -190,7 +194,7 @@ See the [Phase 1 qualification](docs/phase1-qualification.md),
 | Accounts and hosting | [Administrator flows](docs/administrator-phase1-flows.md), [account-owner flows](docs/account-owner-phase1-flows.md), [PHP controls](docs/account-php-controls.md) |
 | Databases | [MariaDB lifecycle](docs/account-database-lifecycle.md), [phpMyAdmin sign-on](docs/phpmyadmin-signon.md) |
 | Installation and qualification | [Installer preflight](docs/installer-preflight.md), [panel ingress](docs/installed-panel-ingress.md), [qualification](docs/phase1-qualification.md) |
-| Research and performance | [Research notes](docs/research-notes.md), [performance baseline](docs/phase1-performance-baseline.md), [cache results](infra/host-tests/results/2026-08-31-vinyl-cache-hyper-v.md) |
+| Research and performance | [Research notes](docs/research-notes.md), [performance baseline](docs/phase1-performance-baseline.md), [cache results](infra/host-tests/results/2026-08-31-vinyl-cache-hyper-v.md), [PageSpeed evaluation](infra/host-tests/results/2026-09-01-mod-pagespeed-nginx-evaluation.md) |
 
 <details>
 <summary><strong>Repository layout</strong></summary>

@@ -156,6 +156,16 @@ Run the same command with `debian-13`/`stackfort-debian-13` and
 `ubuntu-26.04`/`stackfort-ubuntu-26-04-v2` for the complete matrix. The recorded
 result is [2026-08-31-vinyl-cache-hyper-v.md](results/2026-08-31-vinyl-cache-hyper-v.md).
 
+`evaluate-pagespeed-nginx.sh` is a Debian 13 evaluation harness, not a release
+qualification or installer. On a disposable guest with the externally
+installed, signed `nginx-module-pagespeed` 1.15 package and its explicitly
+listed prerequisites, it compares direct PHP, warm Vinyl, warm NGINX FastCGI
+cache, and PageSpeed/Cyclone under all three WAF modes. It also proves that
+HTTPS approach 2 rewrites through a fixed loopback origin and records the
+resulting request/body-byte shape. See the
+[evaluation record](results/2026-09-01-mod-pagespeed-nginx-evaluation.md) for
+the exact package versions, licensing boundary, configuration, and command.
+
 ## Required VM shape
 
 Each disposable VM must have at least:

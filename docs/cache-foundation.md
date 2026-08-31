@@ -105,3 +105,12 @@ valuable, and the choice should be revisited before public beta.
 
 See the [full qualification record](../infra/host-tests/results/2026-08-31-vinyl-cache-hyper-v.md)
 and [ADR 0052](adr/0052-opt-in-vinyl-cache-behind-nginx-and-coraza.md).
+
+A follow-up evaluation of mod_pagespeed 1.15 and Cyclone Cache did not change
+this decision. PageSpeed reduced a small client fixture from five requests to
+two, but it is a resource optimizer rather than a full-page cache and reached
+only 17.5% of Vinyl's WAF-off throughput and 58.4–61.5% with Coraza active.
+The proprietary module is therefore not a Stackfort dependency, Vinyl remains
+optional, and native NGINX FastCGI cache remains the production performance
+direction. See the [PageSpeed qualification record](../infra/host-tests/results/2026-09-01-mod-pagespeed-nginx-evaluation.md)
+and [ADR 0056](adr/0056-do-not-adopt-proprietary-mod-pagespeed-as-core-cache.md).
