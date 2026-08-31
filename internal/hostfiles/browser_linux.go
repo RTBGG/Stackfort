@@ -78,6 +78,7 @@ func pageNames(ctx context.Context, descriptor int, cursor string, limit int) ([
 	}
 	names := make([]string, 0, limit+1)
 	offsets := make([]int64, 0, limit+1)
+	omittedAtName := make([]uint64, 0, limit+1)
 	var omitted uint64
 	buffer := make([]byte, 16<<10)
 	scanned := 0
@@ -116,9 +117,10 @@ func pageNames(ctx context.Context, descriptor int, cursor string, limit int) ([
 			} else {
 				names = append(names, name)
 				offsets = append(offsets, offset)
+				omittedAtName = append(omittedAtName, omitted)
 			}
 			if len(names) > limit {
-				return names[:limit], omitted, strconv.FormatInt(offsets[limit-1], 10), nil
+				return names[:limit], omittedAtName[limit-1], strconv.FormatInt(offsets[limit-1], 10), nil
 			}
 			if scanned >= maximumScannedEntriesPerPage {
 				return names, omitted, strconv.FormatInt(lastOffset, 10), nil

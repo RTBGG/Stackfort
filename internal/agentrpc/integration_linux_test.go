@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -60,7 +61,7 @@ func TestUnixRPCHandshakeUsesKernelPeerCredentials(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Handshake: %v", err)
 	}
-	if response.SelectedVersion != 1 || len(response.SupportedOperations) != 16 {
+	if response.SelectedVersion != 1 || !slices.Equal(response.SupportedOperations, agentprotocol.SupportedOperations()) {
 		t.Fatalf("response = %#v", response)
 	}
 	capabilities, err := client.InspectCapabilities(t.Context(), "linux-integration-capabilities")

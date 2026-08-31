@@ -603,7 +603,7 @@ func TestCoreRecordsSurviveVerifiedStateBackup(t *testing.T) {
 		t.Fatalf("CreateHostingAccount: %v", err)
 	}
 
-	backupPath := filepath.Join(t.TempDir(), "state-backup.db")
+	backupPath := filepath.Join(t.TempDir(), "backups", "state-backup.db")
 	if err := state.Backup(ctx, backupPath); err != nil {
 		t.Fatalf("Backup: %v", err)
 	}
