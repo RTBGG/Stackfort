@@ -296,7 +296,8 @@ func Assemble(wafPackageDirectory, vinylPackageDirectory, destinationRoot, versi
 		records []NativeRecord
 	}{{"waf", wafPackageDirectory, wafRecords}, {"vinyl", vinylPackageDirectory, vinylRecords}} {
 		destination := filepath.Join(destinationRoot, "packages", group.name)
-		if err := os.MkdirAll(destination, 0o755); err != nil {
+		// Release packages are public distribution artifacts and intentionally use traversable directories.
+		if err := os.MkdirAll(destination, 0o755); err != nil { // #nosec G301 -- Public release artifact directory.
 			return Manifest{}, err
 		}
 		for _, record := range group.records {
@@ -366,7 +367,7 @@ func WriteManifest(root string, manifest Manifest) error {
 	}
 	content = append(content, '\n')
 	path := filepath.Join(root, ManifestFilename)
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644) // #nosec G302,G304 -- Fixed manifest name below the caller-selected output root; public artifact.
 	if err != nil {
 		return fmt.Errorf("create release component manifest: %w", err)
 	}
@@ -403,7 +404,7 @@ func copyExclusive(source, destination string) error {
 		return err
 	}
 	defer input.Close()
-	output, err := os.OpenFile(destination, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	output, err := os.OpenFile(destination, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644) // #nosec G302,G304 -- Validated basename below the caller-selected output root; public artifact.
 	if err != nil {
 		return err
 	}

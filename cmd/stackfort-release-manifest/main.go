@@ -11,14 +11,16 @@ import (
 )
 
 func main() {
-	flags := flag.NewFlagSet("stackfort-release-manifest", flag.ExitOnError)
+	flags := flag.NewFlagSet("stackfort-release-manifest", flag.ContinueOnError)
 	packageDirectory := flags.String("package-dir", "", "directory containing native WAF packages and release records")
 	vinylPackageDirectory := flags.String("vinyl-package-dir", "", "directory containing native Vinyl packages and release records")
 	destination := flags.String("destination", "", "release bundle root")
 	version := flags.String("version", "", "Stackfort semantic version")
 	architecture := flags.String("architecture", "", "release architecture")
 	allowIncomplete := flags.Bool("allow-incomplete", false, "write an explicitly incomplete development manifest")
-	flags.Parse(os.Args[1:])
+	if err := flags.Parse(os.Args[1:]); err != nil {
+		os.Exit(2)
+	}
 	if flags.NArg() != 0 || *destination == "" || *version == "" || *architecture == "" {
 		_, _ = fmt.Fprintln(os.Stderr, "destination, version, and architecture are required")
 		os.Exit(2)

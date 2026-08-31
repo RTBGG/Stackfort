@@ -141,6 +141,6 @@ func testInstallerWAFArtifact(distribution, version, format, filename, packageVe
 		PackageVersion: packageVersion, NGINXPackageVersion: nginxVersion,
 		CorazaVersion: wafconfig.CorazaVersion, LibCorazaVersion: wafconfig.LibCorazaVersion,
 		CorazaNGINXVersion: wafconfig.CorazaNGINXVersion,
-		OWASPCRSVersion: wafconfig.CRSVersion,
+		OWASPCRSVersion:    wafconfig.CRSVersion,
 	}
 }

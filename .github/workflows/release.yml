@@ -109,7 +109,8 @@ jobs:
           STACKFORT_WAF_PACKAGE_DIR: ${{ github.workspace }}/waf-native
           VERSION: ${{ steps.metadata.outputs.version }}
         run: |
-          export SOURCE_DATE_EPOCH="$(git show -s --format=%ct "$COMMIT")"
+          SOURCE_DATE_EPOCH="$(git show -s --format=%ct "$COMMIT")"
+          export SOURCE_DATE_EPOCH
           bash scripts/build-release.sh
       - name: Generate SPDX SBOM
         uses: anchore/sbom-action@28d71544de8eaf1b958d335707167c5f783590ad # v0.22.2

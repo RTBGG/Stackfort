@@ -16,7 +16,7 @@ const (
 	PackageName       = "vinyl-cache"
 	ServiceName       = "vinyl.service"
 	VCLPath           = "/etc/vinyl-cache/stackfort.vcl"
-	SecretPath        = "/etc/vinyl-cache/secret"
+	SecretPath        = "/etc/vinyl-cache/secret" // #nosec G101 -- Filesystem path, not credential material.
 	WorkDirectory     = "/var/lib/vinyl-cache"
 	CacheAddress      = "127.0.0.1:6081"
 	ManagementAddress = "127.0.0.1:6082"

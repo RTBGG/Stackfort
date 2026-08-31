@@ -116,7 +116,8 @@ jobs:
           SOURCE_DATE_EPOCH: ${{ github.event.repository.updated_at && github.event.repository.updated_at || '0' }}
           VERSION: 0.0.0-dev
         run: |
-          export SOURCE_DATE_EPOCH="$(git show -s --format=%ct "$COMMIT")"
+          SOURCE_DATE_EPOCH="$(git show -s --format=%ct "$COMMIT")"
+          export SOURCE_DATE_EPOCH
           bash scripts/build-release.sh
           cp dist/SHA256SUMS /tmp/stackfort-first-build.sha256
           bash scripts/build-release.sh
