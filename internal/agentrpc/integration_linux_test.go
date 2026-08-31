@@ -68,7 +68,7 @@ func TestUnixRPCHandshakeUsesKernelPeerCredentials(t *testing.T) {
 	if err != nil {
 		t.Fatalf("InspectCapabilities: %v", err)
 	}
-	if capabilities.Platform.DistributionID == "" || len(capabilities.Packages) != 6 || len(capabilities.Services) != 8 {
+	if capabilities.Platform.DistributionID == "" || len(capabilities.Packages) != 12 || len(capabilities.Services) != 8 {
 		t.Fatalf("capabilities = %#v", capabilities)
 	}
 

@@ -45,11 +45,12 @@ func TestSubordinateIDParserRejectsAmbiguousInput(t *testing.T) {
 func TestLingerInspectionRejectsSymlink(t *testing.T) {
 	t.Parallel()
 	directory := t.TempDir()
-	if err := os.Symlink("target", filepath.Join(directory, "managed")); err != nil {
+	spec := hostingoci.Spec{Identity: testSpec(t)}
+	if err := os.Symlink("target", filepath.Join(directory, spec.Identity.Username)); err != nil {
 		t.Fatal(err)
 	}
 	manager := &linuxRuntimeManager{linger: directory}
-	_, err := manager.lingerEnabled(hostingoci.Spec{Identity: testSpec(t)})
+	_, err := manager.lingerEnabled(spec)
 	if !errors.Is(err, ErrIdentityConflict) {
 		t.Fatalf("linger symlink error = %v", err)
 	}
