@@ -34,9 +34,20 @@ type CapabilityReport struct {
 	Cgroup      CgroupCapabilities     `json:"cgroup"`
 	Filesystem  FilesystemCapabilities `json:"filesystem"`
 	Security    SecurityCapabilities   `json:"security"`
+	OCI         OCIRuntimeCapabilities `json:"oci"`
 	Ports       []PortCapability       `json:"ports"`
 	Packages    []PackageCapability    `json:"packages"`
 	Services    []ServiceCapability    `json:"services"`
+}
+
+type OCIRuntimeCapabilities struct {
+	Provider               string     `json:"provider"`
+	Version                string     `json:"version,omitempty"`
+	Rootless               Capability `json:"rootless"`
+	Quadlet                Capability `json:"quadlet"`
+	Network                Capability `json:"network"`
+	Storage                Capability `json:"storage"`
+	RootfulSocketIsolation Capability `json:"rootfulSocketIsolation"`
 }
 
 type PlatformCapabilities struct {
@@ -116,10 +127,17 @@ func ValidateCapabilityReport(report CapabilityReport) error {
 		report.Cgroup.Unified, report.Cgroup.CPU, report.Cgroup.Memory,
 		report.Cgroup.IO, report.Cgroup.PIDs, report.Filesystem.Inspection,
 		report.Filesystem.ProjectQuota, report.Security.Enforcement,
+		report.OCI.Rootless, report.OCI.Quadlet, report.OCI.Network,
+		report.OCI.Storage, report.OCI.RootfulSocketIsolation,
 	} {
 		if err := validateCapability(capability); err != nil {
 			return err
 		}
+	}
+	if report.OCI.Provider != "podman" ||
+		(report.OCI.Version != "" && !boundedText(report.OCI.Version, 128)) ||
+		(report.OCI.Rootless.Status == CapabilityAvailable && report.OCI.Version == "") {
+		return errors.New("agent OCI runtime capabilities are malformed")
 	}
 	if report.Filesystem.Target != ManagedHostingRoot ||
 		!boundedText(report.Filesystem.MountPoint, 4_096) ||
@@ -176,12 +194,13 @@ func validatePorts(ports []PortCapability) error {
 }
 
 func validatePackages(packages []PackageCapability) error {
-	if len(packages) != 6 {
+	if len(packages) != 12 {
 		return errors.New("agent package capabilities are incomplete")
 	}
 	seen := make(map[string]struct{}, len(packages))
 	for _, item := range packages {
-		if !oneOf(item.Key, "nginx", "php-fpm", "mariadb", "vinyl", "podman", "coraza") ||
+		if !oneOf(item.Key, "nginx", "php-fpm", "mariadb", "vinyl", "podman", "netavark",
+			"aardvark-dns", "passt", "slirp4netns", "fuse-overlayfs", "uidmap", "coraza") ||
 			!boundedPackageName(item.PackageName) ||
 			(item.Version != "" && !boundedText(item.Version, 128)) ||
 			(item.Availability.Status == CapabilityAvailable && item.Version == "") {

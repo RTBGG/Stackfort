@@ -59,8 +59,15 @@ func TestSupportedDistributionFixtures(t *testing.T) {
 				t.Fatalf("security = %#v", report.Security)
 			}
 			assertPortFixture(t, report.Ports, test.occupiedPort)
-			if len(report.Packages) != 6 || len(report.Services) != 8 {
+			if len(report.Packages) != 12 || len(report.Services) != 8 {
 				t.Fatalf("packages/services = %d/%d", len(report.Packages), len(report.Services))
+			}
+			if report.OCI.Provider != "podman" || report.OCI.Rootless.Status != agentprotocol.CapabilityAvailable ||
+				report.OCI.Quadlet.Status != agentprotocol.CapabilityAvailable ||
+				report.OCI.Network.Status != agentprotocol.CapabilityAvailable ||
+				report.OCI.Storage.Status != agentprotocol.CapabilityAvailable ||
+				report.OCI.RootfulSocketIsolation.Status != agentprotocol.CapabilityAvailable {
+				t.Fatalf("OCI runtime = %#v", report.OCI)
 			}
 			if findPackage(t, report.Packages, "vinyl").Availability.Status != agentprotocol.CapabilityUnavailable {
 				t.Fatal("missing Vinyl package was not represented as unavailable")
@@ -107,6 +114,20 @@ func TestUnsupportedAndMalformedCapabilitiesRemainTyped(t *testing.T) {
 		if item.Availability.Status != agentprotocol.CapabilityUnsupported {
 			t.Fatalf("package %s = %#v", item.Key, item.Availability)
 		}
+	}
+}
+
+func TestOCIRuntimeRequiresMaskedRootfulSocket(t *testing.T) {
+	t.Parallel()
+
+	runner := &fixtureRunner{podmanUnitFileState: "disabled"}
+	report, err := fixtureInspector(filepath.Join("testdata", "debian-13"), runner).Inspect(t.Context())
+	if err != nil {
+		t.Fatalf("Inspect: %v", err)
+	}
+	if report.OCI.RootfulSocketIsolation.Status != agentprotocol.CapabilityUnavailable ||
+		report.OCI.RootfulSocketIsolation.ReasonCode != "rootful-podman-socket-not-masked" {
+		t.Fatalf("rootful socket isolation = %#v", report.OCI.RootfulSocketIsolation)
 	}
 }
 
@@ -166,7 +187,10 @@ type fixtureCall struct {
 	arguments  []string
 }
 
-type fixtureRunner struct{ calls []fixtureCall }
+type fixtureRunner struct {
+	calls               []fixtureCall
+	podmanUnitFileState string
+}
 
 type staticRunner struct {
 	result commandResult
@@ -188,15 +212,28 @@ func (runner *fixtureRunner) Run(_ context.Context, executable string, arguments
 		if name == "vinyl-cache" {
 			return commandResult{ExitCode: 1}, nil
 		}
+		if name == "podman" {
+			return commandResult{Output: "ii \t5.5.2-1\n", ExitCode: 0}, nil
+		}
 		return commandResult{Output: "ii \t1.2.3-1\n", ExitCode: 0}, nil
 	case "/usr/bin/rpm":
 		if name == "vinyl-cache" {
 			return commandResult{ExitCode: 1}, nil
 		}
+		if name == "podman" {
+			return commandResult{Output: "5.5.2-1.el10\n", ExitCode: 0}, nil
+		}
 		return commandResult{Output: "1.2.3-1.el10\n", ExitCode: 0}, nil
 	case "/usr/bin/systemctl":
 		if name == "vinyl.service" {
 			return commandResult{Output: "LoadState=not-found\nActiveState=inactive\nSubState=dead\nUnitFileState=\n"}, nil
+		}
+		if name == "podman.socket" {
+			state := runner.podmanUnitFileState
+			if state == "" {
+				state = "masked"
+			}
+			return commandResult{Output: "LoadState=loaded\nActiveState=inactive\nSubState=dead\nUnitFileState=" + state + "\n"}, nil
 		}
 		return commandResult{Output: "LoadState=loaded\nActiveState=active\nSubState=running\nUnitFileState=enabled\n"}, nil
 	default:

@@ -226,7 +226,59 @@ func (runner *LinuxRunner) applyPackages(ctx context.Context) (bool, error) {
 		}
 		changed = changed || dropInRemoved
 	}
+	socketsChanged, socketErr := runner.reconcilePodmanAPISockets(ctx)
+	if socketErr != nil {
+		return changed, socketErr
+	}
+	changed = changed || socketsChanged
 	return changed, nil
+}
+
+func (runner *LinuxRunner) reconcilePodmanAPISockets(ctx context.Context) (bool, error) {
+	changed := false
+	if !runner.podmanUnitsMasked(ctx, false) {
+		if err := runner.run(ctx, nil, "/usr/bin/systemctl", "mask", "--now", "podman.socket", "podman.service"); err != nil {
+			return changed, fmt.Errorf("mask rootful Podman API units: %w", err)
+		}
+		changed = true
+	}
+	if !runner.podmanUnitsMasked(ctx, true) {
+		if err := runner.run(ctx, nil, "/usr/bin/systemctl", "--global", "mask", "podman.socket", "podman.service"); err != nil {
+			return changed, fmt.Errorf("mask rootless Podman API units globally: %w", err)
+		}
+		changed = true
+	}
+	return changed, runner.verifyPodmanAPISockets(ctx)
+}
+
+func (runner *LinuxRunner) podmanUnitsMasked(ctx context.Context, global bool) bool {
+	for _, unit := range []string{"podman.socket", "podman.service"} {
+		arguments := []string{"is-enabled", unit}
+		if global {
+			arguments = []string{"--global", "is-enabled", unit}
+		}
+		output, _ := runner.capture(ctx, "/usr/bin/systemctl", arguments...)
+		if strings.TrimSpace(output) != "masked" {
+			return false
+		}
+	}
+	return true
+}
+
+func (runner *LinuxRunner) verifyPodmanAPISockets(ctx context.Context) error {
+	if !runner.podmanUnitsMasked(ctx, false) || !runner.podmanUnitsMasked(ctx, true) {
+		return errors.New("Podman API service or socket is not masked")
+	}
+	if runner.commandSucceeds(ctx, "/usr/bin/systemctl", "is-active", "--quiet", "podman.socket") ||
+		runner.commandSucceeds(ctx, "/usr/bin/systemctl", "is-active", "--quiet", "podman.service") {
+		return errors.New("rootful Podman API service or socket remains active")
+	}
+	if _, err := os.Lstat("/run/podman/podman.sock"); err == nil {
+		return errors.New("rootful Podman API socket remains present")
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return errors.New("inspect rootful Podman API socket")
+	}
+	return nil
 }
 
 func removeKnownRockyPHPNGINXDropIn() (bool, error) {
@@ -277,18 +329,21 @@ func installerPackages(distribution string) []string {
 	case "debian":
 		return []string{
 			"acl", "apparmor", "apparmor-utils", "ca-certificates", "curl", "logrotate", "mariadb-server", "nginx", "nftables",
+			"aardvark-dns", "fuse-overlayfs", "netavark", "passt", "podman", "slirp4netns", "uidmap",
 			"php8.4-cli", "php8.4-curl", "php8.4-fpm", "php8.4-gd", "php8.4-intl", "php8.4-mbstring", "php8.4-mysql",
 			"php8.4-xml", "php8.4-zip", "phpmyadmin", "quota",
 		}
 	case "ubuntu":
 		return []string{
 			"acl", "apparmor", "apparmor-utils", "ca-certificates", "curl", "logrotate", "mariadb-server", "nginx", "nftables",
+			"aardvark-dns", "fuse-overlayfs", "netavark", "passt", "podman", "slirp4netns", "uidmap",
 			"php8.5-cli", "php8.5-curl", "php8.5-fpm", "php8.5-gd", "php8.5-intl", "php8.5-mbstring", "php8.5-mysql",
 			"php8.5-xml", "php8.5-zip", "phpmyadmin", "quota",
 		}
 	case "rocky":
 		return []string{
 			"acl", "ca-certificates", "checkpolicy", "curl", "firewalld", "logrotate", "mariadb-server", "nginx",
+			"aardvark-dns", "fuse-overlayfs", "netavark", "passt", "podman", "shadow-utils-subid", "slirp4netns",
 			"php-cli", "php-common", "php-fpm", "php-gd", "php-intl", "php-mbstring", "php-mysqlnd", "php-pecl-zip", "php-xml",
 			"policycoreutils", "policycoreutils-python-utils", "quota",
 		}
@@ -331,7 +386,7 @@ func (runner *LinuxRunner) verifyPackages(ctx context.Context) error {
 			return errors.New("Rocky PHP-FPM NGINX integration remains installed")
 		}
 	}
-	return nil
+	return runner.verifyPodmanAPISockets(ctx)
 }
 
 func (runner *LinuxRunner) applyIdentity(ctx context.Context) (bool, error) {

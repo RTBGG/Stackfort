@@ -59,8 +59,17 @@ func TestHostingAccountRemovalRequiresEveryArchiveAndDeletionStage(t *testing.T)
 	}
 	reconciled, err := repository.MarkHostingUnixIdentityReconciled(ctx, base)
 	if err != nil || reconciled.UnixIdentity.State != HostingUnixIdentityReconciled ||
-		reconciled.UnixIdentity.ReconciledAt == nil {
+		reconciled.UnixIdentity.ReconciledAt == nil || reconciled.UnixIdentity.OCIRuntimeReconciledAt == nil {
 		t.Fatalf("reconciled=%#v err=%v", reconciled, err)
+	}
+	if err := state.Write(ctx, func(executor store.Executor) error {
+		_, updateErr := executor.ExecContext(ctx, `
+			UPDATE hosting_account_unix_identities
+			SET oci_runtime_reconciled_at = '2030-01-01T00:00:00Z'
+			WHERE account_id = ?`, string(account.ID))
+		return updateErr
+	}); err == nil {
+		t.Fatal("OCI runtime reconciliation evidence was rewritten")
 	}
 	requested, err := repository.RequestHostingAccountArchive(ctx, base)
 	if err != nil || requested.Status != AccountArchived ||

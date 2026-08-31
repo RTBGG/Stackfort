@@ -19,7 +19,7 @@ func TestReconcileCreatesAndThenConvergesWithoutAdoptingAnything(t *testing.T) {
 	spec := testSpec(t)
 	host := newFakeHost(spec)
 	host.directoryCreated = true
-	reconciler := &Reconciler{commands: host, lookup: host, directories: host}
+	reconciler := &Reconciler{commands: host, lookup: host, directories: host, runtimes: host}
 	result, err := reconciler.Reconcile(context.Background(), spec)
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)
@@ -46,10 +46,39 @@ func TestReconcileRepairsOnlyMetadataOfTheExactManagedIdentity(t *testing.T) {
 	host.addUser(localUser{
 		Name: spec.Username, UID: spec.UID, GID: spec.GID, HomeDirectory: "/old", Shell: "/bin/sh",
 	})
-	result, err := (&Reconciler{commands: host, lookup: host, directories: host}).Reconcile(t.Context(), spec)
+	result, err := (&Reconciler{commands: host, lookup: host, directories: host, runtimes: host}).Reconcile(t.Context(), spec)
 	if err != nil || !result.UserRepaired || result.UserCreated ||
 		!reflect.DeepEqual(host.profiles, []agentexec.ProfileID{agentexec.ProfileUserMod}) {
 		t.Fatalf("result=%#v profiles=%#v err=%v", result, host.profiles, err)
+	}
+}
+
+func TestReconcileAndDeletePropagateRootlessRuntimeChanges(t *testing.T) {
+	t.Parallel()
+	spec := testSpec(t)
+	host := newFakeHost(spec)
+	host.addGroup(spec.Username, spec.GID)
+	host.addUser(localUser{
+		Name: spec.Username, UID: spec.UID, GID: spec.GID,
+		HomeDirectory: spec.HomeDirectory, Shell: hostingidentity.NoLoginShell,
+	})
+	host.runtimeResult = RuntimeResult{
+		SubUIDsConfigured: true, SubGIDsConfigured: true, LingerEnabled: true, RuntimePrepared: true,
+	}
+	reconciler := &Reconciler{commands: host, lookup: host, directories: host, runtimes: host}
+	result, err := reconciler.Reconcile(t.Context(), spec)
+	if err != nil || !result.SubUIDsConfigured || !result.SubGIDsConfigured ||
+		!result.LingerEnabled || !result.RuntimePrepared || host.runtimeEnsureCalls != 1 {
+		t.Fatalf("result=%#v runtime calls=%d err=%v", result, host.runtimeEnsureCalls, err)
+	}
+
+	host.runtimeRemoval = RuntimeRemovalResult{
+		RuntimeRemoved: true, SubUIDsRemoved: true, SubGIDsRemoved: true, LingerDisabled: true,
+	}
+	deleted, err := reconciler.Delete(t.Context(), spec)
+	if err != nil || !deleted.RuntimeRemoved || !deleted.SubUIDsRemoved ||
+		!deleted.SubGIDsRemoved || !deleted.LingerDisabled || host.runtimeRemoveCalls != 1 {
+		t.Fatalf("deleted=%#v runtime calls=%d err=%v", deleted, host.runtimeRemoveCalls, err)
 	}
 }
 
@@ -60,7 +89,7 @@ func TestReconcileCanCreateMissingGroupBeforeRepairingExactUser(t *testing.T) {
 	host.addUser(localUser{
 		Name: spec.Username, UID: spec.UID, GID: spec.GID, HomeDirectory: "/old", Shell: "/bin/sh",
 	})
-	result, err := (&Reconciler{commands: host, lookup: host, directories: host}).Reconcile(t.Context(), spec)
+	result, err := (&Reconciler{commands: host, lookup: host, directories: host, runtimes: host}).Reconcile(t.Context(), spec)
 	if err != nil || !result.GroupCreated || !result.UserRepaired ||
 		!reflect.DeepEqual(host.profiles, []agentexec.ProfileID{agentexec.ProfileGroupAdd, agentexec.ProfileUserMod}) {
 		t.Fatalf("result=%#v profiles=%#v err=%v", result, host.profiles, err)
@@ -87,7 +116,7 @@ func TestReconcileRejectsNameAndNumericConflictsBeforeMutation(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			host := newFakeHost(spec)
 			test.setup(host)
-			_, err := (&Reconciler{commands: host, lookup: host, directories: host}).Reconcile(t.Context(), spec)
+			_, err := (&Reconciler{commands: host, lookup: host, directories: host, runtimes: host}).Reconcile(t.Context(), spec)
 			if !errors.Is(err, ErrIdentityConflict) || len(host.profiles) != 0 || host.directoryCalls != 0 {
 				t.Fatalf("error=%v profiles=%#v directoryCalls=%d", err, host.profiles, host.directoryCalls)
 			}
@@ -105,7 +134,7 @@ func TestDeleteRequiresArchivedDirectoryAndRemovesNoFiles(t *testing.T) {
 		HomeDirectory: spec.HomeDirectory, Shell: hostingidentity.NoLoginShell,
 	})
 	host.archiveErr = ErrArchiveRequired
-	reconciler := &Reconciler{commands: host, lookup: host, directories: host}
+	reconciler := &Reconciler{commands: host, lookup: host, directories: host, runtimes: host}
 	if _, err := reconciler.Delete(t.Context(), spec); !errors.Is(err, ErrArchiveRequired) || len(host.profiles) != 0 {
 		t.Fatalf("unarchived error=%v profiles=%#v", err, host.profiles)
 	}
@@ -141,14 +170,19 @@ func TestLocalAccountFilesAreBoundedAndStrict(t *testing.T) {
 }
 
 type fakeHost struct {
-	spec              hostingidentity.Spec
-	snapshot          accountSnapshot
-	profiles          []agentexec.ProfileID
-	directoryCreated  bool
-	ownershipRepaired bool
-	directoryCalls    int
-	archiveErr        error
-	commandErr        error
+	spec               hostingidentity.Spec
+	snapshot           accountSnapshot
+	profiles           []agentexec.ProfileID
+	directoryCreated   bool
+	ownershipRepaired  bool
+	directoryCalls     int
+	archiveErr         error
+	commandErr         error
+	runtimeResult      RuntimeResult
+	runtimeRemoval     RuntimeRemovalResult
+	runtimeErr         error
+	runtimeEnsureCalls int
+	runtimeRemoveCalls int
 }
 
 func newFakeHost(spec hostingidentity.Spec) *fakeHost {
@@ -186,6 +220,16 @@ func (host *fakeHost) Ensure(hostingidentity.Spec) (bool, bool, error) {
 }
 
 func (host *fakeHost) RequireArchived(hostingidentity.Spec) error { return host.archiveErr }
+
+func (host *fakeHost) EnsureRuntime(context.Context, hostingidentity.Spec) (RuntimeResult, error) {
+	host.runtimeEnsureCalls++
+	return host.runtimeResult, host.runtimeErr
+}
+
+func (host *fakeHost) RemoveRuntime(context.Context, hostingidentity.Spec) (RuntimeRemovalResult, error) {
+	host.runtimeRemoveCalls++
+	return host.runtimeRemoval, host.runtimeErr
+}
 
 func (host *fakeHost) addUser(user localUser) {
 	host.snapshot.usersByName[user.Name], host.snapshot.usersByID[user.UID] = user, user

@@ -371,6 +371,15 @@ in [Constrained OCI application foundation](oci-application-foundation.md) and
 reference the draft until a later privileged lifecycle has applied and health-
 checked the exact current revision.
 
+Before workload execution exists, L-002 establishes a typed host readiness
+contract and prepares deterministic per-account subordinate UID/GID mappings,
+rootless storage, systemd user runtime, and a root-owned future Quadlet
+directory. Podman system and global-user API units remain masked; neither the
+control API nor the host agent uses an engine socket. Account host-readiness now
+requires an immutable successful runtime marker. See
+[Rootless OCI account runtime](rootless-oci-runtime.md) and
+[ADR 0054](adr/0054-rootless-podman-account-runtime.md).
+
 ## 6. Resource accounting
 
 ### 6.1 Hard limits

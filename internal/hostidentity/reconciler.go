@@ -11,14 +11,22 @@ import (
 	"strconv"
 
 	"github.com/RTBGG/stackfort/internal/agentexec"
+	"github.com/RTBGG/stackfort/internal/agentprotocol"
 	"github.com/RTBGG/stackfort/internal/hostingidentity"
 )
 
+type RuntimeCapabilityError struct{ Capability agentprotocol.Capability }
+
+func (failure *RuntimeCapabilityError) Error() string { return ErrRuntimeUnavailable.Error() }
+
+func (failure *RuntimeCapabilityError) Unwrap() error { return ErrRuntimeUnavailable }
+
 var (
-	ErrIdentityConflict = errors.New("managed Unix identity conflicts with existing host identity")
-	ErrArchiveRequired  = errors.New("managed account directory must be archived before deletion")
-	ErrMutationFailed   = errors.New("managed Unix identity mutation failed")
-	ErrInvalidDatabase  = errors.New("local Unix account database is malformed")
+	ErrIdentityConflict   = errors.New("managed Unix identity conflicts with existing host identity")
+	ErrArchiveRequired    = errors.New("managed account directory must be archived before deletion")
+	ErrMutationFailed     = errors.New("managed Unix identity mutation failed")
+	ErrInvalidDatabase    = errors.New("local Unix account database is malformed")
+	ErrRuntimeUnavailable = errors.New("rootless OCI account runtime is unavailable")
 )
 
 type ReconcileResult struct {
@@ -27,19 +35,45 @@ type ReconcileResult struct {
 	UserRepaired      bool `json:"userRepaired"`
 	DirectoryCreated  bool `json:"directoryCreated"`
 	OwnershipRepaired bool `json:"ownershipRepaired"`
+	SubUIDsConfigured bool `json:"subUidsConfigured"`
+	SubGIDsConfigured bool `json:"subGidsConfigured"`
+	LingerEnabled     bool `json:"lingerEnabled"`
+	RuntimePrepared   bool `json:"runtimePrepared"`
 }
 
 func (result ReconcileResult) Changed() bool {
 	return result.GroupCreated || result.UserCreated || result.UserRepaired ||
-		result.DirectoryCreated || result.OwnershipRepaired
+		result.DirectoryCreated || result.OwnershipRepaired || result.SubUIDsConfigured ||
+		result.SubGIDsConfigured || result.LingerEnabled || result.RuntimePrepared
 }
 
 type DeleteResult struct {
-	UserDeleted  bool `json:"userDeleted"`
-	GroupDeleted bool `json:"groupDeleted"`
+	UserDeleted    bool `json:"userDeleted"`
+	GroupDeleted   bool `json:"groupDeleted"`
+	RuntimeRemoved bool `json:"runtimeRemoved"`
+	SubUIDsRemoved bool `json:"subUidsRemoved"`
+	SubGIDsRemoved bool `json:"subGidsRemoved"`
+	LingerDisabled bool `json:"lingerDisabled"`
 }
 
-func (result DeleteResult) Changed() bool { return result.UserDeleted || result.GroupDeleted }
+func (result DeleteResult) Changed() bool {
+	return result.UserDeleted || result.GroupDeleted || result.RuntimeRemoved ||
+		result.SubUIDsRemoved || result.SubGIDsRemoved || result.LingerDisabled
+}
+
+type RuntimeResult struct {
+	SubUIDsConfigured bool
+	SubGIDsConfigured bool
+	LingerEnabled     bool
+	RuntimePrepared   bool
+}
+
+type RuntimeRemovalResult struct {
+	RuntimeRemoved bool
+	SubUIDsRemoved bool
+	SubGIDsRemoved bool
+	LingerDisabled bool
+}
 
 type commandRunner interface {
 	Run(context.Context, agentexec.Invocation) (agentexec.Result, error)
@@ -54,15 +88,22 @@ type directoryManager interface {
 	RequireArchived(hostingidentity.Spec) error
 }
 
+type runtimeManager interface {
+	EnsureRuntime(context.Context, hostingidentity.Spec) (RuntimeResult, error)
+	RemoveRuntime(context.Context, hostingidentity.Spec) (RuntimeRemovalResult, error)
+}
+
 type Reconciler struct {
 	commands    commandRunner
 	lookup      accountLookup
 	directories directoryManager
+	runtimes    runtimeManager
 }
 
 func NewReconciler() *Reconciler {
 	return &Reconciler{
 		commands: agentexec.NewRunner(), lookup: newFileAccountLookup(), directories: newDirectoryManager(),
+		runtimes: newRuntimeManager(),
 	}
 }
 
@@ -70,7 +111,7 @@ func (reconciler *Reconciler) Reconcile(
 	ctx context.Context,
 	spec hostingidentity.Spec,
 ) (ReconcileResult, error) {
-	if reconciler == nil || reconciler.commands == nil || reconciler.lookup == nil || reconciler.directories == nil {
+	if reconciler == nil || reconciler.commands == nil || reconciler.lookup == nil || reconciler.directories == nil || reconciler.runtimes == nil {
 		return ReconcileResult{}, ErrMutationFailed
 	}
 	if err := hostingidentity.Validate(spec); err != nil {
@@ -113,6 +154,14 @@ func (reconciler *Reconciler) Reconcile(
 	if err != nil {
 		return ReconcileResult{}, fmt.Errorf("%w: account directory", ErrMutationFailed)
 	}
+	runtimeResult, err := reconciler.runtimes.EnsureRuntime(ctx, spec)
+	if err != nil {
+		return ReconcileResult{}, err
+	}
+	result.SubUIDsConfigured = runtimeResult.SubUIDsConfigured
+	result.SubGIDsConfigured = runtimeResult.SubGIDsConfigured
+	result.LingerEnabled = runtimeResult.LingerEnabled
+	result.RuntimePrepared = runtimeResult.RuntimePrepared
 	return result, nil
 }
 
@@ -120,7 +169,7 @@ func (reconciler *Reconciler) Delete(
 	ctx context.Context,
 	spec hostingidentity.Spec,
 ) (DeleteResult, error) {
-	if reconciler == nil || reconciler.commands == nil || reconciler.lookup == nil || reconciler.directories == nil {
+	if reconciler == nil || reconciler.commands == nil || reconciler.lookup == nil || reconciler.directories == nil || reconciler.runtimes == nil {
 		return DeleteResult{}, ErrMutationFailed
 	}
 	if err := hostingidentity.Validate(spec); err != nil {
@@ -138,6 +187,14 @@ func (reconciler *Reconciler) Delete(
 		return DeleteResult{}, err
 	}
 	result := DeleteResult{}
+	runtimeResult, err := reconciler.runtimes.RemoveRuntime(ctx, spec)
+	if err != nil {
+		return DeleteResult{}, err
+	}
+	result.RuntimeRemoved = runtimeResult.RuntimeRemoved
+	result.SubUIDsRemoved = runtimeResult.SubUIDsRemoved
+	result.SubGIDsRemoved = runtimeResult.SubGIDsRemoved
+	result.LingerDisabled = runtimeResult.LingerDisabled
 	if userExists {
 		if err := reconciler.run(ctx, agentexec.ProfileUserDel, spec); err != nil {
 			return DeleteResult{}, err

@@ -275,6 +275,13 @@ than adopting them. See [Account systemd slices and cgroup-v2 limits](account-re
   digest or normalized Containerfile source, one internal port, and one bounded
   health check. Dangerous host/runtime features are absent from the type and
   database schema rather than represented as caller-controlled switches.
+- L-002 derives one non-overlapping 65,536-ID subordinate UID/GID range and
+  fixed rootless storage/runtime/Quadlet paths per account. The agent rejects
+  malformed or overlapping local mappings, symlinked/foreign directories, and
+  missing runtime capabilities before success.
+- System and global-user Podman API units are masked. Rootful and per-account
+  socket artifacts are rejected, and no engine API operation exists in the
+  agent protocol; see [Rootless OCI account runtime](rootless-oci-runtime.md).
 - Registry references resolve to recorded immutable digests for deployments.
 - Builds have CPU, memory, storage, duration, and log-output limits.
 

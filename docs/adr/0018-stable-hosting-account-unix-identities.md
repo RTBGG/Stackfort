@@ -2,6 +2,10 @@
 
 Status: Accepted
 
+Amended by [ADR 0054](0054-rootless-podman-account-runtime.md): new account
+allocations now use `200000–249999` so each identity has a collision-free
+65,536-ID subordinate UID/GID range.
+
 ## Context
 
 Static files, PHP pools, quotas, cgroups, and rootless container processes need

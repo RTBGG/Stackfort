@@ -351,6 +351,8 @@ func installationPlan(distribution string) Plan {
 			{"stackfort-api.service", "enable and start as the stackfort account"},
 			{"nginx.service", "enable and start with the Stackfort-owned configuration"},
 			{phpVendorUnit(distribution), "disable the distribution-wide pool; use isolated per-account PHP-FPM units"},
+			{"podman.socket", "mask now as a system unit and mask in the global user configuration"},
+			{"podman.service", "mask now as a system unit and mask in the global user configuration"},
 		},
 		Ports: []PortPlan{
 			{"tcp/80", "public inbound", "HTTP, redirects, and ACME HTTP-01"},
@@ -385,11 +387,14 @@ func installationPlan(distribution string) Plan {
 func distroPackages(distribution string) []string {
 	switch distribution {
 	case "debian":
-		return []string{"acl", "apparmor", "apparmor-utils", "ca-certificates", "curl", "nginx", "nftables", "php8.4-fpm", "quota"}
+		return []string{"acl", "apparmor", "apparmor-utils", "ca-certificates", "curl", "nginx", "nftables", "php8.4-fpm", "quota",
+			"aardvark-dns", "fuse-overlayfs", "netavark", "passt", "podman", "slirp4netns", "uidmap"}
 	case "ubuntu":
-		return []string{"acl", "apparmor", "apparmor-utils", "ca-certificates", "curl", "nginx", "nftables", "php8.5-fpm", "quota"}
+		return []string{"acl", "apparmor", "apparmor-utils", "ca-certificates", "curl", "nginx", "nftables", "php8.5-fpm", "quota",
+			"aardvark-dns", "fuse-overlayfs", "netavark", "passt", "podman", "slirp4netns", "uidmap"}
 	case "rocky":
-		return []string{"acl", "ca-certificates", "curl", "firewalld", "nginx", "php-fpm", "policycoreutils-python-utils", "quota"}
+		return []string{"acl", "ca-certificates", "curl", "firewalld", "nginx", "php-fpm", "policycoreutils-python-utils", "quota",
+			"aardvark-dns", "fuse-overlayfs", "netavark", "passt", "podman", "shadow-utils-subid", "slirp4netns"}
 	default:
 		return []string{}
 	}

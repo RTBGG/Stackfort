@@ -14,7 +14,7 @@ snapshot, and audit event:
 | Field | Rule |
 | --- | --- |
 | Username | `sf_` plus the final 26 hexadecimal digits of the canonical account UUIDv7 |
-| UID/GID | Equal values, allocated monotonically from the reserved `200000–599999` range |
+| UID/GID | Equal values, allocated monotonically from the reserved `200000–249999` range |
 | Home | `/srv/hosting/accounts/<canonical-account-uuid>` |
 | Initial state | `allocated` |
 
@@ -22,6 +22,12 @@ The username retains 104 UUID bits, including UUIDv7's complete random portion,
 and is also unique in SQLite. Numeric
 IDs are never reclaimed because deleted identities remain as tombstones. An
 upgrade backfills existing pre-E-001 accounts deterministically.
+
+L-002 narrows new allocations to 50,000 identities so every account can own a
+non-overlapping block of 65,536 subordinate UIDs and GIDs within Linux's
+32-bit ID space. The broader original database check is retained for migration
+compatibility; the application validator and the latest insert trigger enforce
+the narrower runtime-capable range.
 
 The installer must reserve the numeric range and detect pre-existing host use.
 If a local name or numeric ID is already occupied, reconciliation fails with

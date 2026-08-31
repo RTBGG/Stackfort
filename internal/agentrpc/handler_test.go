@@ -179,13 +179,19 @@ func TestHostingIdentityMutationFailuresAreStableAndRedacted(t *testing.T) {
 		err        error
 		wantStatus int
 		wantCode   agentprotocol.ErrorCode
+		wantReason string
 	}{
 		{"conflict", agentprotocol.OperationReconcileIdentity, hostidentity.ErrIdentityConflict,
-			http.StatusConflict, agentprotocol.ErrorIdentityConflict},
+			http.StatusConflict, agentprotocol.ErrorIdentityConflict, ""},
 		{"archive", agentprotocol.OperationDeleteIdentity, hostidentity.ErrArchiveRequired,
-			http.StatusConflict, agentprotocol.ErrorArchiveRequired},
+			http.StatusConflict, agentprotocol.ErrorArchiveRequired, ""},
+		{"OCI runtime", agentprotocol.OperationReconcileIdentity, &hostidentity.RuntimeCapabilityError{
+			Capability: agentprotocol.Capability{
+				Status: agentprotocol.CapabilityUnavailable, ReasonCode: "rootful-podman-socket-enabled",
+			},
+		}, http.StatusUnprocessableEntity, agentprotocol.ErrorOCIRuntimeUnavailable, "rootful-podman-socket-enabled"},
 		{"internal", agentprotocol.OperationReconcileIdentity, errors.New("secret fixture detail"),
-			http.StatusInternalServerError, agentprotocol.ErrorMutationFailed},
+			http.StatusInternalServerError, agentprotocol.ErrorMutationFailed, ""},
 	}
 	for index, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -201,6 +207,10 @@ func TestHostingIdentityMutationFailuresAreStableAndRedacted(t *testing.T) {
 			if recorder.Code != test.wantStatus || response.Error == nil || response.Error.Code != test.wantCode ||
 				strings.Contains(response.Error.Message, "fixture") {
 				t.Fatalf("status=%d response=%#v", recorder.Code, response)
+			}
+			if test.wantReason != "" && (response.Error.Capability == nil ||
+				response.Error.Capability.ReasonCode != test.wantReason) {
+				t.Fatalf("capability=%#v, want reason %q", response.Error.Capability, test.wantReason)
 			}
 		})
 	}
@@ -1022,6 +1032,10 @@ func handlerCapabilityReport() agentprotocol.CapabilityReport {
 			Inspection: available, ProjectQuota: available,
 		},
 		Security: agentprotocol.SecurityCapabilities{Provider: "apparmor", Mode: "enabled", Enforcement: available},
+		OCI: agentprotocol.OCIRuntimeCapabilities{
+			Provider: "podman", Version: "5.5.2", Rootless: available, Quadlet: available,
+			Network: available, Storage: available, RootfulSocketIsolation: available,
+		},
 		Ports: []agentprotocol.PortCapability{
 			{Port: 80, Network: "tcp", Availability: available},
 			{Port: 443, Network: "tcp", Availability: available},
@@ -1030,11 +1044,13 @@ func handlerCapabilityReport() agentprotocol.CapabilityReport {
 	}
 	packageNames := []struct{ key, name string }{
 		{"nginx", "nginx"}, {"php-fpm", "php-fpm"}, {"mariadb", "mariadb-server"},
-		{"vinyl", "vinyl-cache"}, {"podman", "podman"}, {"coraza", "stackfort-waf"},
+		{"vinyl", "vinyl-cache"}, {"podman", "podman"}, {"netavark", "netavark"},
+		{"aardvark-dns", "aardvark-dns"}, {"passt", "passt"}, {"slirp4netns", "slirp4netns"},
+		{"fuse-overlayfs", "fuse-overlayfs"}, {"uidmap", "uidmap"}, {"coraza", "stackfort-waf"},
 	}
 	for _, item := range packageNames {
 		report.Packages = append(report.Packages, agentprotocol.PackageCapability{
-			Key: item.key, PackageName: item.name, Version: "1", Availability: available,
+			Key: item.key, PackageName: item.name, Version: map[bool]string{true: "5.5.2", false: "1"}[item.key == "podman"], Availability: available,
 		})
 	}
 	serviceNames := []struct{ key, unit string }{

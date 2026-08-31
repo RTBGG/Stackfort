@@ -25,7 +25,7 @@ func (r *Repository) HostingAccountHostReady(ctx context.Context, accountID ID) 
 				JOIN hosting_account_filesystems AS f ON f.account_id = h.id
 				JOIN hosting_account_resources AS r ON r.account_id = h.id
 				WHERE h.id = ? AND h.status = 'active'
-				  AND u.lifecycle_state = 'reconciled'
+				  AND u.lifecycle_state = 'reconciled' AND u.oci_runtime_reconciled_at IS NOT NULL
 				  AND f.status = 'applied' AND f.capability_status = 'available'
 				  AND r.status = 'applied' AND r.capability_status = 'available'
 			)`, string(accountID)).Scan(&ready)
@@ -49,7 +49,8 @@ func (r *Repository) ListHostingAccountsNeedingHostReconcile(
 			JOIN hosting_account_filesystems AS f ON f.account_id = h.id
 			JOIN hosting_account_resources AS r ON r.account_id = h.id
 			WHERE h.status = 'active'
-			  AND (u.lifecycle_state = 'allocated' OR f.status = 'pending' OR r.status = 'pending')
+			  AND (u.lifecycle_state = 'allocated' OR u.oci_runtime_reconciled_at IS NULL OR
+			       f.status = 'pending' OR r.status = 'pending')
 			ORDER BY h.created_at, h.id
 			LIMIT ?`, limit)
 		if err != nil {

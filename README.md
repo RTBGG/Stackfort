@@ -12,8 +12,8 @@ focused server administration, and secure application hosting without making
 the web interface itself a privileged system process.
 
 > [!WARNING]
-> Stackfort is under active development. Phase 4 is complete, but the project
-> is not ready for production servers or valuable data.
+> Stackfort is under active development. Phase 5 is in progress, and the
+> project is not ready for production servers or valuable data.
 
 [Roadmap](docs/roadmap.md) · [Architecture](docs/architecture.md) ·
 [Security model](docs/security.md) · [Development guide](DEVELOPMENT.md)
@@ -28,7 +28,7 @@ the web interface itself a privileged system process.
 | Databases | Tenant-scoped MariaDB, guided lifecycle, credential rotation, and phpMyAdmin sign-on |
 | File management | Browse, upload, download, copy, move, trash, archives, and local file backups |
 | Installation | Fresh-host installer qualified on Debian 13, Ubuntu 26.04, and Rocky Linux 10 |
-| Containers | Constrained application drafts are complete; rootless Podman execution is next |
+| Containers | Constrained drafts and rootless Podman account-runtime foundation; no workload execution yet |
 
 ## Design goals
 
@@ -75,7 +75,7 @@ personalized applications bypass it by default.
 | Optional page cache | Vinyl Cache 9.x or NGINX FastCGI cache |
 | Web application firewall | Coraza 3, coraza-nginx, and OWASP Core Rule Set |
 | Managed SQL service | MariaDB |
-| Container runtime | Rootless Podman with systemd Quadlets (planned) |
+| Container runtime | Rootless Podman with systemd Quadlets (account foundation implemented) |
 | Resource control | systemd, cgroup v2, and filesystem project quotas |
 
 </details>
@@ -94,6 +94,23 @@ personalized applications bypass it by default.
 - Stable per-account Unix identities, project quotas, systemd slices, and
   descriptor-relative filesystem access without symlink traversal.
 - Hash-chained audit records and durable, replay-safe background operations.
+
+</details>
+
+<details>
+<summary><strong>Container foundation</strong></summary>
+
+- Tenant-owned drafts accept only digest-pinned images or normalized
+  Containerfile sources, one internal port, and a bounded health check.
+- The installer provides Podman/netavark rootless dependencies while masking
+  rootful and user engine API units.
+- Every account receives deterministic, non-overlapping subordinate UID/GID
+  mappings plus symlink-resistant storage, runtime, and future Quadlet paths.
+- Image pull/build, networks, volumes, secrets, and workload execution remain
+  later Phase 5 steps.
+
+[Application schema](docs/oci-application-foundation.md) ·
+[Rootless runtime](docs/rootless-oci-runtime.md)
 
 </details>
 

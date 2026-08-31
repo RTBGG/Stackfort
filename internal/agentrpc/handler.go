@@ -801,6 +801,8 @@ func (handler *Handler) dispatch(ctx context.Context, request agentprotocol.Requ
 			Changed: result.Changed(), GroupCreated: result.GroupCreated,
 			UserCreated: result.UserCreated, UserRepaired: result.UserRepaired,
 			DirectoryCreated: result.DirectoryCreated, OwnershipRepaired: result.OwnershipRepaired,
+			SubUIDsConfigured: result.SubUIDsConfigured, SubGIDsConfigured: result.SubGIDsConfigured,
+			LingerEnabled: result.LingerEnabled, RuntimePrepared: result.RuntimePrepared,
 		}
 		return http.StatusOK, response
 	case agentprotocol.OperationDeleteIdentity:
@@ -810,6 +812,8 @@ func (handler *Handler) dispatch(ctx context.Context, request agentprotocol.Requ
 		}
 		response.HostingIdentity = &agentprotocol.HostingIdentityResponse{
 			Changed: result.Changed(), UserDeleted: result.UserDeleted, GroupDeleted: result.GroupDeleted,
+			RuntimeRemoved: result.RuntimeRemoved, SubUIDsRemoved: result.SubUIDsRemoved,
+			SubGIDsRemoved: result.SubGIDsRemoved, LingerDisabled: result.LingerDisabled,
 		}
 		return http.StatusOK, response
 	case agentprotocol.OperationReconcileFilesystem:
@@ -1414,12 +1418,23 @@ func (handler *Handler) identityError(
 	case errors.Is(err, hostidentity.ErrArchiveRequired):
 		status, code = http.StatusConflict, agentprotocol.ErrorArchiveRequired
 		message = "The managed account directory must be archived before identity deletion."
+	case errors.Is(err, hostidentity.ErrRuntimeUnavailable):
+		status, code = http.StatusUnprocessableEntity, agentprotocol.ErrorOCIRuntimeUnavailable
+		message = "The required rootless OCI runtime is unavailable."
 	}
 	handler.logger.Error("hosting identity mutation failed",
 		"request_id", request.RequestID, "operation", request.Operation,
 		"operation_id", request.Correlation.OperationID, "account_id", request.Correlation.AccountID,
 	)
 	response.Error = &agentprotocol.ResponseError{Code: code, Message: message}
+	var capabilityError *hostidentity.RuntimeCapabilityError
+	if errors.As(err, &capabilityError) {
+		response.Error.Capability = &capabilityError.Capability
+	} else if code == agentprotocol.ErrorOCIRuntimeUnavailable {
+		response.Error.Capability = &agentprotocol.Capability{
+			Status: agentprotocol.CapabilityUnknown, ReasonCode: "runtime-inspection-failed",
+		}
+	}
 	return status, response
 }
 

@@ -38,6 +38,18 @@ func TestInstallerPackagesSelectNativePHPRuntime(t *testing.T) {
 		if !strings.Contains(packages, " logrotate ") {
 			t.Fatalf("%s package plan lacks deterministic log retention: %s", distribution, packages)
 		}
+		for _, runtimePackage := range []string{"podman", "netavark", "aardvark-dns", "passt", "slirp4netns", "fuse-overlayfs"} {
+			if !strings.Contains(packages, " "+runtimePackage+" ") {
+				t.Fatalf("%s package plan lacks rootless runtime package %s: %s", distribution, runtimePackage, packages)
+			}
+		}
+		mappingPackage := "uidmap"
+		if distribution == "rocky" {
+			mappingPackage = "shadow-utils-subid"
+		}
+		if !strings.Contains(packages, " "+mappingPackage+" ") {
+			t.Fatalf("%s package plan lacks subordinate-ID helpers: %s", distribution, packages)
+		}
 		if !strings.Contains(packages, " cli ") && !strings.Contains(packages, "-cli ") {
 			t.Fatalf("%s package plan lacks an explicit PHP CLI: %s", distribution, packages)
 		}

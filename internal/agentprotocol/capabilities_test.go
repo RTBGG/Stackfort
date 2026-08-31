@@ -47,6 +47,8 @@ func TestCapabilityResponseValidationIsBoundedAndCorrelated(t *testing.T) {
 	}{
 		{"bad status", func(report *CapabilityReport) { report.Systemd.Status = "maybe" }},
 		{"available with reason", func(report *CapabilityReport) { report.Systemd.ReasonCode = "unexpected" }},
+		{"unknown OCI provider", func(report *CapabilityReport) { report.OCI.Provider = "docker" }},
+		{"rootless OCI without version", func(report *CapabilityReport) { report.OCI.Version = "" }},
 		{"missing port", func(report *CapabilityReport) { report.Ports = report.Ports[:1] }},
 		{"duplicate package", func(report *CapabilityReport) { report.Packages[1].Key = report.Packages[0].Key }},
 		{"unbounded version", func(report *CapabilityReport) { report.Packages[0].Version = strings.Repeat("x", 129) }},
@@ -87,6 +89,11 @@ func validCapabilityReport() *CapabilityReport {
 		Security: SecurityCapabilities{
 			Provider: "apparmor", Mode: "enabled", Enforcement: Capability{Status: CapabilityAvailable},
 		},
+		OCI: OCIRuntimeCapabilities{
+			Provider: "podman", Version: "5.5.2", Rootless: Capability{Status: CapabilityAvailable},
+			Quadlet: Capability{Status: CapabilityAvailable}, Network: Capability{Status: CapabilityAvailable},
+			Storage: Capability{Status: CapabilityAvailable}, RootfulSocketIsolation: Capability{Status: CapabilityAvailable},
+		},
 		Ports: []PortCapability{
 			{Port: 80, Network: "tcp", Availability: Capability{Status: CapabilityAvailable}},
 			{Port: 443, Network: "tcp", Availability: Capability{Status: CapabilityAvailable}},
@@ -97,7 +104,13 @@ func validCapabilityReport() *CapabilityReport {
 			{Key: "php-fpm", PackageName: "php-fpm", Version: "1", Availability: Capability{Status: CapabilityAvailable}},
 			{Key: "mariadb", PackageName: "mariadb-server", Version: "1", Availability: Capability{Status: CapabilityAvailable}},
 			{Key: "vinyl", PackageName: "vinyl-cache", Availability: Capability{Status: CapabilityUnavailable, ReasonCode: "package-not-installed"}},
-			{Key: "podman", PackageName: "podman", Version: "1", Availability: Capability{Status: CapabilityAvailable}},
+			{Key: "podman", PackageName: "podman", Version: "5.5.2", Availability: Capability{Status: CapabilityAvailable}},
+			{Key: "netavark", PackageName: "netavark", Version: "1", Availability: Capability{Status: CapabilityAvailable}},
+			{Key: "aardvark-dns", PackageName: "aardvark-dns", Version: "1", Availability: Capability{Status: CapabilityAvailable}},
+			{Key: "passt", PackageName: "passt", Version: "1", Availability: Capability{Status: CapabilityAvailable}},
+			{Key: "slirp4netns", PackageName: "slirp4netns", Version: "1", Availability: Capability{Status: CapabilityAvailable}},
+			{Key: "fuse-overlayfs", PackageName: "fuse-overlayfs", Version: "1", Availability: Capability{Status: CapabilityAvailable}},
+			{Key: "uidmap", PackageName: "uidmap", Version: "1", Availability: Capability{Status: CapabilityAvailable}},
 			{Key: "coraza", PackageName: "stackfort-waf", Version: "1", Availability: Capability{Status: CapabilityAvailable}},
 		},
 		Services: []ServiceCapability{

@@ -20,6 +20,7 @@ import (
 	"github.com/RTBGG/stackfort/internal/cacheconfig"
 	"github.com/RTBGG/stackfort/internal/core"
 	"github.com/RTBGG/stackfort/internal/hostingidentity"
+	"github.com/RTBGG/stackfort/internal/hostingoci"
 	"github.com/RTBGG/stackfort/internal/hostingpath"
 	"github.com/RTBGG/stackfort/internal/hostingresources"
 	"github.com/RTBGG/stackfort/internal/hostingstorage"
@@ -48,6 +49,14 @@ const (
 	ProfileUserMod                    ProfileID = "account.user-mod"
 	ProfileUserDel                    ProfileID = "account.user-del"
 	ProfileGroupDel                   ProfileID = "account.group-del"
+	ProfileUserAddSubUIDs             ProfileID = "account.subuid-add"
+	ProfileUserAddSubGIDs             ProfileID = "account.subgid-add"
+	ProfileUserDeleteSubUIDs          ProfileID = "account.subuid-delete"
+	ProfileUserDeleteSubGIDs          ProfileID = "account.subgid-delete"
+	ProfileEnableUserLinger           ProfileID = "account.linger-enable"
+	ProfileDisableUserLinger          ProfileID = "account.linger-disable"
+	ProfileStartUserManager           ProfileID = "account.user-manager-start"
+	ProfileTerminateUser              ProfileID = "account.user-manager-terminate"
 	ProfileSetProjectQuota            ProfileID = "filesystem.set-project-quota"
 	ProfileSetWebAccessACL            ProfileID = "filesystem.set-web-access-acl"
 	ProfileAddSELinuxWebContext       ProfileID = "filesystem.selinux-web-context-add"
@@ -144,7 +153,8 @@ type Runner struct {
 // NewRunner returns the complete production profile registry.
 func NewRunner() *Runner {
 	packages := stringSet(
-		"nginx", "php-fpm", "mariadb-server", "vinyl-cache", "podman",
+		"nginx", "php-fpm", "mariadb-server", "vinyl-cache", "podman", "netavark",
+		"aardvark-dns", "passt", "slirp4netns", "fuse-overlayfs", "uidmap", "shadow-utils-subid",
 		"stackfort-waf",
 	)
 	units := stringSet(
@@ -190,6 +200,16 @@ func NewRunner() *Runner {
 		ProfileGroupDel: accountMutationProfile("/usr/sbin/groupdel", func(spec hostingidentity.Spec) []string {
 			return []string{spec.Username}
 		}),
+		ProfileUserAddSubUIDs:    subordinateIDProfile("--add-subuids"),
+		ProfileUserAddSubGIDs:    subordinateIDProfile("--add-subgids"),
+		ProfileUserDeleteSubUIDs: subordinateIDProfile("--del-subuids"),
+		ProfileUserDeleteSubGIDs: subordinateIDProfile("--del-subgids"),
+		ProfileEnableUserLinger:  lingerProfile("enable-linger"),
+		ProfileDisableUserLinger: lingerProfile("disable-linger"),
+		ProfileStartUserManager: accountMutationProfile("/usr/bin/systemctl", func(spec hostingidentity.Spec) []string {
+			return []string{"start", "user@" + strconv.FormatUint(uint64(spec.UID), 10) + ".service"}
+		}),
+		ProfileTerminateUser:            lingerProfile("terminate-user"),
 		ProfileSetProjectQuota:          projectQuotaProfile(),
 		ProfileSetWebAccessACL:          webAccessACLProfile(),
 		ProfileAddSELinuxWebContext:     selinuxWebContextProfile("-a"),
@@ -273,6 +293,43 @@ func NewRunner() *Runner {
 			return []string{"-T", cacheconfig.ManagementAddress, "-S", cacheconfig.SecretPath, "ban", expression}, nil
 		}),
 	}}
+}
+
+func subordinateIDProfile(action string) executionProfile {
+	profile := newProfile("/usr/sbin/usermod", func(values []string) ([]string, error) {
+		identity, err := hostingIdentitySpec(values)
+		if err != nil {
+			return nil, err
+		}
+		runtimeSpec, err := hostingoci.ForIdentity(identity)
+		if err != nil {
+			return nil, ErrInvalidInvocation
+		}
+		start, end := runtimeSpec.SubUIDStart, runtimeSpec.SubUIDEnd()
+		if action == "--add-subgids" || action == "--del-subgids" {
+			start, end = runtimeSpec.SubGIDStart, runtimeSpec.SubGIDEnd()
+		}
+		switch action {
+		case "--add-subuids", "--add-subgids", "--del-subuids", "--del-subgids":
+			return []string{action, strconv.FormatUint(uint64(start), 10) + "-" + strconv.FormatUint(uint64(end), 10), identity.Username}, nil
+		default:
+			return nil, ErrNotAllowlisted
+		}
+	})
+	profile.timeout = accountMutationTimeout
+	return profile
+}
+
+func lingerProfile(action string) executionProfile {
+	profile := newProfile("/usr/bin/loginctl", func(values []string) ([]string, error) {
+		identity, err := hostingIdentitySpec(values)
+		if err != nil || (action != "enable-linger" && action != "disable-linger" && action != "terminate-user") {
+			return nil, ErrInvalidInvocation
+		}
+		return []string{action, identity.Username}, nil
+	})
+	profile.timeout = accountMutationTimeout
+	return profile
 }
 
 func scheduledJobSystemdProfile(action string) executionProfile {

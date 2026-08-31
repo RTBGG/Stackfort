@@ -16,7 +16,7 @@ const (
 	ManagedAccountsRoot        = "/srv/hosting/accounts"
 	NoLoginShell               = "/usr/sbin/nologin"
 	MinimumID           uint32 = 200_000
-	MaximumID           uint32 = 599_999
+	MaximumID           uint32 = 249_999
 )
 
 var ErrInvalidSpec = errors.New("invalid hosting account Unix identity")

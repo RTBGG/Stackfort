@@ -127,6 +127,7 @@ const (
 	ErrorUnsupportedOperation       ErrorCode = "unsupported_operation"
 	ErrorIdempotencyConflict        ErrorCode = "idempotency_conflict"
 	ErrorIdentityConflict           ErrorCode = "identity_conflict"
+	ErrorOCIRuntimeUnavailable      ErrorCode = "oci_runtime_unavailable"
 	ErrorArchiveRequired            ErrorCode = "archive_required"
 	ErrorFilesystemConflict         ErrorCode = "filesystem_conflict"
 	ErrorFilesystemMigration        ErrorCode = "filesystem_migration_required"
@@ -452,6 +453,7 @@ func ValidateResponse(response Response, requestID string, expectedOperation Ope
 			return errors.New("agent protocol error response is malformed")
 		}
 		if response.Error.Code == ErrorQuotaUnavailable || response.Error.Code == ErrorResourceControlUnavailable ||
+			response.Error.Code == ErrorOCIRuntimeUnavailable ||
 			response.Error.Code == ErrorNGINXUnavailable || response.Error.Code == ErrorPHPUnavailable ||
 			response.Error.Code == ErrorScheduledJobUnavailable || response.Error.Code == ErrorCacheUnavailable {
 			if response.Error.Capability == nil || validateCapability(*response.Error.Capability) != nil ||
@@ -676,7 +678,7 @@ func validErrorCode(code ErrorCode) bool {
 	switch code {
 	case ErrorInvalidRequest, ErrorRequestTooLarge, ErrorUnsupportedMediaType,
 		ErrorIncompatibleProtocol, ErrorUnsupportedOperation,
-		ErrorIdempotencyConflict, ErrorIdentityConflict, ErrorArchiveRequired,
+		ErrorIdempotencyConflict, ErrorIdentityConflict, ErrorOCIRuntimeUnavailable, ErrorArchiveRequired,
 		ErrorFilesystemConflict, ErrorFilesystemMigration, ErrorQuotaUnavailable,
 		ErrorFileNotFound, ErrorFileConflict, ErrorFileUnavailable,
 		ErrorFileDownloadUnavailable, ErrorFileDownloadTooLarge,

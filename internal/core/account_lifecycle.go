@@ -4,14 +4,17 @@ package core
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
 	"github.com/RTBGG/stackfort/internal/store"
 )
 
-// MarkHostingUnixIdentityReconciled records successful host reconciliation.
-// It never changes the allocated username or numeric IDs.
+// MarkHostingUnixIdentityReconciled records successful identity and rootless
+// OCI account-runtime reconciliation. It never changes the allocated username
+// or numeric IDs and can backfill the runtime marker on an older reconciled
+// identity.
 func (r *Repository) MarkHostingUnixIdentityReconciled(
 	ctx context.Context,
 	params HostingAccountLifecycleParams,
@@ -23,30 +26,37 @@ func (r *Repository) MarkHostingUnixIdentityReconciled(
 	now := r.timestamp()
 	err = r.state.Write(ctx, func(executor store.Executor) error {
 		var state string
+		var runtimeReconciledAt sql.NullString
 		if queryErr := executor.QueryRowContext(ctx, `
-			SELECT lifecycle_state FROM hosting_account_unix_identities WHERE account_id = ?`,
-			string(params.AccountID)).Scan(&state); queryErr != nil {
+			SELECT lifecycle_state, oci_runtime_reconciled_at
+			FROM hosting_account_unix_identities WHERE account_id = ?`,
+			string(params.AccountID)).Scan(&state, &runtimeReconciledAt); queryErr != nil {
 			return queryErr
 		}
-		if HostingUnixIdentityState(state) == HostingUnixIdentityReconciled {
+		if HostingUnixIdentityState(state) == HostingUnixIdentityReconciled && runtimeReconciledAt.Valid {
 			return nil
 		}
 		result, updateErr := executor.ExecContext(ctx, `
 			UPDATE hosting_account_unix_identities
-			SET lifecycle_state = 'reconciled', reconciled_at = ?
-			WHERE account_id = ? AND lifecycle_state = 'allocated'
+			SET lifecycle_state = 'reconciled',
+			    reconciled_at = COALESCE(reconciled_at, ?),
+			    oci_runtime_reconciled_at = COALESCE(oci_runtime_reconciled_at, ?)
+			WHERE account_id = ? AND lifecycle_state IN ('allocated', 'reconciled')
 			  AND EXISTS (
 			      SELECT 1 FROM hosting_accounts
 			      WHERE id = ? AND status IN ('active', 'suspended')
-			  )`, formatTime(now), string(params.AccountID), string(params.AccountID))
+			  )`, formatTime(now), formatTime(now), string(params.AccountID), string(params.AccountID))
 		if updateErr != nil {
 			return updateErr
 		}
 		if updateErr = expectAffected(result); updateErr != nil {
 			return updateErr
 		}
-		return r.appendAccountLifecycleAudit(ctx, executor, params, requestID,
-			"hosting_account.unix_identity_reconciled", now, nil)
+		eventType := "hosting_account.unix_identity_reconciled"
+		if HostingUnixIdentityState(state) == HostingUnixIdentityReconciled {
+			eventType = "hosting_account.oci_runtime_reconciled"
+		}
+		return r.appendAccountLifecycleAudit(ctx, executor, params, requestID, eventType, now, nil)
 	})
 	if err != nil {
 		return HostingAccount{}, classifyDatabaseError(err)

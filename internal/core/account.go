@@ -196,7 +196,7 @@ func (r *Repository) GetHostingAccount(ctx context.Context, accountID ID) (Hosti
 	var account HostingAccount
 	var status, createdAt, updatedAt string
 	var identityState, allocatedAt string
-	var reconciledAt, archiveRequestedAt, archivedAt, archiveReference sql.NullString
+	var reconciledAt, ociRuntimeReconciledAt, archiveRequestedAt, archivedAt, archiveReference sql.NullString
 	var deletionRequestedAt, deletedAt sql.NullString
 	var uid, gid int64
 	err := r.state.Read(ctx, func(reader store.Reader) error {
@@ -204,7 +204,7 @@ func (r *Repository) GetHostingAccount(ctx context.Context, accountID ID) (Hosti
 			SELECT h.id, h.name, h.slug, h.status, h.current_package_assignment_id,
 			       h.created_at, h.updated_at,
 			       u.account_id, u.username, u.uid, u.gid, u.home_directory,
-			       u.lifecycle_state, u.allocated_at, u.reconciled_at,
+			       u.lifecycle_state, u.allocated_at, u.reconciled_at, u.oci_runtime_reconciled_at,
 			       u.archive_requested_at, u.archived_at, u.archive_reference,
 			       u.deletion_requested_at, u.deleted_at
 			FROM hosting_accounts AS h
@@ -225,6 +225,7 @@ func (r *Repository) GetHostingAccount(ctx context.Context, accountID ID) (Hosti
 			&identityState,
 			&allocatedAt,
 			&reconciledAt,
+			&ociRuntimeReconciledAt,
 			&archiveRequestedAt,
 			&archivedAt,
 			&archiveReference,
@@ -263,6 +264,7 @@ func (r *Repository) GetHostingAccount(ctx context.Context, accountID ID) (Hosti
 		target **time.Time
 	}{
 		{reconciledAt, &account.UnixIdentity.ReconciledAt},
+		{ociRuntimeReconciledAt, &account.UnixIdentity.OCIRuntimeReconciledAt},
 		{archiveRequestedAt, &account.UnixIdentity.ArchiveRequestedAt},
 		{archivedAt, &account.UnixIdentity.ArchivedAt},
 		{deletionRequestedAt, &account.UnixIdentity.DeletionRequestedAt},

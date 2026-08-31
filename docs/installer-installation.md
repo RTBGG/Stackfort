@@ -134,6 +134,11 @@ certificate, and browser boundary.
 - PHP: the approved native FPM package is installed while its distribution-wide
   pool remains inactive and disabled; Stackfort creates only account-scoped
   units and sockets when a PHP domain requires them.
+- OCI: Podman, netavark, aardvark-dns, passt/pasta, slirp4netns, fuse-overlayfs, and
+  subordinate-ID helpers are installed. `podman.socket` and `podman.service`
+  are masked both as system units and in the global user configuration; the
+  rootful API socket must be absent. This prepares rootless account runtimes but
+  starts no container workload.
 - Files: immutable executables and web assets are root-owned; API state is
   owned by `stackfort`; configuration and journal modes are verified exactly.
 

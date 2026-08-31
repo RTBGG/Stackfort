@@ -35,6 +35,7 @@ func (r *Repository) GetSelfServiceContext(
 			SELECT h.id, h.name, h.slug, h.status, m.role,
 			       p.id, p.name, a.package_revision, a.effective_limits_json,
 			       (h.status = 'active' AND u.lifecycle_state = 'reconciled' AND
+			        u.oci_runtime_reconciled_at IS NOT NULL AND
 			        f.status = 'applied' AND f.capability_status = 'available' AND
 			        r.status = 'applied' AND r.capability_status = 'available'),
 			       (

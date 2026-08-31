@@ -30,6 +30,9 @@ func TestEvaluateReadyFreshHost(t *testing.T) {
 	if result.Plan.Packages[0].Name != "acl" || result.Plan.Security[0].Provider != "AppArmor" {
 		t.Fatalf("unexpected Debian plan = %#v", result.Plan)
 	}
+	if !hasService(result.Plan.Services, "podman.socket") || !hasService(result.Plan.Services, "podman.service") {
+		t.Fatalf("Podman API units are absent from the installation plan: %#v", result.Plan.Services)
+	}
 }
 
 func TestEvaluateActionableBlockers(t *testing.T) {
@@ -232,6 +235,15 @@ func findCheck(t *testing.T, checks []Check, id string) Check {
 
 func hasPackage(packages []PackagePlan, name string) bool {
 	for _, item := range packages {
+		if item.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+func hasService(services []ServicePlan, name string) bool {
+	for _, item := range services {
 		if item.Name == name {
 			return true
 		}

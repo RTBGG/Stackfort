@@ -106,6 +106,62 @@ func TestProductionProfilesUseFixedPathsAndTemplates(t *testing.T) {
 			executable string
 			arguments  []string
 			timeout    time.Duration
+		}{ProfileUserAddSubUIDs, accountValues, "/usr/sbin/usermod", []string{"--add-subuids", "1000000-1065535", username}, accountMutationTimeout},
+		struct {
+			id         ProfileID
+			values     []string
+			executable string
+			arguments  []string
+			timeout    time.Duration
+		}{ProfileUserAddSubGIDs, accountValues, "/usr/sbin/usermod", []string{"--add-subgids", "1000000-1065535", username}, accountMutationTimeout},
+		struct {
+			id         ProfileID
+			values     []string
+			executable string
+			arguments  []string
+			timeout    time.Duration
+		}{ProfileEnableUserLinger, accountValues, "/usr/bin/loginctl", []string{"enable-linger", username}, accountMutationTimeout},
+		struct {
+			id         ProfileID
+			values     []string
+			executable string
+			arguments  []string
+			timeout    time.Duration
+		}{ProfileUserDeleteSubUIDs, accountValues, "/usr/sbin/usermod", []string{"--del-subuids", "1000000-1065535", username}, accountMutationTimeout},
+		struct {
+			id         ProfileID
+			values     []string
+			executable string
+			arguments  []string
+			timeout    time.Duration
+		}{ProfileUserDeleteSubGIDs, accountValues, "/usr/sbin/usermod", []string{"--del-subgids", "1000000-1065535", username}, accountMutationTimeout},
+		struct {
+			id         ProfileID
+			values     []string
+			executable string
+			arguments  []string
+			timeout    time.Duration
+		}{ProfileDisableUserLinger, accountValues, "/usr/bin/loginctl", []string{"disable-linger", username}, accountMutationTimeout},
+		struct {
+			id         ProfileID
+			values     []string
+			executable string
+			arguments  []string
+			timeout    time.Duration
+		}{ProfileTerminateUser, accountValues, "/usr/bin/loginctl", []string{"terminate-user", username}, accountMutationTimeout},
+		struct {
+			id         ProfileID
+			values     []string
+			executable string
+			arguments  []string
+			timeout    time.Duration
+		}{ProfileStartUserManager, accountValues, "/usr/bin/systemctl", []string{"start", "user@200000.service"}, accountMutationTimeout},
+		struct {
+			id         ProfileID
+			values     []string
+			executable string
+			arguments  []string
+			timeout    time.Duration
 		}{
 			ProfileSetProjectQuota,
 			append(append([]string(nil), accountValues...), "200000", "10737418240", "100000"),

@@ -166,7 +166,8 @@ func TestClientInspectCapabilitiesUsesTypedOperation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("InspectCapabilities: %v", err)
 	}
-	if report.Platform.DistributionID != "debian" || len(report.Packages) != 6 || len(report.Services) != 8 {
+	if report.Platform.DistributionID != "debian" || len(report.Packages) != 12 || len(report.Services) != 8 ||
+		report.OCI.Rootless.Status != agentprotocol.CapabilityAvailable {
 		t.Fatalf("report = %#v", report)
 	}
 }
@@ -760,6 +761,10 @@ func clientCapabilityReport() *agentprotocol.CapabilityReport {
 			Inspection: available, ProjectQuota: available,
 		},
 		Security: agentprotocol.SecurityCapabilities{Provider: "apparmor", Mode: "enabled", Enforcement: available},
+		OCI: agentprotocol.OCIRuntimeCapabilities{
+			Provider: "podman", Version: "5.5.2", Rootless: available, Quadlet: available,
+			Network: available, Storage: available, RootfulSocketIsolation: available,
+		},
 		Ports: []agentprotocol.PortCapability{
 			{Port: 80, Network: "tcp", Availability: available},
 			{Port: 443, Network: "tcp", Availability: available},
@@ -768,10 +773,12 @@ func clientCapabilityReport() *agentprotocol.CapabilityReport {
 	}
 	for _, item := range []struct{ key, name string }{
 		{"nginx", "nginx"}, {"php-fpm", "php-fpm"}, {"mariadb", "mariadb-server"},
-		{"vinyl", "vinyl-cache"}, {"podman", "podman"}, {"coraza", "stackfort-waf"},
+		{"vinyl", "vinyl-cache"}, {"podman", "podman"}, {"netavark", "netavark"},
+		{"aardvark-dns", "aardvark-dns"}, {"passt", "passt"}, {"slirp4netns", "slirp4netns"},
+		{"fuse-overlayfs", "fuse-overlayfs"}, {"uidmap", "uidmap"}, {"coraza", "stackfort-waf"},
 	} {
 		report.Packages = append(report.Packages, agentprotocol.PackageCapability{
-			Key: item.key, PackageName: item.name, Version: "1", Availability: available,
+			Key: item.key, PackageName: item.name, Version: map[bool]string{true: "5.5.2", false: "1"}[item.key == "podman"], Availability: available,
 		})
 	}
 	for _, item := range []struct{ key, unit string }{

@@ -1250,11 +1250,29 @@ Acceptance:
 See the [foundation](oci-application-foundation.md) and
 [ADR 0053](adr/0053-constrained-oci-application-drafts.md).
 
-### L-002 — Rootless Podman host capability and account runtime (`P0`)
+### L-002 — Rootless Podman host capability and account runtime (`P0`, complete)
 
 Detect and install the supported Podman/netavark/slirp runtime, provision only
 account-owned rootless storage and runtime directories, and prove that the API
 and workloads cannot access an engine socket or rootful daemon.
+
+Acceptance:
+
+- Install and report Podman, netavark, aardvark-dns, passt/pasta, slirp4netns,
+  fuse-overlayfs, and distribution-specific subordinate-ID helpers.
+- Require typed rootless, Quadlet, network, storage, and rootful-socket
+  isolation capabilities before account mutation.
+- Derive collision-free 65,536-ID subordinate UID/GID ranges and fixed storage,
+  runtime, and root-owned Quadlet paths from the immutable account identity.
+- Mask rootful and global-user Podman API units, reject both system and
+  per-account socket artifacts, and expose no generic engine API operation.
+- Make successful runtime preparation an immutable host-readiness condition and
+  remove only empty/exact runtime state during archive-gated identity deletion.
+- Cover mapping ambiguity/overlap, caller-selected values, typed RPC failures,
+  capability detection, package selection, persistence, and replay convergence.
+
+See [Rootless OCI account runtime](rootless-oci-runtime.md) and
+[ADR 0054](adr/0054-rootless-podman-account-runtime.md).
 
 ### L-003 — Digest pull and bounded Containerfile build (`P0`)
 

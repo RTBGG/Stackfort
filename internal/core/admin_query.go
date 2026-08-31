@@ -69,6 +69,7 @@ func (r *Repository) ListHostingAccountSummaries(ctx context.Context) ([]Hosting
 			SELECT h.id, h.name, h.slug, h.status, h.current_package_assignment_id,
 			       a.package_id, p.name, a.package_revision,
 			       (h.status = 'active' AND u.lifecycle_state = 'reconciled' AND
+			        u.oci_runtime_reconciled_at IS NOT NULL AND
 			        f.status = 'applied' AND f.capability_status = 'available' AND
 			        r.status = 'applied' AND r.capability_status = 'available'),
 			       h.created_at, h.updated_at

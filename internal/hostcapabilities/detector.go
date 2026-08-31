@@ -66,6 +66,7 @@ func (inspector *Inspector) Inspect(ctx context.Context) (agentprotocol.Capabili
 		Security: agentprotocol.SecurityCapabilities{
 			Provider: "unknown", Mode: "unknown", Enforcement: unknown("security-inspection-failed"),
 		},
+		OCI: unavailableOCIRuntime("runtime-inspection-failed"),
 	}
 
 	distribution := inspector.inspectPlatform(&report)
@@ -76,11 +77,23 @@ func (inspector *Inspector) Inspect(ctx context.Context) (agentprotocol.Capabili
 	inspector.inspectPorts(&report)
 	inspector.inspectPackages(probeContext, &report, distribution)
 	inspector.inspectServices(probeContext, &report, distribution)
+	inspector.inspectOCIRuntime(&report)
 
 	if err := agentprotocol.ValidateCapabilityReport(report); err != nil {
 		return agentprotocol.CapabilityReport{}, fmt.Errorf("validate detected capabilities: %w", err)
 	}
 	return report, nil
+}
+
+// InspectOCIRuntime performs the bounded global readiness checks used before
+// provisioning a rootless account runtime. It never opens an engine socket or
+// starts a Podman service.
+func (inspector *Inspector) InspectOCIRuntime(ctx context.Context) (agentprotocol.OCIRuntimeCapabilities, error) {
+	report, err := inspector.Inspect(ctx)
+	if err != nil {
+		return agentprotocol.OCIRuntimeCapabilities{}, err
+	}
+	return report.OCI, nil
 }
 
 // InspectManagedFilesystem performs only the bounded mount inspection needed
@@ -359,6 +372,110 @@ func (inspector *Inspector) inspectServices(
 	}
 }
 
+func (inspector *Inspector) inspectOCIRuntime(report *agentprotocol.CapabilityReport) {
+	report.OCI = unavailableOCIRuntime("runtime-prerequisite-unavailable")
+	podman := packageByKey(report.Packages, "podman")
+	if podman.Availability.Status != agentprotocol.CapabilityAvailable {
+		report.OCI.Rootless = podman.Availability
+		return
+	}
+	report.OCI.Version = podman.Version
+	report.OCI.Rootless = available()
+	if report.Systemd.Status != agentprotocol.CapabilityAvailable ||
+		report.Cgroup.Unified.Status != agentprotocol.CapabilityAvailable {
+		report.OCI.Quadlet = unavailable("quadlet-systemd-cgroup-v2-required")
+	} else if !podmanVersionAtLeast(podman.Version, 4, 4) {
+		report.OCI.Quadlet = unsupported("podman-version-lacks-quadlet")
+	} else {
+		report.OCI.Quadlet = available()
+	}
+	if packagesAvailable(report.Packages, "netavark", "aardvark-dns", "passt", "slirp4netns") {
+		report.OCI.Network = available()
+	} else {
+		report.OCI.Network = unavailable("rootless-network-dependency-missing")
+	}
+	if packagesAvailable(report.Packages, "fuse-overlayfs") {
+		report.OCI.Storage = available()
+	} else {
+		report.OCI.Storage = unavailable("rootless-storage-dependency-missing")
+	}
+	if !packagesAvailable(report.Packages, "uidmap") {
+		report.OCI.Rootless = unavailable("subordinate-id-helper-missing")
+	}
+	report.OCI.RootfulSocketIsolation = available()
+	service := serviceByKey(report.Services, "podman")
+	if service.ActiveState == "active" || service.ActiveState == "activating" ||
+		service.UnitFileState == "enabled" || service.UnitFileState == "enabled-runtime" {
+		report.OCI.RootfulSocketIsolation = unavailable("rootful-podman-socket-enabled")
+	} else if service.UnitFileState != "masked" {
+		report.OCI.RootfulSocketIsolation = unavailable("rootful-podman-socket-not-masked")
+	}
+	if _, err := os.Lstat(inspector.rooted("/run/podman/podman.sock")); err == nil {
+		report.OCI.RootfulSocketIsolation = unavailable("rootful-podman-socket-present")
+	} else if !errors.Is(err, os.ErrNotExist) {
+		report.OCI.RootfulSocketIsolation = unknown("rootful-podman-socket-inspection-failed")
+	}
+}
+
+func unavailableOCIRuntime(reason string) agentprotocol.OCIRuntimeCapabilities {
+	state := unavailable(reason)
+	return agentprotocol.OCIRuntimeCapabilities{
+		Provider: "podman", Rootless: state, Quadlet: state, Network: state,
+		Storage: state, RootfulSocketIsolation: state,
+	}
+}
+
+func packageByKey(packages []agentprotocol.PackageCapability, key string) agentprotocol.PackageCapability {
+	for _, item := range packages {
+		if item.Key == key {
+			return item
+		}
+	}
+	return agentprotocol.PackageCapability{Availability: unknown("package-capability-missing")}
+}
+
+func serviceByKey(services []agentprotocol.ServiceCapability, key string) agentprotocol.ServiceCapability {
+	for _, item := range services {
+		if item.Key == key {
+			return item
+		}
+	}
+	return agentprotocol.ServiceCapability{ActiveState: "unknown", UnitFileState: "unknown"}
+}
+
+func packagesAvailable(packages []agentprotocol.PackageCapability, keys ...string) bool {
+	for _, key := range keys {
+		if packageByKey(packages, key).Availability.Status != agentprotocol.CapabilityAvailable {
+			return false
+		}
+	}
+	return true
+}
+
+func podmanVersionAtLeast(value string, wantMajor, wantMinor uint64) bool {
+	value = strings.TrimSpace(value)
+	if _, rest, found := strings.Cut(value, ":"); found {
+		value = rest
+	}
+	parts := strings.SplitN(value, ".", 3)
+	if len(parts) < 2 {
+		return false
+	}
+	major, err := strconv.ParseUint(parts[0], 10, 32)
+	if err != nil {
+		return false
+	}
+	minorText := parts[1]
+	for index, character := range minorText {
+		if character < '0' || character > '9' {
+			minorText = minorText[:index]
+			break
+		}
+	}
+	minor, err := strconv.ParseUint(minorText, 10, 32)
+	return err == nil && (major > wantMajor || major == wantMajor && minor >= wantMinor)
+}
+
 func (inspector *Inspector) queryPackage(
 	ctx context.Context,
 	distribution string,
@@ -430,12 +547,19 @@ type serviceDefinition struct{ key, unit string }
 func packageDefinitions(distribution string) ([]packageDefinition, bool) {
 	definitions := []packageDefinition{
 		{"nginx", "nginx"}, {"php-fpm", "php-fpm"}, {"mariadb", "mariadb-server"},
-		{"vinyl", "vinyl-cache"}, {"podman", "podman"}, {"coraza", "stackfort-waf"},
+		{"vinyl", "vinyl-cache"}, {"podman", "podman"}, {"netavark", "netavark"},
+		{"aardvark-dns", "aardvark-dns"}, {"passt", "passt"}, {"slirp4netns", "slirp4netns"},
+		{"fuse-overlayfs", "fuse-overlayfs"}, {"uidmap", "uidmap"}, {"coraza", "stackfort-waf"},
 	}
 	switch distribution {
 	case "debian", "ubuntu":
 		return definitions, true
 	case "rocky":
+		for index := range definitions {
+			if definitions[index].key == "uidmap" {
+				definitions[index].name = "shadow-utils-subid"
+			}
+		}
 		return definitions, true
 	default:
 		return definitions, false

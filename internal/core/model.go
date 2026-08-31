@@ -839,19 +839,20 @@ const (
 // HostingUnixIdentity is allocated once and retained as a tombstone after
 // deletion. Username, numeric IDs, and home directory are immutable.
 type HostingUnixIdentity struct {
-	AccountID           ID
-	Username            string
-	UID                 uint32
-	GID                 uint32
-	HomeDirectory       string
-	State               HostingUnixIdentityState
-	AllocatedAt         time.Time
-	ReconciledAt        *time.Time
-	ArchiveRequestedAt  *time.Time
-	ArchivedAt          *time.Time
-	ArchiveReference    string
-	DeletionRequestedAt *time.Time
-	DeletedAt           *time.Time
+	AccountID              ID
+	Username               string
+	UID                    uint32
+	GID                    uint32
+	HomeDirectory          string
+	State                  HostingUnixIdentityState
+	AllocatedAt            time.Time
+	ReconciledAt           *time.Time
+	OCIRuntimeReconciledAt *time.Time
+	ArchiveRequestedAt     *time.Time
+	ArchivedAt             *time.Time
+	ArchiveReference       string
+	DeletionRequestedAt    *time.Time
+	DeletedAt              *time.Time
 }
 
 type CreateHostingAccountParams struct {

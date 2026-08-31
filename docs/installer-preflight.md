@@ -64,11 +64,14 @@ by host qualification.
 
 The plan is generated even when checks fail. It enumerates:
 
-- distribution-specific prerequisite packages;
+- distribution-specific prerequisite packages, including Podman, netavark,
+  aardvark-dns, passt/pasta, slirp4netns, fuse-overlayfs, and subordinate-ID helpers;
 - release binaries, web assets, state/config/runtime paths, systemd units and
   slices, and the Stackfort-owned NGINX paths with intended owner and mode;
 - the locked `stackfort` system service account;
 - API, agent, NGINX, and firewall service actions;
+- system and global-user masking of Podman's API socket/service without
+  starting a container workload;
 - public TCP 80/443, dedicated HTTPS management port 8443, loopback-only API port 8080, and the authenticated local
   agent socket; and
 - AppArmor/nftables changes or SELinux/firewalld changes without disabling
