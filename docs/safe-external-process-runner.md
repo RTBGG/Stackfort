@@ -43,6 +43,16 @@ There is no executable parameter, raw argument-array parameter, shell command,
 environment parameter, or working-directory parameter in the public runner
 interface.
 
+L-003 adds only fixed rootless image profiles. Pull enforces digest/TLS policy;
+build fixes no-network, no-cache, CPU, memory, process, file-descriptor, time,
+and output limits; save runs through fixed `prlimit` arguments for a 2-GiB
+archive ceiling; inspect/remove accept only the derived image target. The Trivy
+profile owns the bundled executable and scanner flags and returns JSON through
+a 16-MiB capture. Podman processes drop to the persisted account UID/GID with
+derived HOME and XDG runtime paths; failed-image cleanup uses no force flag and
+cannot remove containers. Trivy remains root-owned and receives no
+engine socket.
+
 The capability adapter also verifies the complete legacy probe shape before it
 selects a profile. This deliberate second check means both the operation and the
 shared runner must accept a request before an external program can start.

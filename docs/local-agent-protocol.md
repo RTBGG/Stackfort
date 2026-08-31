@@ -263,6 +263,16 @@ descriptor-relatively, and reconciles root-owned units with fixed `systemctl`
 profiles. See [Scheduled account jobs](scheduled-jobs.md) and
 [ADR 0049](adr/0049-closed-systemd-scheduled-account-jobs.md).
 
+L-003 adds account-correlated `oci.image.prepare`. Its request contains only a
+derived account identity, UUIDv7 application, revision, and the already closed
+digest/Containerfile source union. The agent selects fixed rootless Podman and
+Trivy profiles, rejects unsafe build contexts and unavailable capabilities, and
+returns only deployed/source digests, versioned policy/scanner identity,
+bounded severity counts, and replay state. No command, argument vector, engine
+endpoint, registry option, network, mount, secret, or workload setting crosses
+the protocol. See [Bounded OCI image preparation](oci-image-preparation.md) and
+[ADR 0055](adr/0055-digest-pinned-bounded-oci-image-preparation.md).
+
 See [Host capability inspection](host-capability-inspection.md) for D-002's
 allowlists, result semantics, and probe bounds. See
 [Safe external process runner](safe-external-process-runner.md) for the internal

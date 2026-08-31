@@ -69,30 +69,8 @@ var (
 // Normalize validates the deliberately small initial OCI application schema.
 // It returns a stable representation suitable for persistence and hashing.
 func Normalize(spec Spec) (Spec, error) {
-	switch spec.Source.Kind {
-	case SourceImageDigest:
-		if spec.Source.BuildContext != "" || spec.Source.ContainerfilePath != "" {
-			return Spec{}, errors.New("digest image source cannot include build paths")
-		}
-		if err := validateImageReference(spec.Source.ImageReference); err != nil {
-			return Spec{}, err
-		}
-	case SourceContainerfile:
-		if spec.Source.ImageReference != "" {
-			return Spec{}, errors.New("Containerfile source cannot include an image reference")
-		}
-		if err := validateRelativePath(spec.Source.BuildContext, "build context"); err != nil {
-			return Spec{}, err
-		}
-		if err := validateRelativePath(spec.Source.ContainerfilePath, "Containerfile path"); err != nil {
-			return Spec{}, err
-		}
-		name := path.Base(spec.Source.ContainerfilePath)
-		if name != "Containerfile" && !strings.HasSuffix(name, ".Containerfile") {
-			return Spec{}, errors.New("Containerfile path must name Containerfile or *.Containerfile")
-		}
-	default:
-		return Spec{}, errors.New("unsupported OCI application source kind")
+	if _, err := NormalizeSource(spec.Source); err != nil {
+		return Spec{}, err
 	}
 
 	if spec.InternalPort < 1 || spec.InternalPort > 65535 {
@@ -102,6 +80,38 @@ func Normalize(spec Spec) (Spec, error) {
 		return Spec{}, err
 	}
 	return spec, nil
+}
+
+// NormalizeSource validates the closed image/build union independently for the
+// privileged image-preparation boundary. The returned value is byte-for-byte
+// stable and contains no executable, option, host-path, or credential fields.
+func NormalizeSource(source Source) (Source, error) {
+	switch source.Kind {
+	case SourceImageDigest:
+		if source.BuildContext != "" || source.ContainerfilePath != "" {
+			return Source{}, errors.New("digest image source cannot include build paths")
+		}
+		if err := validateImageReference(source.ImageReference); err != nil {
+			return Source{}, err
+		}
+	case SourceContainerfile:
+		if source.ImageReference != "" {
+			return Source{}, errors.New("Containerfile source cannot include an image reference")
+		}
+		if err := validateRelativePath(source.BuildContext, "build context"); err != nil {
+			return Source{}, err
+		}
+		if err := validateRelativePath(source.ContainerfilePath, "Containerfile path"); err != nil {
+			return Source{}, err
+		}
+		name := path.Base(source.ContainerfilePath)
+		if name != "Containerfile" && !strings.HasSuffix(name, ".Containerfile") {
+			return Source{}, errors.New("Containerfile path must name Containerfile or *.Containerfile")
+		}
+	default:
+		return Source{}, errors.New("unsupported OCI application source kind")
+	}
+	return source, nil
 }
 
 func validateImageReference(value string) error {

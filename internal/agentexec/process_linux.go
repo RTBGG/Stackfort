@@ -8,12 +8,19 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"syscall"
 
+	"github.com/RTBGG/stackfort/internal/hostingidentity"
 	"golang.org/x/sys/unix"
 )
 
-func configureProcess(command *exec.Cmd) error {
+func configureProcess(command *exec.Cmd, identity *hostingidentity.Spec) error {
 	command.SysProcAttr = &unix.SysProcAttr{Setpgid: true}
+	if identity != nil {
+		command.SysProcAttr.Credential = &syscall.Credential{
+			Uid: identity.UID, Gid: identity.GID, Groups: []uint32{identity.GID},
+		}
+	}
 	command.Cancel = func() error { return terminateProcessTree(command) }
 	return nil
 }

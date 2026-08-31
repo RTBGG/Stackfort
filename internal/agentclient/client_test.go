@@ -22,6 +22,8 @@ import (
 	"github.com/RTBGG/stackfort/internal/hostingstorage"
 	"github.com/RTBGG/stackfort/internal/nginxbaseline"
 	"github.com/RTBGG/stackfort/internal/nginxconfig"
+	"github.com/RTBGG/stackfort/internal/ociapps"
+	"github.com/RTBGG/stackfort/internal/ociimage"
 	"github.com/RTBGG/stackfort/internal/phpruntime"
 )
 
@@ -32,6 +34,48 @@ func TestNewRejectsUnsafeSocketPaths(t *testing.T) {
 		if _, err := New(path); err == nil {
 			t.Fatalf("New(%q) accepted unsafe path", path)
 		}
+	}
+}
+
+func TestClientPrepareOCIImageCarriesOnlyTypedIntent(t *testing.T) {
+	t.Parallel()
+	identity := handlerClientIdentity(t)
+	spec := ociimage.PrepareSpec{
+		Identity: identity, ApplicationID: "019d2eaa-52d0-7f52-8ac7-0aeb932455db", Revision: 1,
+		Source: ociapps.Source{Kind: ociapps.SourceImageDigest, ImageReference: "registry.example/app@sha256:" + strings.Repeat("a", 64)},
+	}
+	correlation := agentprotocol.AuditCorrelation{
+		OperationID: "019d2eaa-62d0-7f52-8ac7-0aeb932455db", ActorKind: agentprotocol.ActorSystem,
+		AccountID: identity.AccountID,
+	}
+	result := ociimage.Result{
+		ImageDigest: "sha256:" + strings.Repeat("b", 64), SourceDigest: "sha256:" + strings.Repeat("a", 64),
+		PolicyVersion: ociimage.PolicyVersion, ScannerProvider: ociimage.ScannerProvider, ScannerVersion: ociimage.ScannerVersion,
+	}
+	client := &Client{httpClient: &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		decoded, err := agentprotocol.DecodeRequest(request.Body)
+		if err != nil || decoded.Operation != agentprotocol.OperationPrepareOCIImage || decoded.PrepareOCIImage == nil ||
+			decoded.PrepareOCIImage.Spec != spec {
+			t.Fatalf("request=%#v err=%v", decoded, err)
+		}
+		body, err := json.Marshal(agentprotocol.Response{
+			ProtocolVersion: agentprotocol.WireVersion, RequestID: decoded.RequestID,
+			OCIImage: &agentprotocol.OCIImagePrepareResponse{Result: result},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header: http.Header{
+				"Content-Type": []string{agentprotocol.MediaType}, "X-Stackfort-Protocol": []string{"1"},
+			},
+			Body: io.NopCloser(bytes.NewReader(body)),
+		}, nil
+	})}}
+	response, err := client.PrepareOCIImage(t.Context(), "oci-image-key", correlation, spec)
+	if err != nil || response.Result.ImageDigest != result.ImageDigest {
+		t.Fatalf("response=%#v err=%v", response, err)
 	}
 }
 
@@ -762,8 +806,10 @@ func clientCapabilityReport() *agentprotocol.CapabilityReport {
 		},
 		Security: agentprotocol.SecurityCapabilities{Provider: "apparmor", Mode: "enabled", Enforcement: available},
 		OCI: agentprotocol.OCIRuntimeCapabilities{
-			Provider: "podman", Version: "5.5.2", Rootless: available, Quadlet: available,
+			Provider: "podman", Version: "5.5.2", ScannerProvider: "trivy", ScannerVersion: "0.74.0",
+			Rootless: available, Quadlet: available,
 			Network: available, Storage: available, RootfulSocketIsolation: available,
+			ImagePreparation: available, ImageScanning: available,
 		},
 		Ports: []agentprotocol.PortCapability{
 			{Port: 80, Network: "tcp", Availability: available},

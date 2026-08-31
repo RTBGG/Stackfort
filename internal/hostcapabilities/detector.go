@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/RTBGG/stackfort/internal/agentprotocol"
+	"github.com/RTBGG/stackfort/internal/ociimage"
 )
 
 const (
@@ -415,13 +416,29 @@ func (inspector *Inspector) inspectOCIRuntime(report *agentprotocol.CapabilityRe
 	} else if !errors.Is(err, os.ErrNotExist) {
 		report.OCI.RootfulSocketIsolation = unknown("rootful-podman-socket-inspection-failed")
 	}
+	if report.OCI.Rootless.Status == agentprotocol.CapabilityAvailable &&
+		report.OCI.Storage.Status == agentprotocol.CapabilityAvailable &&
+		report.OCI.RootfulSocketIsolation.Status == agentprotocol.CapabilityAvailable {
+		report.OCI.ImagePreparation = available()
+	}
+	report.OCI.ImageScanning = unavailable("image-scanner-not-installed")
+	scannerPath := inspector.rooted("/usr/local/libexec/stackfort-trivy")
+	trusted, present, err := trustedScannerExecutable(scannerPath)
+	if err != nil {
+		report.OCI.ImageScanning = unknown("image-scanner-inspection-failed")
+	} else if present && !trusted {
+		report.OCI.ImageScanning = unavailable("image-scanner-metadata-untrusted")
+	} else if trusted {
+		report.OCI.ScannerVersion = ociimage.ScannerVersion
+		report.OCI.ImageScanning = available()
+	}
 }
 
 func unavailableOCIRuntime(reason string) agentprotocol.OCIRuntimeCapabilities {
 	state := unavailable(reason)
 	return agentprotocol.OCIRuntimeCapabilities{
-		Provider: "podman", Rootless: state, Quadlet: state, Network: state,
-		Storage: state, RootfulSocketIsolation: state,
+		Provider: "podman", ScannerProvider: "trivy", Rootless: state, Quadlet: state, Network: state,
+		Storage: state, RootfulSocketIsolation: state, ImagePreparation: state, ImageScanning: state,
 	}
 }
 

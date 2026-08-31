@@ -106,11 +106,16 @@ personalized applications bypass it by default.
   rootful and user engine API units.
 - Every account receives deterministic, non-overlapping subordinate UID/GID
   mappings plus symlink-resistant storage, runtime, and future Quadlet paths.
-- Image pull/build, networks, volumes, secrets, and workload execution remain
-  later Phase 5 steps.
+- Digest pulls and closed Containerfile builds now run rootlessly under fixed
+  CPU, memory, storage-output, process, network, time, and log bounds.
+- Checksum-pinned Trivy scans the OCI archive before an immutable deployed
+  digest can be recorded; HIGH/CRITICAL findings fail closed.
+- Networks, volumes, secrets, and workload execution remain later Phase 5
+  steps.
 
 [Application schema](docs/oci-application-foundation.md) ·
-[Rootless runtime](docs/rootless-oci-runtime.md)
+[Rootless runtime](docs/rootless-oci-runtime.md) ·
+[Image preparation](docs/oci-image-preparation.md)
 
 </details>
 

@@ -150,14 +150,17 @@ Status: passed on Debian 13, Ubuntu 26.04, and Rocky Linux 10. See the
 Exit gate: container escape-resistance configuration and cross-account tests pass
 and no user workload binds a public host port directly.
 
-Current status: L-001 and L-002 are complete. Tenant-owned, revision-fenced
+Current status: L-001 through L-003 are complete. Tenant-owned, revision-fenced
 application drafts accept only constrained sources, ports, and health checks.
 Hosts now expose typed rootless-Podman readiness, and each account receives a
 deterministic subordinate-ID, storage, runtime, and Quadlet foundation without
-an engine API socket. No image is pulled and no workload is started yet; L-003
-adds bounded digest pull/build. See the
+an engine API socket. Digest pulls and Containerfile builds are rootless and
+bounded, Trivy rejects HIGH/CRITICAL findings, and only immutable scanned image
+evidence is persisted. No workload is started yet; L-004 adds private networks,
+secrets, and volumes. See the
 [OCI application foundation](oci-application-foundation.md) and
-[rootless OCI runtime](rootless-oci-runtime.md).
+[rootless OCI runtime](rootless-oci-runtime.md), and
+[bounded image preparation](oci-image-preparation.md).
 
 ## Phase 6: Installer, updater, and public beta
 

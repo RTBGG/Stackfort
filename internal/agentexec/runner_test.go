@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -13,6 +14,8 @@ import (
 
 	"github.com/RTBGG/stackfort/internal/hostingidentity"
 	"github.com/RTBGG/stackfort/internal/hostingresources"
+	"github.com/RTBGG/stackfort/internal/ociapps"
+	"github.com/RTBGG/stackfort/internal/ociimage"
 )
 
 func TestProductionProfilesUseFixedPathsAndTemplates(t *testing.T) {
@@ -464,7 +467,7 @@ func TestProductionProfilesUseFixedPathsAndTemplates(t *testing.T) {
 			`req.http.host == "example.test" && req.url ~ "^/news\\.php(?:/|\\?|$)"`,
 		}, accountMutationTimeout},
 	)
-	if len(runner.profiles) != len(tests) {
+	if len(runner.profiles) != len(tests)+6 {
 		t.Fatalf("production profile count = %d", len(runner.profiles))
 	}
 	for _, test := range tests {
@@ -480,6 +483,59 @@ func TestProductionProfilesUseFixedPathsAndTemplates(t *testing.T) {
 		if err != nil || !reflect.DeepEqual(arguments, test.arguments) {
 			t.Fatalf("profile %s arguments = %#v, error = %v", test.id, arguments, err)
 		}
+	}
+}
+
+func TestOCIProfilesDeriveAccountExecutionAndFixedLimits(t *testing.T) {
+	t.Parallel()
+	runner := NewRunner()
+	accountID := "019c1234-5678-7abc-8def-0123456789ab"
+	username, _ := hostingidentity.UsernameForAccount(accountID)
+	home, _ := hostingidentity.HomeDirectoryForAccount(accountID)
+	spec := ociimage.PrepareSpec{
+		Identity:      hostingidentity.Spec{AccountID: accountID, Username: username, UID: 200000, GID: 200000, HomeDirectory: home},
+		ApplicationID: "019d2eaa-52d0-7f52-8ac7-0aeb932455db", Revision: 3,
+		Source: ociapps.Source{Kind: ociapps.SourceContainerfile, BuildContext: "apps/web", ContainerfilePath: "deploy/Web.Containerfile"},
+	}
+	values, err := ociimage.InvocationValues(spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	operationID := "019d2eaa-62d0-7f52-8ac7-0aeb932455db"
+	profile := runner.profiles[ProfilePodmanBuild]
+	arguments, err := profile.resolve(append(values, operationID))
+	joined := strings.Join(arguments, " ")
+	if err != nil || profile.executable != "/usr/bin/podman" || !profile.accountProcess ||
+		profile.timeout != time.Duration(ociimage.BuildTimeoutSeconds)*time.Second ||
+		!strings.Contains(joined, "--network=none") || !strings.Contains(joined, "--no-cache") ||
+		!strings.Contains(joined, "--memory=1073741824") || !strings.Contains(joined, "--cpu-quota=100000") ||
+		strings.Contains(joined, spec.Source.BuildContext) || strings.Contains(joined, spec.Source.ContainerfilePath) {
+		t.Fatalf("bounded build profile=%#v arguments=%#v err=%v", profile, arguments, err)
+	}
+	for _, id := range []ProfileID{ProfilePodmanPull, ProfilePodmanBuild, ProfilePodmanInspect, ProfilePodmanSave, ProfilePodmanRemove} {
+		if !runner.profiles[id].accountProcess {
+			t.Fatalf("profile %s does not drop to the hosting account", id)
+		}
+	}
+	save := runner.profiles[ProfilePodmanSave]
+	saveArguments, saveErr := save.resolve(append(values, operationID))
+	if saveErr != nil || save.executable != "/usr/bin/prlimit" || len(saveArguments) < 4 ||
+		saveArguments[0] != "--fsize=2147483648" || saveArguments[2] != "/usr/bin/podman" {
+		t.Fatalf("bounded save profile=%#v arguments=%#v err=%v", save, saveArguments, saveErr)
+	}
+	remove := runner.profiles[ProfilePodmanRemove]
+	removeArguments, removeErr := remove.resolve(values)
+	localTag, _ := ociimage.LocalTag(spec)
+	if removeErr != nil || !reflect.DeepEqual(removeArguments, []string{
+		"image", "rm", "--ignore", "--no-prune", localTag,
+	}) {
+		t.Fatalf("non-destructive remove arguments=%#v err=%v", removeArguments, removeErr)
+	}
+	scan := runner.profiles[ProfileTrivyScan]
+	scanArguments, scanErr := scan.resolve([]string{operationID})
+	if scanErr != nil || scan.executable != ociimage.ScannerExecutable || scan.accountProcess ||
+		scan.stdoutLimit != ociimage.MaximumScanReportBytes || slices.Contains(scanArguments, "--output") {
+		t.Fatalf("scanner profile = %#v", scan)
 	}
 }
 

@@ -27,6 +27,7 @@ import (
 	"github.com/RTBGG/stackfort/internal/hostnginx"
 	"github.com/RTBGG/stackfort/internal/installpreflight"
 	"github.com/RTBGG/stackfort/internal/nginxbaseline"
+	"github.com/RTBGG/stackfort/internal/ociimage"
 	"github.com/RTBGG/stackfort/internal/phpruntime"
 	"github.com/RTBGG/stackfort/internal/wafconfig"
 )
@@ -563,6 +564,7 @@ func (runner *LinuxRunner) applyPayload(source Source) (bool, error) {
 	for _, file := range []struct{ source, target string }{
 		{filepath.Join(source.Root, "bin", "stackfort-api"), "/usr/local/bin/stackfort-api"},
 		{filepath.Join(source.Root, "bin", "stackfort-agent"), "/usr/local/sbin/stackfort-agent"},
+		{filepath.Join(source.Root, "bin", "stackfort-trivy"), ociimage.ScannerExecutable},
 	} {
 		fileChanged, err := copySourceFile(file.source, file.target, 0o755)
 		if err != nil {
@@ -600,6 +602,10 @@ func payloadDirectories(distribution string, uid, gid, pmaUID, pmaGID int) []dir
 		// deliberately public HTTP-01 response directory below it.
 		{"/var/lib/stackfort-agent", 0, 0, 0o755},
 		{"/var/lib/stackfort-agent/acme-http01", 0, 0, 0o755},
+		{ociimage.TransactionRoot, 0, 0, 0o711},
+		{ociimage.ArtifactRoot, 0, 0, 0o700},
+		{ociimage.ScannerCacheRoot, 0, 0, 0o700},
+		{"/usr/local/libexec", 0, 0, 0o755},
 		{"/usr/share/stackfort", 0, 0, 0o755},
 		{"/usr/share/stackfort/web", 0, 0, 0o755},
 		{phpruntime.RuntimeRoot, 0, 0, 0o755},
@@ -629,6 +635,7 @@ func (runner *LinuxRunner) verifyPayload(source Source) error {
 	}{
 		{filepath.Join(source.Root, "bin", "stackfort-api"), "/usr/local/bin/stackfort-api", 0o755},
 		{filepath.Join(source.Root, "bin", "stackfort-agent"), "/usr/local/sbin/stackfort-agent", 0o755},
+		{filepath.Join(source.Root, "bin", "stackfort-trivy"), ociimage.ScannerExecutable, 0o755},
 	} {
 		content, err := readBoundedRegular(file.source, maximumSingleFile)
 		if err != nil {

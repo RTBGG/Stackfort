@@ -1274,11 +1274,27 @@ Acceptance:
 See [Rootless OCI account runtime](rootless-oci-runtime.md) and
 [ADR 0054](adr/0054-rootless-podman-account-runtime.md).
 
-### L-003 — Digest pull and bounded Containerfile build (`P0`)
+### L-003 — Digest pull and bounded Containerfile build (`P0`, complete)
 
 Resolve/pull by digest, build inside fixed CPU/memory/time/output limits, scan
 the resulting image, and persist the immutable deployed digest without exposing
 free-form Podman or build arguments.
+
+Acceptance:
+
+- Queue only a server-reconstructed, revision-fenced source and account
+  identity through the correlated `oci.image.prepare` operation.
+- Pull only explicit digest references with TLS verification, or snapshot and
+  validate a bounded, symlink-resistant Containerfile context.
+- Execute rootless Podman through fixed CPU, memory, process, file, network,
+  output, and duration profiles with no engine API socket.
+- Bundle checksum-pinned Trivy, scan a bounded OCI archive, and fail closed on
+  scanner failure or any HIGH/CRITICAL result.
+- Persist append-only deployed/source digests and policy evidence; require
+  exact host/database replay convergence and retain no transaction archive.
+
+See [Bounded OCI image preparation](oci-image-preparation.md) and
+[ADR 0055](adr/0055-digest-pinned-bounded-oci-image-preparation.md).
 
 ### L-004 — Private network, secrets, and bounded volumes (`P0`)
 

@@ -15,6 +15,8 @@ import (
 	"github.com/RTBGG/stackfort/internal/hostingidentity"
 	"github.com/RTBGG/stackfort/internal/hostingresources"
 	"github.com/RTBGG/stackfort/internal/hostingstorage"
+	"github.com/RTBGG/stackfort/internal/ociapps"
+	"github.com/RTBGG/stackfort/internal/ociimage"
 	"github.com/RTBGG/stackfort/internal/phpruntime"
 )
 
@@ -152,7 +154,7 @@ func TestSupportedOperationsAreCopiedAndHaveExplicitPolicies(t *testing.T) {
 	t.Parallel()
 
 	operations := SupportedOperations()
-	if len(operations) != 22 || operations[0] != OperationHandshake ||
+	if len(operations) != 23 || operations[0] != OperationHandshake ||
 		operations[1] != OperationInspectCapabilities ||
 		operations[2] != OperationReconcileIdentity || operations[3] != OperationDeleteIdentity ||
 		operations[4] != OperationReconcileFilesystem || operations[5] != OperationListFiles ||
@@ -163,7 +165,8 @@ func TestSupportedOperationsAreCopiedAndHaveExplicitPolicies(t *testing.T) {
 		operations[14] != OperationReconcileACMEHTTP01 || operations[15] != OperationStageTLSCertificate ||
 		operations[16] != OperationInspectPHPPools || operations[17] != OperationReconcilePHPPools ||
 		operations[18] != OperationProvisionDatabase || operations[19] != OperationRotateDatabasePassword ||
-		operations[20] != OperationDropDatabase || operations[21] != OperationReconcileScheduledJob {
+		operations[20] != OperationDropDatabase || operations[21] != OperationReconcileScheduledJob ||
+		operations[22] != OperationPrepareOCIImage {
 		t.Fatalf("supported operations = %#v", operations)
 	}
 	operations[0] = "mutated.by.caller"
@@ -174,6 +177,39 @@ func TestSupportedOperationsAreCopiedAndHaveExplicitPolicies(t *testing.T) {
 		if !validOperationAccess(policy.access) {
 			t.Fatalf("operation %s has no explicit access policy", policy.operation)
 		}
+	}
+}
+
+func TestOCIImagePreparationContractRejectsCallerControlledRuntimeFields(t *testing.T) {
+	t.Parallel()
+	identity := validHostingIdentitySpec()
+	spec := ociimage.PrepareSpec{
+		Identity: identity, ApplicationID: "019d2eaa-52d0-7f52-8ac7-0aeb932455db", Revision: 1,
+		Source: ociapps.Source{Kind: ociapps.SourceImageDigest, ImageReference: "registry.example/app@sha256:" + strings.Repeat("a", 64)},
+	}
+	request := Request{
+		ProtocolVersion: WireVersion, RequestID: "oci-image-request", IdempotencyKey: "oci-image-key",
+		Operation: OperationPrepareOCIImage,
+		Correlation: &AuditCorrelation{
+			OperationID: "019d2eaa-62d0-7f52-8ac7-0aeb932455db", ActorKind: ActorSystem, AccountID: identity.AccountID,
+		},
+		PrepareOCIImage: &OCIImagePrepareRequest{Spec: spec},
+	}
+	if err := ValidateRequest(request); err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := json.Marshal(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, forbidden := range []string{"privileged", "hostPort", "capAdd", "device", "podmanArgs", "socketPath", "workingDirectory"} {
+		if strings.Contains(string(encoded), forbidden) {
+			t.Fatalf("OCI image contract exposes %q: %s", forbidden, encoded)
+		}
+	}
+	request.Correlation.AccountID = "019d2eaa-72d0-7f52-8ac7-0aeb932455db"
+	if err := ValidateRequest(request); err == nil {
+		t.Fatal("cross-account OCI image request was accepted")
 	}
 }
 

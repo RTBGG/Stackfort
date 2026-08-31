@@ -43,11 +43,15 @@ type CapabilityReport struct {
 type OCIRuntimeCapabilities struct {
 	Provider               string     `json:"provider"`
 	Version                string     `json:"version,omitempty"`
+	ScannerProvider        string     `json:"scannerProvider"`
+	ScannerVersion         string     `json:"scannerVersion,omitempty"`
 	Rootless               Capability `json:"rootless"`
 	Quadlet                Capability `json:"quadlet"`
 	Network                Capability `json:"network"`
 	Storage                Capability `json:"storage"`
 	RootfulSocketIsolation Capability `json:"rootfulSocketIsolation"`
+	ImagePreparation       Capability `json:"imagePreparation"`
+	ImageScanning          Capability `json:"imageScanning"`
 }
 
 type PlatformCapabilities struct {
@@ -129,14 +133,17 @@ func ValidateCapabilityReport(report CapabilityReport) error {
 		report.Filesystem.ProjectQuota, report.Security.Enforcement,
 		report.OCI.Rootless, report.OCI.Quadlet, report.OCI.Network,
 		report.OCI.Storage, report.OCI.RootfulSocketIsolation,
+		report.OCI.ImagePreparation, report.OCI.ImageScanning,
 	} {
 		if err := validateCapability(capability); err != nil {
 			return err
 		}
 	}
-	if report.OCI.Provider != "podman" ||
+	if report.OCI.Provider != "podman" || report.OCI.ScannerProvider != "trivy" ||
 		(report.OCI.Version != "" && !boundedText(report.OCI.Version, 128)) ||
-		(report.OCI.Rootless.Status == CapabilityAvailable && report.OCI.Version == "") {
+		(report.OCI.ScannerVersion != "" && !boundedText(report.OCI.ScannerVersion, 64)) ||
+		(report.OCI.Rootless.Status == CapabilityAvailable && report.OCI.Version == "") ||
+		(report.OCI.ImageScanning.Status == CapabilityAvailable && report.OCI.ScannerVersion == "") {
 		return errors.New("agent OCI runtime capabilities are malformed")
 	}
 	if report.Filesystem.Target != ManagedHostingRoot ||
@@ -339,6 +346,9 @@ func validateCapabilityUnion(response Response, expected Operation) error {
 	if response.ScheduledJob != nil {
 		resultCount++
 	}
+	if response.OCIImage != nil {
+		resultCount++
+	}
 	if response.Error != nil {
 		resultCount++
 	}
@@ -431,6 +441,10 @@ func validateCapabilityUnion(response Response, expected Operation) error {
 		}
 	case OperationReconcileScheduledJob:
 		if response.ScheduledJob == nil {
+			return fmt.Errorf("agent protocol response does not match %s", expected)
+		}
+	case OperationPrepareOCIImage:
+		if response.OCIImage == nil {
 			return fmt.Errorf("agent protocol response does not match %s", expected)
 		}
 	default:

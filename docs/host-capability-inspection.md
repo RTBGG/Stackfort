@@ -31,10 +31,14 @@ The report contains:
   `/srv/hosting`;
 - AppArmor on Debian/Ubuntu or SELinux on Rocky Linux;
 - TCP port availability for public ingress ports 80 and 443;
-- six fixed package roles: NGINX, PHP-FPM, MariaDB, Vinyl Cache, Podman, and
-  Coraza; and
+- twelve fixed package roles covering NGINX, PHP-FPM, MariaDB, Vinyl Cache,
+  Podman, its rootless networking/storage helpers, subordinate-ID tooling, and
+  Coraza;
 - eight fixed systemd roles, including the Stackfort services and the
-  distribution firewall service.
+  distribution firewall service; and
+- typed OCI readiness for rootless execution, Quadlet, networking, storage,
+  rootful-socket isolation, image preparation, and the fixed bundled Trivy
+  scanner.
 
 ## Probe boundary
 
@@ -60,6 +64,14 @@ fields and is never returned verbatim. D-003 now routes these probes through the
 shared profiled runner, including Linux process-group cleanup on timeout or
 output exhaustion. This narrow read-only probe remains unavailable as a general
 execution API. See [Safe external process runner](safe-external-process-runner.md).
+
+The OCI scanner probe only checks the fixed
+`/usr/local/libexec/stackfort-trivy` regular executable installed by the
+verified release. Linux requires exact root ownership, mode `0755`, and one
+link. The probe does not run the scanner, contact a registry, open a Podman
+socket, or accept a path/version from the caller. Image preparation requires
+both rootless/storage/socket readiness and scanner readiness; see
+[Bounded OCI image preparation](oci-image-preparation.md).
 
 systemd reports `LoadState`, `ActiveState`, `SubState`, and `UnitFileState`
 separately. This follows systemd's model in which load and active state are

@@ -1,13 +1,13 @@
 # Rootless OCI account runtime
 
-L-002 establishes the host and account prerequisites for later OCI deployment.
-It deliberately does not pull an image, build a Containerfile, create a
-network, start a container, or generate an application Quadlet.
+L-002 establishes the host and account prerequisites for OCI deployment. L-003
+uses that boundary to prepare images, but still does not create a network,
+start a container, or generate an application Quadlet.
 
 ## Host capability contract
 
-The bounded host inspection reports Podman as a typed OCI provider with five
-independent capabilities:
+The bounded host inspection reports Podman plus the bundled scanner as typed
+OCI providers with seven independent capabilities:
 
 | Capability | Required evidence |
 | --- | --- |
@@ -16,6 +16,8 @@ independent capabilities:
 | Network | netavark, aardvark-dns, passt/pasta, and slirp4netns are installed |
 | Storage | fuse-overlayfs is installed |
 | Rootful socket isolation | the rootful socket is masked/inactive and its filesystem socket is absent |
+| Image preparation | rootless execution, storage, and socket isolation are available |
+| Image scanning | the fixed Trivy bundle has trusted root-owned mode-`0755` metadata |
 
 The report never opens an engine socket. Missing, unsupported, or uncertain
 evidence remains a typed unavailable/unknown capability and blocks account
@@ -81,5 +83,6 @@ the user manager is terminated, linger is disabled, and only the exact derived
 subordinate ranges are removed. Account data remains governed by the existing
 archive-first lifecycle; no recursive deletion is introduced.
 
-See [ADR 0054](adr/0054-rootless-podman-account-runtime.md) and the
-[constrained application foundation](oci-application-foundation.md).
+See [ADR 0054](adr/0054-rootless-podman-account-runtime.md), the
+[constrained application foundation](oci-application-foundation.md), and
+[bounded image preparation](oci-image-preparation.md).

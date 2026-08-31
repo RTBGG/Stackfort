@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -66,7 +67,9 @@ func TestSupportedDistributionFixtures(t *testing.T) {
 				report.OCI.Quadlet.Status != agentprotocol.CapabilityAvailable ||
 				report.OCI.Network.Status != agentprotocol.CapabilityAvailable ||
 				report.OCI.Storage.Status != agentprotocol.CapabilityAvailable ||
-				report.OCI.RootfulSocketIsolation.Status != agentprotocol.CapabilityAvailable {
+				report.OCI.RootfulSocketIsolation.Status != agentprotocol.CapabilityAvailable ||
+				report.OCI.ImagePreparation.Status != agentprotocol.CapabilityAvailable ||
+				report.OCI.ImageScanning.Status != agentprotocol.CapabilityUnavailable {
 				t.Fatalf("OCI runtime = %#v", report.OCI)
 			}
 			if findPackage(t, report.Packages, "vinyl").Availability.Status != agentprotocol.CapabilityUnavailable {
@@ -79,6 +82,38 @@ func TestSupportedDistributionFixtures(t *testing.T) {
 				t.Fatalf("probe calls = %#v", runner.calls)
 			}
 		})
+	}
+}
+
+func TestOCIRuntimeRejectsScannerWithoutTrustedLinuxMetadata(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not preserve the Unix executable mode used by this Linux fixture")
+	}
+	root := t.TempDir()
+	if err := os.CopyFS(root, os.DirFS(filepath.Join("testdata", "debian-13"))); err != nil {
+		t.Fatal(err)
+	}
+	scanner := filepath.Join(root, "usr", "local", "libexec", "stackfort-trivy")
+	if err := os.MkdirAll(filepath.Dir(scanner), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(scanner, []byte("fixture"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	report, err := fixtureInspector(root, &fixtureRunner{}).Inspect(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantStatus := agentprotocol.CapabilityUnavailable
+	wantReason := "image-scanner-metadata-untrusted"
+	if os.Geteuid() == 0 {
+		wantStatus, wantReason = agentprotocol.CapabilityAvailable, ""
+	}
+	if report.OCI.ImageScanning.Status != wantStatus || report.OCI.ImageScanning.ReasonCode != wantReason ||
+		report.OCI.ScannerProvider != "trivy" ||
+		(wantStatus == agentprotocol.CapabilityAvailable && report.OCI.ScannerVersion != "0.74.0") {
+		t.Fatalf("image scanner = %#v", report.OCI)
 	}
 }
 

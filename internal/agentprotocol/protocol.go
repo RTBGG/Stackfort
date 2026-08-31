@@ -60,6 +60,7 @@ const (
 	OperationRotateDatabasePassword Operation = "database.password.rotate"
 	OperationDropDatabase           Operation = "database.drop"
 	OperationReconcileScheduledJob  Operation = "hosting.jobs.reconcile"
+	OperationPrepareOCIImage        Operation = "oci.image.prepare"
 )
 
 type ActorKind string
@@ -115,6 +116,7 @@ var operationPolicies = [...]operationPolicy{
 	{operation: OperationRotateDatabasePassword, access: operationPrivilegedMutation},
 	{operation: OperationDropDatabase, access: operationPrivilegedMutation},
 	{operation: OperationReconcileScheduledJob, access: operationPrivilegedMutation},
+	{operation: OperationPrepareOCIImage, access: operationPrivilegedMutation},
 }
 
 type ErrorCode string
@@ -175,6 +177,9 @@ const (
 	ErrorScheduledJobUnavailable    ErrorCode = "scheduled_job_unavailable"
 	ErrorCacheConflict              ErrorCode = "cache_conflict"
 	ErrorCacheUnavailable           ErrorCode = "cache_unavailable"
+	ErrorOCIImageInvalid            ErrorCode = "oci_image_invalid"
+	ErrorOCIImageUnavailable        ErrorCode = "oci_image_unavailable"
+	ErrorOCIImageRejected           ErrorCode = "oci_image_rejected"
 	ErrorMutationFailed             ErrorCode = "mutation_failed"
 	ErrorInternal                   ErrorCode = "internal_error"
 )
@@ -215,6 +220,7 @@ type Request struct {
 	RotateDatabasePassword *DatabasePasswordRotateRequest `json:"rotateDatabasePassword,omitempty"`
 	DropDatabase           *DatabaseDropRequest           `json:"dropDatabase,omitempty"`
 	ReconcileScheduledJob  *ScheduledJobReconcileRequest  `json:"reconcileScheduledJob,omitempty"`
+	PrepareOCIImage        *OCIImagePrepareRequest        `json:"prepareOciImage,omitempty"`
 }
 
 type HandshakeRequest struct {
@@ -247,6 +253,7 @@ type Response struct {
 	DatabasePasswordRotation *DatabasePasswordRotateResponse `json:"databasePasswordRotation,omitempty"`
 	DatabaseDrop             *DatabaseDropResponse           `json:"databaseDrop,omitempty"`
 	ScheduledJob             *ScheduledJobReconcileResponse  `json:"scheduledJob,omitempty"`
+	OCIImage                 *OCIImagePrepareResponse        `json:"ociImage,omitempty"`
 	Error                    *ResponseError                  `json:"error,omitempty"`
 }
 
@@ -433,6 +440,11 @@ func ValidateRequest(request Request) error {
 			validateScheduledJobRequest(request.Correlation, *request.ReconcileScheduledJob) != nil {
 			return fmt.Errorf("%w: scheduled job intent is malformed", ErrInvalidRequest)
 		}
+	case OperationPrepareOCIImage:
+		if request.PrepareOCIImage == nil || requestPayloadCount(request) != 1 ||
+			validateOCIImagePrepareRequest(request.Correlation, *request.PrepareOCIImage) != nil {
+			return fmt.Errorf("%w: OCI image preparation intent is malformed", ErrInvalidRequest)
+		}
 	default:
 		return fmt.Errorf("%w: operation payload policy is missing", ErrInvalidRequest)
 	}
@@ -454,6 +466,7 @@ func ValidateResponse(response Response, requestID string, expectedOperation Ope
 		}
 		if response.Error.Code == ErrorQuotaUnavailable || response.Error.Code == ErrorResourceControlUnavailable ||
 			response.Error.Code == ErrorOCIRuntimeUnavailable ||
+			response.Error.Code == ErrorOCIImageUnavailable ||
 			response.Error.Code == ErrorNGINXUnavailable || response.Error.Code == ErrorPHPUnavailable ||
 			response.Error.Code == ErrorScheduledJobUnavailable || response.Error.Code == ErrorCacheUnavailable {
 			if response.Error.Capability == nil || validateCapability(*response.Error.Capability) != nil ||
@@ -524,6 +537,9 @@ func ValidateResponse(response Response, requestID string, expectedOperation Ope
 	}
 	if response.ScheduledJob != nil {
 		return validateScheduledJobResponse(*response.ScheduledJob, expectedOperation)
+	}
+	if response.OCIImage != nil {
+		return validateOCIImagePrepareResponse(*response.OCIImage, expectedOperation)
 	}
 	if response.Handshake.AgentMinimumVersion < 1 ||
 		response.Handshake.AgentMaximumVersion < response.Handshake.AgentMinimumVersion ||
@@ -693,6 +709,7 @@ func validErrorCode(code ErrorCode) bool {
 		ErrorDatabaseConflict, ErrorDatabaseUnavailable, ErrorDatabaseValidation, ErrorDatabaseMutation,
 		ErrorScheduledJobInvalid, ErrorScheduledJobNotFound, ErrorScheduledJobConflict, ErrorScheduledJobUnavailable,
 		ErrorCacheConflict, ErrorCacheUnavailable,
+		ErrorOCIImageInvalid, ErrorOCIImageUnavailable, ErrorOCIImageRejected,
 		ErrorMutationFailed, ErrorInternal:
 		return true
 	default:
@@ -720,6 +737,7 @@ func requestPayloadCount(request Request) int {
 		request.RotateDatabasePassword != nil,
 		request.DropDatabase != nil,
 		request.ReconcileScheduledJob != nil,
+		request.PrepareOCIImage != nil,
 	} {
 		if present {
 			count++

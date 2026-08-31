@@ -253,6 +253,11 @@ func run(logger *slog.Logger) (returnErr error) {
 			return fmt.Errorf("initialize cache purge operation handler: %w", handlerErr)
 		}
 		handlers[operations.CachePurgeKind] = cachePurgeHandler
+		ociImageHandler, handlerErr := operations.NewOCIImagePrepareHandler(repository, hostCapabilityClient)
+		if handlerErr != nil {
+			return fmt.Errorf("initialize OCI image operation handler: %w", handlerErr)
+		}
+		handlers[operations.OCIImagePrepareKind] = ociImageHandler
 	}
 	runner, err := operations.NewRunner(repository, handlers, operations.RunnerOptions{})
 	if err != nil {

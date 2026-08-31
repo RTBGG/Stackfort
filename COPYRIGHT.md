@@ -17,3 +17,10 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 Third-party components and generated artifacts retain their respective
 copyright notices and licenses. Their notices must be recorded alongside the
 distributed artifact or in the project's dependency and SBOM documentation.
+
+Release bundles currently include:
+
+- phpMyAdmin under its upstream GPL license, with that license retained inside
+  the bundled phpMyAdmin tree where the bundle is used; and
+- Trivy under Apache-2.0, with its upstream license copied to
+  `third-party-licenses/trivy-LICENSE`.

@@ -37,7 +37,9 @@ output_root="$repository_root/dist"
 phpmyadmin_version="5.2.3"
 phpmyadmin_sha256="12ba1c425fa4071abbd4e7668c9ebdeac0b0755a467a6d6d5026122bb47c102b"
 phpmyadmin_workspace="$(mktemp -d)"
-trap 'rm -rf -- "$phpmyadmin_workspace"' EXIT
+trivy_version="0.74.0"
+trivy_workspace="$(mktemp -d)"
+trap 'rm -rf -- "$phpmyadmin_workspace" "$trivy_workspace"' EXIT
 phpmyadmin_archive="$phpmyadmin_workspace/phpmyadmin.tar.gz"
 phpmyadmin_root="$phpmyadmin_workspace/root"
 
@@ -72,10 +74,52 @@ if [[ "$version" == '0.0.0-dev' ]]; then
   architectures+=(arm64)
 fi
 
+prepare_trivy() {
+  local architecture="$1"
+  local destination="$2"
+  local license_destination="$3"
+  local archive_name checksum
+  case "$architecture" in
+    amd64)
+      archive_name="trivy_${trivy_version}_Linux-64bit.tar.gz"
+      checksum="2ae6fe3ee734b7fdf11335663e18c75ea12dccc76062f09f164a3b0f8be4371a"
+      ;;
+    arm64)
+      archive_name="trivy_${trivy_version}_Linux-ARM64.tar.gz"
+      checksum="b94ce1976bbf3c15b514b605ee88be7c6d94a29be2302847ff01cb794d47aad5"
+      ;;
+    *)
+      printf 'Unsupported Trivy architecture: %s\n' "$architecture" >&2
+      return 1
+      ;;
+  esac
+  local archive="$trivy_workspace/$archive_name"
+  local extract_root="$trivy_workspace/$architecture"
+  curl --fail --location --proto '=https' --tlsv1.2 \
+    --output "$archive" \
+    "https://github.com/aquasecurity/trivy/releases/download/v$trivy_version/$archive_name"
+  printf '%s  %s\n' "$checksum" "$archive" | sha256sum --check --status
+  if tar -tzf "$archive" | grep -Eq '(^/|(^|/)\.\.(/|$))'; then
+    printf 'Trivy archive contains an unsafe path.\n' >&2
+    return 1
+  fi
+  rm -rf -- "$extract_root"
+  mkdir -p "$extract_root"
+  tar -xzf "$archive" --no-same-owner -C "$extract_root" trivy LICENSE
+  if [[ ! -f "$extract_root/trivy" || -L "$extract_root/trivy" ||
+        ! -f "$extract_root/LICENSE" || -L "$extract_root/LICENSE" ]]; then
+    printf 'Trivy archive does not contain the expected regular executable and license.\n' >&2
+    return 1
+  fi
+  cp "$extract_root/trivy" "$destination"
+  cp "$extract_root/LICENSE" "$license_destination"
+}
+
 for architecture in "${architectures[@]}"; do
   bundle_name="stackfort-$version-linux-$architecture"
   stage_root="$output_root/$bundle_name"
-  mkdir -p "$stage_root/bin" "$stage_root/web" "$stage_root/phpmyadmin" "$stage_root/phpmyadmin-integration"
+  mkdir -p "$stage_root/bin" "$stage_root/web" "$stage_root/phpmyadmin" \
+    "$stage_root/phpmyadmin-integration" "$stage_root/third-party-licenses"
 
   GOOS=linux GOARCH="$architecture" CGO_ENABLED=0 \
     go build -trimpath -ldflags "$linker_flags" -o "$stage_root/bin/stackfort-api" ./cmd/stackfort-api
@@ -85,6 +129,8 @@ for architecture in "${architectures[@]}"; do
     go build -trimpath -ldflags "$linker_flags" -o "$stage_root/bin/stackfort-installer" ./cmd/stackfort-installer
   GOOS=linux GOARCH="$architecture" CGO_ENABLED=0 \
     go build -trimpath -ldflags "$linker_flags" -o "$output_root/stackfort-installer-$version-linux-$architecture" ./cmd/stackfort-installer
+  prepare_trivy "$architecture" "$stage_root/bin/stackfort-trivy" \
+    "$stage_root/third-party-licenses/trivy-LICENSE"
 
   cp -R web/dist/. "$stage_root/web/"
   cp -R "$phpmyadmin_root"/. "$stage_root/phpmyadmin/"
@@ -105,7 +151,8 @@ for architecture in "${architectures[@]}"; do
   fi
   go run ./cmd/stackfort-release-manifest "${manifest_arguments[@]}"
   chmod 0755 "$stage_root/bin/stackfort-api" "$stage_root/bin/stackfort-agent" \
-    "$stage_root/bin/stackfort-installer" "$output_root/stackfort-installer-$version-linux-$architecture"
+    "$stage_root/bin/stackfort-installer" "$stage_root/bin/stackfort-trivy" \
+    "$output_root/stackfort-installer-$version-linux-$architecture"
   find "$stage_root" -type f ! -path '*/bin/*' -exec chmod 0644 {} +
   find "$stage_root" -type d -exec chmod 0755 {} +
   find "$stage_root" -exec touch --date="@$source_date_epoch" {} +

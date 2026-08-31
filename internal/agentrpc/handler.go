@@ -38,10 +38,12 @@ import (
 	"github.com/RTBGG/stackfort/internal/hostjobs"
 	"github.com/RTBGG/stackfort/internal/hostlogs"
 	"github.com/RTBGG/stackfort/internal/hostnginx"
+	"github.com/RTBGG/stackfort/internal/hostociimage"
 	"github.com/RTBGG/stackfort/internal/hostphp"
 	"github.com/RTBGG/stackfort/internal/hostresources"
 	"github.com/RTBGG/stackfort/internal/hosttls"
 	"github.com/RTBGG/stackfort/internal/nginxbaseline"
+	"github.com/RTBGG/stackfort/internal/ociimage"
 	"github.com/RTBGG/stackfort/internal/phpruntime"
 	"github.com/RTBGG/stackfort/internal/scheduledjobs"
 	"github.com/RTBGG/stackfort/internal/tlsartifact"
@@ -75,6 +77,7 @@ type Handler struct {
 	phpPools        phpPoolReconciler
 	databases       databaseReconciler
 	jobs            scheduledJobReconciler
+	images          ociImagePreparer
 }
 
 type capabilityInspector interface {
@@ -159,6 +162,10 @@ type databaseReconciler interface {
 
 type scheduledJobReconciler interface {
 	Reconcile(context.Context, scheduledjobs.Spec, bool) (hostjobs.Result, error)
+}
+
+type ociImagePreparer interface {
+	Prepare(context.Context, string, ociimage.PrepareSpec) (ociimage.Result, error)
 }
 
 type cachedResponse struct {
@@ -278,6 +285,7 @@ func newHandlerWithNGINXActivationServices(
 		phpPools:        hostphp.NewReconciler(),
 		databases:       hostdatabase.NewReconciler(),
 		jobs:            hostjobs.NewReconciler(),
+		images:          hostociimage.NewManager(),
 	}
 }
 
@@ -731,6 +739,14 @@ func (handler *Handler) handleRPC(w http.ResponseWriter, request *http.Request) 
 	if decoded.RotateDatabasePassword != nil {
 		defer clear(decoded.RotateDatabasePassword.Password)
 	}
+	if decoded.Operation == agentprotocol.OperationPrepareOCIImage {
+		// The server's short default protects every ordinary RPC. Image
+		// preparation has a separate policy-bound deadline because its fixed
+		// pull/build/save/scan profiles can legitimately run longer.
+		_ = http.NewResponseController(w).SetWriteDeadline(
+			handler.now().UTC().Add(time.Duration(ociimage.PreparationTimeoutSeconds+60) * time.Second),
+		)
+	}
 	digest, err := agentprotocol.SemanticDigest(decoded)
 	if err != nil {
 		logRPCRejected(request.Context(), handler.logger, decoded,
@@ -1024,6 +1040,15 @@ func (handler *Handler) dispatch(ctx context.Context, request agentprotocol.Requ
 			ServiceUnit: result.ServiceUnit, TimerUnit: result.TimerUnit, Capability: result.Capability,
 		}
 		return http.StatusOK, response
+	case agentprotocol.OperationPrepareOCIImage:
+		result, err := handler.images.Prepare(
+			ctx, request.Correlation.OperationID, request.PrepareOCIImage.Spec,
+		)
+		if err != nil {
+			return handler.ociImageError(response, request, err)
+		}
+		response.OCIImage = &agentprotocol.OCIImagePrepareResponse{Result: result}
+		return http.StatusOK, response
 	default:
 		response.Error = &agentprotocol.ResponseError{
 			Code:    agentprotocol.ErrorUnsupportedOperation,
@@ -1031,6 +1056,37 @@ func (handler *Handler) dispatch(ctx context.Context, request agentprotocol.Requ
 		}
 		return http.StatusBadRequest, response
 	}
+}
+
+func (handler *Handler) ociImageError(
+	response agentprotocol.Response, request agentprotocol.Request, err error,
+) (int, agentprotocol.Response) {
+	status, code, message := http.StatusServiceUnavailable, agentprotocol.ErrorOCIImageUnavailable,
+		"The OCI image could not be prepared and scanned."
+	var capabilityError *hostociimage.CapabilityError
+	switch {
+	case errors.As(err, &capabilityError):
+		status, code, message = http.StatusUnprocessableEntity, agentprotocol.ErrorOCIImageUnavailable,
+			"OCI image preparation is unavailable on this host."
+		response.Error = &agentprotocol.ResponseError{Code: code, Message: message, Capability: &capabilityError.Capability}
+	case errors.Is(err, hostociimage.ErrInvalid), errors.Is(err, ociimage.ErrBuildContext):
+		status, code, message = http.StatusBadRequest, agentprotocol.ErrorOCIImageInvalid,
+			"The OCI image or Containerfile source is outside the supported safety contract."
+	case errors.Is(err, hostociimage.ErrConflict):
+		status, code, message = http.StatusConflict, agentprotocol.ErrorOCIImageInvalid,
+			"The OCI image operation conflicts with existing managed host state."
+	case errors.Is(err, hostociimage.ErrScanRejected):
+		status, code, message = http.StatusUnprocessableEntity, agentprotocol.ErrorOCIImageRejected,
+			"The OCI image contains HIGH or CRITICAL vulnerabilities and was rejected."
+	}
+	handler.logger.Error("OCI image preparation failed",
+		"request_id", request.RequestID, "operation_id", request.Correlation.OperationID,
+		"account_id", request.Correlation.AccountID,
+	)
+	if response.Error == nil {
+		response.Error = &agentprotocol.ResponseError{Code: code, Message: message}
+	}
+	return status, response
 }
 
 func (handler *Handler) scheduledJobError(

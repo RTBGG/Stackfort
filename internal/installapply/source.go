@@ -67,10 +67,10 @@ func InspectSource(root string) (Source, error) {
 		return Source{}, fmt.Errorf("verify release component artifacts: %w", err)
 	}
 	for _, relative := range []string{
-		"bin/stackfort-api", "bin/stackfort-agent", "web/index.html", "phpmyadmin/index.php",
+		"bin/stackfort-api", "bin/stackfort-agent", "bin/stackfort-trivy", "web/index.html", "phpmyadmin/index.php",
 		"phpmyadmin/config.inc.php", "phpmyadmin-integration/config.inc.php",
 		"phpmyadmin-integration/signon.php", "phpmyadmin-integration/stackfort-launch.php",
-		"COMMIT", "LICENSE", "README.md", releaseartifacts.ManifestFilename,
+		"third-party-licenses/trivy-LICENSE", "COMMIT", "LICENSE", "README.md", releaseartifacts.ManifestFilename,
 	} {
 		if _, err := readBoundedRegular(filepath.Join(root, filepath.FromSlash(relative)), maximumSingleFile); err != nil {
 			return Source{}, fmt.Errorf("validate required release file %s: %w", relative, err)
@@ -81,6 +81,9 @@ func InspectSource(root string) (Source, error) {
 	}
 	if err := inspectELF(filepath.Join(root, "bin", "stackfort-agent")); err != nil {
 		return Source{}, fmt.Errorf("validate stackfort-agent binary: %w", err)
+	}
+	if err := inspectELF(filepath.Join(root, "bin", "stackfort-trivy")); err != nil {
+		return Source{}, fmt.Errorf("validate stackfort-trivy binary: %w", err)
 	}
 
 	paths := make([]string, 0, 128)

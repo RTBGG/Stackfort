@@ -3,6 +3,7 @@
 - Status: accepted
 - Date: 2026-08-31
 - Extends: [ADR 0018](0018-stable-hosting-account-unix-identities.md)
+- Extended by: [ADR 0055](0055-digest-pinned-bounded-oci-image-preparation.md)
 
 ## Context
 

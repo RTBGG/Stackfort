@@ -9,6 +9,7 @@ import (
 
 	"github.com/RTBGG/stackfort/internal/cacheconfig"
 	"github.com/RTBGG/stackfort/internal/ociapps"
+	"github.com/RTBGG/stackfort/internal/ociimage"
 	"github.com/RTBGG/stackfort/internal/scheduledjobs"
 	"github.com/RTBGG/stackfort/internal/wafconfig"
 )
@@ -606,6 +607,24 @@ type RemoveOCIApplicationDraftParams struct {
 	AccountID        ID
 	ApplicationID    ID
 	ExpectedRevision int64
+	ActorID          ID
+	RequestID        string
+}
+
+type OCIImageArtifact struct {
+	ApplicationID        ID              `json:"applicationId"`
+	AccountID            ID              `json:"accountId"`
+	ApplicationRevision  int64           `json:"applicationRevision"`
+	Result               ociimage.Result `json:"result"`
+	PreparedAt           time.Time       `json:"preparedAt"`
+	PreparedByIdentityID ID              `json:"preparedByIdentityId"`
+}
+
+type RecordOCIImageArtifactParams struct {
+	AccountID        ID
+	ApplicationID    ID
+	ExpectedRevision int64
+	Result           ociimage.Result
 	ActorID          ID
 	RequestID        string
 }

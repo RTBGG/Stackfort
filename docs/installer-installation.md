@@ -137,8 +137,10 @@ certificate, and browser boundary.
 - OCI: Podman, netavark, aardvark-dns, passt/pasta, slirp4netns, fuse-overlayfs, and
   subordinate-ID helpers are installed. `podman.socket` and `podman.service`
   are masked both as system units and in the global user configuration; the
-  rootful API socket must be absent. This prepares rootless account runtimes but
-  starts no container workload.
+  rootful API socket must be absent. The checksum-pinned release also installs
+  its fixed Trivy scanner under `/usr/local/libexec` and root-only transaction,
+  artifact, and scanner-cache directories. This prepares and scans rootless
+  images but starts no container workload.
 - Files: immutable executables and web assets are root-owned; API state is
   owned by `stackfort`; configuration and journal modes are verified exactly.
 

@@ -6,7 +6,9 @@ package agentexec
 
 import "os/exec"
 
-func configureProcess(*exec.Cmd) error {
+import "github.com/RTBGG/stackfort/internal/hostingidentity"
+
+func configureProcess(*exec.Cmd, *hostingidentity.Spec) error {
 	return newRunError(ErrUnsupportedPlatform, nil)
 }
 

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/RTBGG/stackfort/internal/ociapps"
+	"github.com/RTBGG/stackfort/internal/ociimage"
 	"github.com/RTBGG/stackfort/internal/store"
 )
 
@@ -231,6 +232,122 @@ func TestOCIDomainTargetRequiresActiveAccountOwnedApplication(t *testing.T) {
 			string(second.ID), string(staticDomain.ID)).Scan(&currentTargets)
 	}); err != nil || currentTargets != 1 {
 		t.Fatalf("rolled-back current target count = %d, %v", currentTargets, err)
+	}
+}
+
+func TestOCIImageArtifactIsRevisionFencedImmutableAndReplaySafe(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	repository, state := newTestRepository(t)
+	owner := createTestIdentity(t, repository, "oci-image@example.test")
+	packageRecord := createOCIApplicationTestPackage(t, repository, owner, "oci-image", 2, true)
+	account := createTestAccount(t, repository, owner.ID, packageRecord.ID, "OCI image", "oci-image")
+	if _, err := repository.MarkHostingUnixIdentityReconciled(ctx, HostingAccountLifecycleParams{
+		AccountID: account.ID, ActorID: &owner.ID, RequestID: "oci-image-host-ready",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	application, err := repository.CreateOCIApplication(ctx, CreateOCIApplicationParams{
+		AccountID: account.ID, Name: "Image", Slug: "image", Spec: digestOCIApplicationSpec("a"),
+		ActorID: owner.ID, RequestID: "oci-image-create",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	prepare, err := repository.OCIImagePrepareSpec(ctx, account.ID, application.ID)
+	if err != nil || prepare.ApplicationID != string(application.ID) || prepare.Revision != 1 {
+		t.Fatalf("prepare=%#v err=%v", prepare, err)
+	}
+	result := ociimage.Result{
+		ImageDigest: "sha256:" + strings.Repeat("b", 64), SourceDigest: "sha256:" + strings.Repeat("a", 64),
+		PolicyVersion: ociimage.PolicyVersion, ScannerProvider: ociimage.ScannerProvider,
+		ScannerVersion: ociimage.ScannerVersion, Vulnerabilities: ociimage.VulnerabilitySummary{Medium: 2, Low: 3},
+	}
+	pending, artifact, err := repository.RecordOCIImageArtifact(ctx, RecordOCIImageArtifactParams{
+		AccountID: account.ID, ApplicationID: application.ID, ExpectedRevision: 1, Result: result,
+		ActorID: owner.ID, RequestID: "oci-image-record",
+	})
+	if err != nil || pending.Status != OCIApplicationPending || pending.AppliedRevision != nil ||
+		artifact.Result != result || artifact.ApplicationRevision != 1 {
+		t.Fatalf("pending=%#v artifact=%#v err=%v", pending, artifact, err)
+	}
+	result.Reused = true
+	replayed, replayArtifact, err := repository.RecordOCIImageArtifact(ctx, RecordOCIImageArtifactParams{
+		AccountID: account.ID, ApplicationID: application.ID, ExpectedRevision: 1, Result: result,
+		ActorID: owner.ID, RequestID: "oci-image-replay",
+	})
+	if err != nil || replayed.Status != OCIApplicationPending || replayArtifact.Result.Reused {
+		t.Fatalf("replayed=%#v artifact=%#v err=%v", replayed, replayArtifact, err)
+	}
+	loaded, err := repository.GetOCIImageArtifact(ctx, account.ID, application.ID, 1)
+	if err != nil || loaded.Result.ImageDigest != result.ImageDigest {
+		t.Fatalf("loaded=%#v err=%v", loaded, err)
+	}
+	if err := state.Write(ctx, func(executor store.Executor) error {
+		_, updateErr := executor.ExecContext(ctx, `UPDATE oci_image_artifacts SET scanner_version = 'changed' WHERE application_id = ?`, string(application.ID))
+		return updateErr
+	}); err == nil {
+		t.Fatal("immutable OCI image artifact was updated")
+	}
+	if err := state.Write(ctx, func(executor store.Executor) error {
+		_, deleteErr := executor.ExecContext(ctx, `DELETE FROM oci_image_artifacts WHERE application_id = ?`, string(application.ID))
+		return deleteErr
+	}); err == nil {
+		t.Fatal("retained OCI image artifact was deleted")
+	}
+	if err := repository.VerifyAuditChain(ctx); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestOCIImageArtifactRejectsScanFindingsAndSourceMismatch(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	repository, _ := newTestRepository(t)
+	owner := createTestIdentity(t, repository, "oci-image-reject@example.test")
+	packageRecord := createOCIApplicationTestPackage(t, repository, owner, "oci-image-reject", 2, true)
+	account := createTestAccount(t, repository, owner.ID, packageRecord.ID, "OCI reject", "oci-reject")
+	if _, err := repository.MarkHostingUnixIdentityReconciled(ctx, HostingAccountLifecycleParams{
+		AccountID: account.ID, ActorID: &owner.ID,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	application, err := repository.CreateOCIApplication(ctx, CreateOCIApplicationParams{
+		AccountID: account.ID, Name: "Reject", Slug: "reject", Spec: digestOCIApplicationSpec("c"), ActorID: owner.ID,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := ociimage.Result{
+		ImageDigest: "sha256:" + strings.Repeat("d", 64), SourceDigest: "sha256:" + strings.Repeat("e", 64),
+		PolicyVersion: ociimage.PolicyVersion, ScannerProvider: ociimage.ScannerProvider, ScannerVersion: ociimage.ScannerVersion,
+	}
+	if _, _, err := repository.RecordOCIImageArtifact(ctx, RecordOCIImageArtifactParams{
+		AccountID: account.ID, ApplicationID: application.ID, ExpectedRevision: 1, Result: base, ActorID: owner.ID,
+	}); !errors.Is(err, ErrConflict) {
+		t.Fatalf("source mismatch error = %v", err)
+	}
+	base.SourceDigest = "sha256:" + strings.Repeat("c", 64)
+	base.Vulnerabilities.High = 1
+	if _, _, err := repository.RecordOCIImageArtifact(ctx, RecordOCIImageArtifactParams{
+		AccountID: account.ID, ApplicationID: application.ID, ExpectedRevision: 1, Result: base, ActorID: owner.ID,
+	}); !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("unsafe scan result error = %v", err)
+	}
+}
+
+func TestOCIImageArtifactRequiresContainerfileSnapshotDigest(t *testing.T) {
+	t.Parallel()
+	source := ociapps.Source{
+		Kind: ociapps.SourceContainerfile, BuildContext: "app", ContainerfilePath: "app/Containerfile",
+	}
+	result := ociimage.Result{SourceDigest: "sha256:" + strings.Repeat("f", 64)}
+	if err := validateArtifactSource(source, result); err != nil {
+		t.Fatalf("valid snapshot digest: %v", err)
+	}
+	result.SourceDigest = ""
+	if err := validateArtifactSource(source, result); !errors.Is(err, ErrConflict) {
+		t.Fatalf("missing snapshot digest error = %v", err)
 	}
 }
 

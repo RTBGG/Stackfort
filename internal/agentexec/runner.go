@@ -25,6 +25,8 @@ import (
 	"github.com/RTBGG/stackfort/internal/hostingresources"
 	"github.com/RTBGG/stackfort/internal/hostingstorage"
 	"github.com/RTBGG/stackfort/internal/nginxbaseline"
+	"github.com/RTBGG/stackfort/internal/ociapps"
+	"github.com/RTBGG/stackfort/internal/ociimage"
 	"github.com/RTBGG/stackfort/internal/phpruntime"
 	"github.com/RTBGG/stackfort/internal/scheduledjobs"
 	"github.com/google/uuid"
@@ -89,6 +91,12 @@ const (
 	ProfileSystemdDisableScheduledJob ProfileID = "jobs.systemd-disable"
 	ProfileSystemdCleanScheduledJob   ProfileID = "jobs.systemd-clean"
 	ProfileVinylBan                   ProfileID = "cache.vinyl-ban"
+	ProfilePodmanPull                 ProfileID = "oci.podman-pull"
+	ProfilePodmanBuild                ProfileID = "oci.podman-build"
+	ProfilePodmanInspect              ProfileID = "oci.podman-inspect"
+	ProfilePodmanSave                 ProfileID = "oci.podman-save"
+	ProfilePodmanRemove               ProfileID = "oci.podman-remove"
+	ProfileTrivyScan                  ProfileID = "oci.trivy-scan"
 )
 
 // Invocation contains only the semantic values accepted by a fixed profile.
@@ -142,6 +150,7 @@ type executionProfile struct {
 	waitDelay       time.Duration
 	resolve         argumentResolver
 	sensitiveInputs map[int]struct{}
+	accountProcess  bool
 }
 
 // Runner owns immutable execution profiles. NewRunner is the only production
@@ -292,7 +301,120 @@ func NewRunner() *Runner {
 			expression := `req.http.host == "` + domain.ASCII + `" && req.url ~ "` + pathPattern + `"`
 			return []string{"-T", cacheconfig.ManagementAddress, "-S", cacheconfig.SecretPath, "ban", expression}, nil
 		}),
+		ProfilePodmanPull: accountOCIProfile(func(spec ociimage.PrepareSpec, _ string) ([]string, error) {
+			if spec.Source.Kind != ociapps.SourceImageDigest {
+				return nil, ErrInvalidInvocation
+			}
+			return []string{"pull", "--quiet", "--policy=always", "--tls-verify=true", spec.Source.ImageReference}, nil
+		}, 5*time.Minute, 1<<20),
+		ProfilePodmanBuild: accountOCIProfile(func(spec ociimage.PrepareSpec, operationID string) ([]string, error) {
+			if spec.Source.Kind != ociapps.SourceContainerfile {
+				return nil, ErrInvalidInvocation
+			}
+			transaction, err := ociimage.TransactionDirectory(operationID)
+			if err != nil {
+				return nil, ErrInvalidInvocation
+			}
+			tag, _ := ociimage.LocalTag(spec)
+			return []string{
+				"build", "--pull=always", "--no-cache", "--layers=false", "--network=none", "--format=oci",
+				"--memory=" + strconv.FormatInt(ociimage.BuildMemoryBytes, 10),
+				"--memory-swap=" + strconv.FormatInt(ociimage.BuildMemoryBytes, 10),
+				"--cpu-period=" + strconv.FormatInt(ociimage.BuildCPUPeriod, 10),
+				"--cpu-quota=" + strconv.FormatInt(ociimage.BuildCPUQuota, 10),
+				"--ulimit", "nofile=" + strconv.Itoa(ociimage.BuildOpenFileLimit) + ":" + strconv.Itoa(ociimage.BuildOpenFileLimit),
+				"--ulimit", "nproc=" + strconv.Itoa(ociimage.BuildProcessLimit) + ":" + strconv.Itoa(ociimage.BuildProcessLimit),
+				"--tag", tag, "--file", path.Join(transaction, "Containerfile"), path.Join(transaction, "context"),
+			}, nil
+		}, time.Duration(ociimage.BuildTimeoutSeconds)*time.Second, 1<<20),
+		ProfilePodmanInspect: accountOCIProfile(func(spec ociimage.PrepareSpec, _ string) ([]string, error) {
+			target, err := ociImageTarget(spec)
+			if err != nil {
+				return nil, err
+			}
+			return []string{"image", "inspect", "--format", "{{.Id}}", target}, nil
+		}, time.Minute, defaultOutputLimit),
+		ProfilePodmanSave: accountOCIProfileWithExecutable("/usr/bin/prlimit", func(spec ociimage.PrepareSpec, operationID string) ([]string, error) {
+			target, err := ociImageTarget(spec)
+			if err != nil {
+				return nil, err
+			}
+			transaction, err := ociimage.TransactionDirectory(operationID)
+			if err != nil {
+				return nil, ErrInvalidInvocation
+			}
+			return []string{
+				"--fsize=" + strconv.FormatInt(ociimage.MaximumImageArchiveBytes, 10), "--", "/usr/bin/podman",
+				"image", "save", "--format", "oci-archive", "--output", path.Join(transaction, "image.tar"), target,
+			}, nil
+		}, 5*time.Minute, 1<<20),
+		ProfilePodmanRemove: accountOCIProfile(func(spec ociimage.PrepareSpec, _ string) ([]string, error) {
+			target, err := ociImageTarget(spec)
+			if err != nil {
+				return nil, err
+			}
+			return []string{"image", "rm", "--ignore", "--no-prune", target}, nil
+		}, time.Minute, defaultOutputLimit),
+		ProfileTrivyScan: func() executionProfile {
+			profile := mutationProfile(ociimage.ScannerExecutable, func(values []string) ([]string, error) {
+				if len(values) != 1 {
+					return nil, ErrInvalidInvocation
+				}
+				transaction, err := ociimage.TransactionDirectory(values[0])
+				if err != nil {
+					return nil, ErrInvalidInvocation
+				}
+				return []string{
+					"--cache-dir", ociimage.ScannerCacheRoot, "image", "--input", path.Join(transaction, "image.tar"),
+					"--scanners", "vuln", "--severity", "HIGH,CRITICAL", "--format", "json",
+					"--timeout", "10m0s",
+				}, nil
+			})
+			profile.timeout = 11 * time.Minute
+			profile.stdoutLimit, profile.stderrLimit = ociimage.MaximumScanReportBytes, 1<<20
+			return profile
+		}(),
 	}}
+}
+
+func accountOCIProfile(
+	resolve func(ociimage.PrepareSpec, string) ([]string, error), timeout time.Duration, outputLimit int,
+) executionProfile {
+	return accountOCIProfileWithExecutable("/usr/bin/podman", resolve, timeout, outputLimit)
+}
+
+func accountOCIProfileWithExecutable(
+	executable string,
+	resolve func(ociimage.PrepareSpec, string) ([]string, error),
+	timeout time.Duration,
+	outputLimit int,
+) executionProfile {
+	profile := newProfile(executable, func(values []string) ([]string, error) {
+		operationID := ""
+		if len(values) == 12 {
+			operationID = values[11]
+			values = values[:11]
+		}
+		spec, err := ociimage.FromInvocationValues(values)
+		if err != nil {
+			return nil, ErrInvalidInvocation
+		}
+		return resolve(spec, operationID)
+	})
+	profile.timeout = timeout
+	profile.stdoutLimit, profile.stderrLimit = outputLimit, outputLimit
+	profile.accountProcess = true
+	return profile
+}
+
+func ociImageTarget(spec ociimage.PrepareSpec) (string, error) {
+	if spec.Source.Kind == ociapps.SourceImageDigest {
+		return spec.Source.ImageReference, nil
+	}
+	if spec.Source.Kind == ociapps.SourceContainerfile {
+		return ociimage.LocalTag(spec)
+	}
+	return "", ErrInvalidInvocation
 }
 
 func subordinateIDProfile(action string) executionProfile {
@@ -715,9 +837,20 @@ func (runner *Runner) Run(ctx context.Context, invocation Invocation) (Result, e
 	command := exec.CommandContext(runContext, profile.executable, arguments...)
 	command.Env = sanitizedEnvironment()
 	command.Dir = "/"
+	var identity *hostingidentity.Spec
+	if profile.accountProcess {
+		parsed, identityErr := hostingIdentitySpec(invocation.Values[:min(len(invocation.Values), 5)])
+		if identityErr != nil {
+			return Result{}, newRunError(ErrInvalidInvocation, nil)
+		}
+		identity = &parsed
+		command.Env = append(command.Env, "HOME="+parsed.HomeDirectory, "USER="+parsed.Username,
+			"LOGNAME="+parsed.Username, "XDG_RUNTIME_DIR=/run/user/"+strconv.FormatUint(uint64(parsed.UID), 10))
+		command.Dir = parsed.HomeDirectory
+	}
 	command.Stdin = nil
 	command.WaitDelay = profile.waitDelay
-	if err := configureProcess(command); err != nil {
+	if err := configureProcess(command, identity); err != nil {
 		return Result{}, err
 	}
 

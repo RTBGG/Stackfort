@@ -90,9 +90,11 @@ func validCapabilityReport() *CapabilityReport {
 			Provider: "apparmor", Mode: "enabled", Enforcement: Capability{Status: CapabilityAvailable},
 		},
 		OCI: OCIRuntimeCapabilities{
-			Provider: "podman", Version: "5.5.2", Rootless: Capability{Status: CapabilityAvailable},
-			Quadlet: Capability{Status: CapabilityAvailable}, Network: Capability{Status: CapabilityAvailable},
+			Provider: "podman", Version: "5.5.2", ScannerProvider: "trivy", ScannerVersion: "0.74.0",
+			Rootless: Capability{Status: CapabilityAvailable},
+			Quadlet:  Capability{Status: CapabilityAvailable}, Network: Capability{Status: CapabilityAvailable},
 			Storage: Capability{Status: CapabilityAvailable}, RootfulSocketIsolation: Capability{Status: CapabilityAvailable},
+			ImagePreparation: Capability{Status: CapabilityAvailable}, ImageScanning: Capability{Status: CapabilityAvailable},
 		},
 		Ports: []PortCapability{
 			{Port: 80, Network: "tcp", Availability: Capability{Status: CapabilityAvailable}},

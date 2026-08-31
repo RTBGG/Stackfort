@@ -108,6 +108,14 @@ Every mutating request has an operation ID, actor, and idempotency key. The agen
 records safe correlated outcomes; operation checkpoints record the stage so
 retries do not duplicate destructive work.
 
+L-003 adds `oci.image.prepare` to that closed boundary. The control plane queues
+only a persisted source revision and derived account identity. The agent
+performs a digest pull or bounded rootless build, exports a size-limited OCI
+archive, scans it with the bundled Trivy executable, and returns only immutable
+digest/policy evidence. Host replay manifests and database artifacts are
+create-only; no engine socket or general container/build API exists. See
+[Bounded OCI image preparation](oci-image-preparation.md).
+
 ### 2.4 Job runner
 
 Long operations are persisted jobs, not synchronous HTTP handlers. A job has:
@@ -379,6 +387,15 @@ control API nor the host agent uses an engine socket. Account host-readiness now
 requires an immutable successful runtime marker. See
 [Rootless OCI account runtime](rootless-oci-runtime.md) and
 [ADR 0054](adr/0054-rootless-podman-account-runtime.md).
+
+L-003 prepares—but does not run—the exact application image. Registry sources
+are pulled by SHA-256 digest; Containerfile contexts and syntax are bounded and
+built as the account identity without instruction network access. A
+size-limited OCI archive is scanned by the checksum-pinned Trivy bundle, and
+HIGH/CRITICAL findings fail closed. Only append-only deployed/source digest and
+policy evidence can move the draft to `pending`; see
+[Bounded OCI image preparation](oci-image-preparation.md) and
+[ADR 0055](adr/0055-digest-pinned-bounded-oci-image-preparation.md).
 
 ## 6. Resource accounting
 

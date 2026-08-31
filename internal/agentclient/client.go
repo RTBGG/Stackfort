@@ -27,6 +27,7 @@ import (
 	"github.com/RTBGG/stackfort/internal/hostingresources"
 	"github.com/RTBGG/stackfort/internal/hostingstorage"
 	"github.com/RTBGG/stackfort/internal/nginxconfig"
+	"github.com/RTBGG/stackfort/internal/ociimage"
 	"github.com/RTBGG/stackfort/internal/phpruntime"
 	"github.com/RTBGG/stackfort/internal/scheduledjobs"
 	"github.com/RTBGG/stackfort/internal/tlsartifact"
@@ -1039,6 +1040,34 @@ func (client *Client) ReconcileScheduledJob(
 	return *response.ScheduledJob, nil
 }
 
+func (client *Client) PrepareOCIImage(
+	ctx context.Context,
+	idempotencyKey string,
+	correlation agentprotocol.AuditCorrelation,
+	spec ociimage.PrepareSpec,
+) (agentprotocol.OCIImagePrepareResponse, error) {
+	requestID, err := newRequestID()
+	if err != nil {
+		return agentprotocol.OCIImagePrepareResponse{}, err
+	}
+	request := agentprotocol.Request{
+		ProtocolVersion: agentprotocol.WireVersion, RequestID: requestID,
+		IdempotencyKey: idempotencyKey, Operation: agentprotocol.OperationPrepareOCIImage,
+		Correlation: &correlation, PrepareOCIImage: &agentprotocol.OCIImagePrepareRequest{Spec: spec},
+	}
+	response, status, err := client.callValidated(ctx, request)
+	if err != nil {
+		return agentprotocol.OCIImagePrepareResponse{}, err
+	}
+	if response.Error != nil {
+		return agentprotocol.OCIImagePrepareResponse{}, remoteError(status, response.Error)
+	}
+	if status != http.StatusOK || response.OCIImage == nil {
+		return agentprotocol.OCIImagePrepareResponse{}, errors.New("agent returned an invalid OCI image preparation status")
+	}
+	return *response.OCIImage, nil
+}
+
 // InspectPHPPools reads only bounded aggregate health/accounting for derived
 // account pool units. Unit names, cgroup paths, and process details are not
 // returned by the protocol.
@@ -1136,7 +1165,11 @@ func (client *Client) call(
 	if len(encoded) > agentprotocol.MaxRequestBytes {
 		return agentprotocol.Response{}, 0, errors.New("encoded agent request exceeds the protocol limit")
 	}
-	requestContext, cancel := context.WithTimeout(ctx, requestTimeout)
+	timeout := requestTimeout
+	if request.Operation == agentprotocol.OperationPrepareOCIImage {
+		timeout = time.Duration(ociimage.PreparationTimeoutSeconds+60) * time.Second
+	}
+	requestContext, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	httpRequest, err := http.NewRequestWithContext(
 		requestContext, http.MethodPost, "http://stackfort-agent"+agentprotocol.Endpoint, bytes.NewReader(encoded),

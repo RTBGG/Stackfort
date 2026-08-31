@@ -142,6 +142,14 @@ are excluded. A failed peer-credential lookup or unexpected kernel UID emits a
 stable `agent.peer.rejected` security event before HTTP parsing. See
 [Agent audit correlation](agent-audit-correlation.md).
 
+L-003 extends the same boundary with `oci.image.prepare`. The control plane
+reconstructs a revisioned source from tenant-owned state; the agent exposes no
+runtime arguments. Digest-only pulls and bounded rootless builds produce an OCI
+archive that fixed, checksum-pinned Trivy scans without an engine socket.
+Scanner errors and HIGH/CRITICAL findings fail closed, while append-only host
+and database evidence bind the accepted image digest to its source revision.
+See [Bounded OCI image preparation](oci-image-preparation.md).
+
 ### 4.4 Filesystem safety
 
 - Account identifiers are opaque canonical IDs, not usernames inserted into
@@ -284,6 +292,12 @@ than adopting them. See [Account systemd slices and cgroup-v2 limits](account-re
   agent protocol; see [Rootless OCI account runtime](rootless-oci-runtime.md).
 - Registry references resolve to recorded immutable digests for deployments.
 - Builds have CPU, memory, storage, duration, and log-output limits.
+- L-003 enforces those image boundaries before workload execution: Containerfile
+  contexts are snapshotted without links/special files, builds run as the
+  account UID/GID without instruction networking, OCI archives are hard-capped,
+  and fixed Trivy rejects scanner failure or HIGH/CRITICAL findings. Host replay
+  manifests and SQLite image evidence are create-only; see
+  [Bounded OCI image preparation](oci-image-preparation.md).
 
 ### 4.8 Databases and phpMyAdmin
 

@@ -28,10 +28,13 @@ import (
 	"github.com/RTBGG/stackfort/internal/hostingresources"
 	"github.com/RTBGG/stackfort/internal/hostingstorage"
 	"github.com/RTBGG/stackfort/internal/hostnginx"
+	"github.com/RTBGG/stackfort/internal/hostociimage"
 	"github.com/RTBGG/stackfort/internal/hostphp"
 	"github.com/RTBGG/stackfort/internal/hostresources"
 	"github.com/RTBGG/stackfort/internal/nginxbaseline"
 	"github.com/RTBGG/stackfort/internal/nginxconfig"
+	"github.com/RTBGG/stackfort/internal/ociapps"
+	"github.com/RTBGG/stackfort/internal/ociimage"
 	"github.com/RTBGG/stackfort/internal/phpruntime"
 )
 
@@ -65,6 +68,48 @@ func TestHandshakeNegotiationAndIdempotentReplay(t *testing.T) {
 	if conflictRecorder.Code != http.StatusConflict || conflictResponse.Error == nil ||
 		conflictResponse.Error.Code != agentprotocol.ErrorIdempotencyConflict {
 		t.Fatalf("conflict status=%d response=%#v", conflictRecorder.Code, conflictResponse)
+	}
+}
+
+func TestOCIImageDispatchAndTypedScanRejection(t *testing.T) {
+	t.Parallel()
+	identity := handlerIdentitySpec(t)
+	spec := ociimage.PrepareSpec{
+		Identity: identity, ApplicationID: "019d2eaa-52d0-7f52-8ac7-0aeb932455db", Revision: 1,
+		Source: ociapps.Source{Kind: ociapps.SourceImageDigest, ImageReference: "registry.example/app@sha256:" + strings.Repeat("a", 64)},
+	}
+	correlation := agentprotocol.AuditCorrelation{
+		OperationID: "019d2eaa-62d0-7f52-8ac7-0aeb932455db", ActorKind: agentprotocol.ActorSystem,
+		AccountID: identity.AccountID,
+	}
+	request := agentprotocol.Request{
+		ProtocolVersion: agentprotocol.WireVersion, RequestID: "oci-image-request", IdempotencyKey: "oci-image-key",
+		Operation: agentprotocol.OperationPrepareOCIImage, Correlation: &correlation,
+		PrepareOCIImage: &agentprotocol.OCIImagePrepareRequest{Spec: spec},
+	}
+	handler := NewHandler(nil)
+	preparer := &fakeOCIImagePreparer{result: ociimage.Result{
+		ImageDigest: "sha256:" + strings.Repeat("b", 64), SourceDigest: "sha256:" + strings.Repeat("a", 64),
+		PolicyVersion: ociimage.PolicyVersion, ScannerProvider: ociimage.ScannerProvider, ScannerVersion: ociimage.ScannerVersion,
+	}}
+	handler.images = preparer
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, rpcRequest(t, request))
+	response := decodeTestResponseFor(t, recorder.Body, request.RequestID, agentprotocol.OperationPrepareOCIImage)
+	if recorder.Code != http.StatusOK || response.OCIImage == nil ||
+		response.OCIImage.Result.ImageDigest != preparer.result.ImageDigest || preparer.calls.Load() != 1 {
+		t.Fatalf("status=%d response=%#v calls=%d", recorder.Code, response, preparer.calls.Load())
+	}
+
+	rejected := NewHandler(nil)
+	rejected.images = &fakeOCIImagePreparer{err: hostociimage.ErrScanRejected}
+	request.RequestID, request.IdempotencyKey = "oci-image-rejected", "oci-image-rejected-key"
+	recorder = httptest.NewRecorder()
+	rejected.ServeHTTP(recorder, rpcRequest(t, request))
+	response = decodeTestResponseFor(t, recorder.Body, request.RequestID, agentprotocol.OperationPrepareOCIImage)
+	if recorder.Code != http.StatusUnprocessableEntity || response.Error == nil ||
+		response.Error.Code != agentprotocol.ErrorOCIImageRejected {
+		t.Fatalf("rejected status=%d response=%#v", recorder.Code, response)
 	}
 }
 
@@ -870,6 +915,19 @@ type fakeFileWriter struct {
 	calls   atomic.Int32
 }
 
+type fakeOCIImagePreparer struct {
+	result ociimage.Result
+	err    error
+	calls  atomic.Int64
+}
+
+func (preparer *fakeOCIImagePreparer) Prepare(
+	_ context.Context, _ string, _ ociimage.PrepareSpec,
+) (ociimage.Result, error) {
+	preparer.calls.Add(1)
+	return preparer.result, preparer.err
+}
+
 func (writer *fakeFileWriter) Execute(
 	_ context.Context, request agentprotocol.FileWriteRequest, body io.Reader,
 ) (agentprotocol.FileWriteResult, error) {
@@ -1033,8 +1091,10 @@ func handlerCapabilityReport() agentprotocol.CapabilityReport {
 		},
 		Security: agentprotocol.SecurityCapabilities{Provider: "apparmor", Mode: "enabled", Enforcement: available},
 		OCI: agentprotocol.OCIRuntimeCapabilities{
-			Provider: "podman", Version: "5.5.2", Rootless: available, Quadlet: available,
+			Provider: "podman", Version: "5.5.2", ScannerProvider: "trivy", ScannerVersion: "0.74.0",
+			Rootless: available, Quadlet: available,
 			Network: available, Storage: available, RootfulSocketIsolation: available,
+			ImagePreparation: available, ImageScanning: available,
 		},
 		Ports: []agentprotocol.PortCapability{
 			{Port: 80, Network: "tcp", Availability: available},
