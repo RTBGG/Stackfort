@@ -285,6 +285,11 @@ type subordinateID struct {
 }
 
 func loadSubordinateIDs(filename string) ([]subordinateID, error) {
+	if filename != "/etc/subuid" && filename != "/etc/subgid" {
+		return nil, fmt.Errorf("%w: subordinate ID database path", ErrInvalidDatabase)
+	}
+	// #nosec G304 -- filename is restricted above to the two fixed Linux
+	// subordinate-ID databases and is never accepted from an RPC caller.
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, fmt.Errorf("%w: subordinate ID database", ErrInvalidDatabase)
