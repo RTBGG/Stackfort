@@ -28,7 +28,7 @@ the web interface itself a privileged system process.
 | Databases | Tenant-scoped MariaDB, guided lifecycle, credential rotation, and phpMyAdmin sign-on |
 | File management | Browse, upload, download, copy, move, trash, archives, and local file backups |
 | Installation | Fresh-host installer qualified on Debian 13, Ubuntu 26.04, and Rocky Linux 10 |
-| Containers | Rootless Podman application hosting is planned, not yet production-ready |
+| Containers | Constrained application drafts are complete; rootless Podman execution is next |
 
 ## Design goals
 

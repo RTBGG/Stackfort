@@ -126,7 +126,7 @@ func (r *Repository) CreateDomain(ctx context.Context, params CreateDomainParams
 		if domainCount >= limits.MaxDomains {
 			return fmt.Errorf("%w: package domain limit of %d reached", ErrConflict, limits.MaxDomains)
 		}
-		if err := validateTargetAgainstPackage(target, limits); err != nil {
+		if err := validateTargetAgainstPackage(ctx, executor, params.AccountID, target, limits); err != nil {
 			return err
 		}
 		if err := ensureNoWildcardConflict(ctx, executor, name.ASCII, "", target); err != nil {
@@ -314,7 +314,7 @@ func (r *Repository) UpdateDomain(ctx context.Context, params UpdateDomainParams
 			if err != nil {
 				return err
 			}
-			if err := validateTargetAgainstPackage(value, limits); err != nil {
+			if err := validateTargetAgainstPackage(ctx, executor, params.AccountID, value, limits); err != nil {
 				return err
 			}
 			if err := ensureNoWildcardConflict(ctx, executor, name.ASCII, string(params.DomainID), value); err != nil {
@@ -1027,7 +1027,9 @@ func prepareDomainTarget(spec DomainTargetSpec, source NormalizedDomainName) (pr
 	return prepared, nil
 }
 
-func validateTargetAgainstPackage(target preparedDomainTarget, limits PackageLimits) error {
+func validateTargetAgainstPackage(
+	ctx context.Context, reader store.Reader, accountID ID, target preparedDomainTarget, limits PackageLimits,
+) error {
 	switch target.spec.Type {
 	case DomainTargetPHP:
 		if !slices.Contains(limits.AllowedPHPVersions, target.spec.PHPVersion) {
@@ -1041,9 +1043,18 @@ func validateTargetAgainstPackage(target preparedDomainTarget, limits PackageLim
 		if !limits.Features.OCIApplications {
 			return fmt.Errorf("%w: OCI applications are not enabled by the account package", ErrConflict)
 		}
-		// The OCI phase will add the account-owned application parent relation.
-		// Until that record exists, accepting an opaque ID would break tenant isolation.
-		return fmt.Errorf("%w: OCI application ownership cannot be verified before application records are available", ErrConflict)
+		var exists bool
+		if err := reader.QueryRowContext(ctx, `
+			SELECT EXISTS (
+				SELECT 1 FROM oci_applications
+				WHERE account_id = ? AND id = ? AND status = 'active'
+				  AND applied_revision = revision AND removed_at IS NULL
+			)`, string(accountID), string(*target.spec.ApplicationID)).Scan(&exists); err != nil {
+			return err
+		}
+		if !exists {
+			return fmt.Errorf("%w: OCI application target is not active for this account", ErrConflict)
+		}
 	}
 	return nil
 }

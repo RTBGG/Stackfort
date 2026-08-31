@@ -270,6 +270,11 @@ than adopting them. See [Account systemd slices and cgroup-v2 limits](account-re
 - Drop all capabilities and add only a reviewed minimum.
 - `no-new-privileges`, read-only image filesystem where compatible, bounded
   writable volumes, seccomp, and SELinux/AppArmor confinement.
+- Application intent begins as the closed draft schema in
+  [Constrained OCI application foundation](oci-application-foundation.md):
+  digest or normalized Containerfile source, one internal port, and one bounded
+  health check. Dangerous host/runtime features are absent from the type and
+  database schema rather than represented as caller-controlled switches.
 - Registry references resolve to recorded immutable digests for deployments.
 - Builds have CPU, memory, storage, duration, and log-output limits.
 

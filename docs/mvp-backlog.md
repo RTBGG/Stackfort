@@ -1226,6 +1226,61 @@ See the [cache foundation](cache-foundation.md),
 [ADR 0052](adr/0052-opt-in-vinyl-cache-behind-nginx-and-coraza.md), and
 [qualification result](../infra/host-tests/results/2026-08-31-vinyl-cache-hyper-v.md).
 
+## Phase 5 backlog: rootless OCI applications
+
+### L-001 — Constrained tenant-owned application drafts (`P0`, complete)
+
+Establish the application parent and reject unsafe container intent before any
+Podman execution exists.
+
+Acceptance:
+
+- Persist tenant-owned, revision-fenced drafts behind the package feature and
+  count limit, with account-unique slugs, logical removal, and audit events.
+- Accept only an explicit-registry digest-pinned image or normalized
+  account-relative Containerfile source, one internal port, and a bounded HTTP
+  or TCP health check.
+- Omit privileged, namespace, device, host-mount, engine-socket, capability,
+  command-override, and public-host-port fields entirely.
+- Require an active, fully applied, same-account application before an OCI
+  domain target can be persisted, with a matching SQLite trigger.
+- Cover malicious references/paths, stale revisions, limits, retention, audit
+  integrity, inactive applications, and cross-account access in tests.
+
+See the [foundation](oci-application-foundation.md) and
+[ADR 0053](adr/0053-constrained-oci-application-drafts.md).
+
+### L-002 — Rootless Podman host capability and account runtime (`P0`)
+
+Detect and install the supported Podman/netavark/slirp runtime, provision only
+account-owned rootless storage and runtime directories, and prove that the API
+and workloads cannot access an engine socket or rootful daemon.
+
+### L-003 — Digest pull and bounded Containerfile build (`P0`)
+
+Resolve/pull by digest, build inside fixed CPU/memory/time/output limits, scan
+the resulting image, and persist the immutable deployed digest without exposing
+free-form Podman or build arguments.
+
+### L-004 — Private network, secrets, and bounded volumes (`P0`)
+
+Create account-private networking, encrypted environment-secret references,
+and descriptor-verified account-owned volumes. Reject public host ports,
+arbitrary mounts, devices, namespaces, and capabilities.
+
+### L-005 — Quadlet lifecycle, health, logs, and domain routing (`P0`)
+
+Generate fixed rootless Quadlets, reconcile through the typed agent boundary,
+health-check before atomic domain activation, expose bounded sanitized logs,
+and provide replay-safe deploy, suspend, resume, rollback, and remove flows.
+
+### L-006 — Aggregate accounting and three-guest exit matrix (`P0`)
+
+Place PHP, scheduled jobs, and OCI applications below the same account slice;
+then qualify resource exhaustion, reboot recovery, private ingress, malicious
+images/builds, and cross-account filesystem/network/process isolation on all
+supported distributions.
+
 ## Deferred from the current Phase 2 slice
 
 Database/application-consistent backup,

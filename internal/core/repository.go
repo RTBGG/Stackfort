@@ -16,6 +16,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/RTBGG/stackfort/internal/ociapps"
 	"github.com/RTBGG/stackfort/internal/scheduledjobs"
 	"github.com/RTBGG/stackfort/internal/store"
 	sqliteDriver "modernc.org/sqlite"
@@ -219,6 +220,9 @@ func validateLimits(limits *PackageLimits) error {
 	}
 	if limits.MaxScheduledJobs > int64(scheduledjobs.MaximumJobsPerAccount) {
 		return fmt.Errorf("%w: maxScheduledJobs must not exceed %d", ErrInvalidInput, scheduledjobs.MaximumJobsPerAccount)
+	}
+	if limits.MaxOCIApplications > int64(ociapps.MaximumApplicationsPerAccount) {
+		return fmt.Errorf("%w: maxOciApplications must not exceed %d", ErrInvalidInput, ociapps.MaximumApplicationsPerAccount)
 	}
 
 	if err := validateOptionalRange("cpuQuotaPercent", limits.CPUQuotaPercent, 1, 100_000); err != nil {

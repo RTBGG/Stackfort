@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/RTBGG/stackfort/internal/cacheconfig"
+	"github.com/RTBGG/stackfort/internal/ociapps"
 	"github.com/RTBGG/stackfort/internal/scheduledjobs"
 	"github.com/RTBGG/stackfort/internal/wafconfig"
 )
@@ -553,6 +554,60 @@ type PackageFeatures struct {
 	CustomRedirects  bool `json:"customRedirects"`
 	WAFExceptions    bool `json:"wafExceptions"`
 	ScheduledBackups bool `json:"scheduledBackups"`
+}
+
+type OCIApplicationStatus string
+
+const (
+	OCIApplicationDraft     OCIApplicationStatus = "draft"
+	OCIApplicationPending   OCIApplicationStatus = "pending"
+	OCIApplicationActive    OCIApplicationStatus = "active"
+	OCIApplicationSuspended OCIApplicationStatus = "suspended"
+	OCIApplicationError     OCIApplicationStatus = "error"
+	OCIApplicationDeleting  OCIApplicationStatus = "deleting"
+	OCIApplicationDeleted   OCIApplicationStatus = "deleted"
+)
+
+type OCIApplication struct {
+	ID              ID                   `json:"id"`
+	AccountID       ID                   `json:"accountId"`
+	Name            string               `json:"name"`
+	Slug            string               `json:"slug"`
+	Spec            ociapps.Spec         `json:"spec"`
+	Status          OCIApplicationStatus `json:"status"`
+	Revision        int64                `json:"revision"`
+	AppliedRevision *int64               `json:"appliedRevision,omitempty"`
+	CreatedAt       time.Time            `json:"createdAt"`
+	UpdatedAt       time.Time            `json:"updatedAt"`
+	RemovedAt       *time.Time           `json:"removedAt,omitempty"`
+}
+
+type CreateOCIApplicationParams struct {
+	AccountID ID
+	Name      string
+	Slug      string
+	Spec      ociapps.Spec
+	ActorID   ID
+	RequestID string
+}
+
+type UpdateOCIApplicationDraftParams struct {
+	AccountID        ID
+	ApplicationID    ID
+	ExpectedRevision int64
+	Name             string
+	Slug             string
+	Spec             ociapps.Spec
+	ActorID          ID
+	RequestID        string
+}
+
+type RemoveOCIApplicationDraftParams struct {
+	AccountID        ID
+	ApplicationID    ID
+	ExpectedRevision int64
+	ActorID          ID
+	RequestID        string
 }
 
 type Package struct {

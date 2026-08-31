@@ -365,6 +365,12 @@ their lifecycle visible to systemd. The panel creates private networks and maps
 an application only to a loopback/high internal port or Unix socket. Edge NGINX
 is the sole public ingress path.
 
+The control plane first persists only the closed, tenant-owned draft described
+in [Constrained OCI application foundation](oci-application-foundation.md) and
+[ADR 0053](adr/0053-constrained-oci-application-drafts.md). A domain cannot
+reference the draft until a later privileged lifecycle has applied and health-
+checked the exact current revision.
+
 ## 6. Resource accounting
 
 ### 6.1 Hard limits
