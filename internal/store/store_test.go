@@ -23,7 +23,7 @@ import (
 func TestOpenConfiguresAndMigratesDatabase(t *testing.T) {
 	t.Parallel()
 
-	databasePath := filepath.Join(t.TempDir(), "state", "stackfort.db")
+	databasePath := filepath.Join(secureTempDir(t), "state", "stackfort.db")
 	state := openTestStore(t, databasePath)
 
 	var journalMode string
@@ -73,7 +73,7 @@ func TestOpenConfiguresAndMigratesDatabase(t *testing.T) {
 func TestOpenIsIdempotent(t *testing.T) {
 	t.Parallel()
 
-	databasePath := filepath.Join(t.TempDir(), "stackfort.db")
+	databasePath := filepath.Join(secureTempDir(t), "stackfort.db")
 	first := openTestStore(t, databasePath)
 	if err := first.Close(); err != nil {
 		t.Fatalf("close first store: %v", err)
@@ -103,7 +103,7 @@ func TestOpenRejectsRelativePathAndDatabaseSymlink(t *testing.T) {
 		t.Fatal("Open accepted a relative path")
 	}
 
-	directory := t.TempDir()
+	directory := secureTempDir(t)
 	target := filepath.Join(directory, "target.db")
 	if err := os.WriteFile(target, nil, 0o600); err != nil {
 		t.Fatalf("create symlink target: %v", err)
@@ -125,7 +125,7 @@ func TestOpenDoesNotRelaxExistingDirectoryPermissions(t *testing.T) {
 		t.Skip("Windows does not expose Unix directory permission semantics")
 	}
 
-	directory := filepath.Join(t.TempDir(), "state")
+	directory := filepath.Join(secureTempDir(t), "state")
 	if err := os.Mkdir(directory, 0o777); err != nil {
 		t.Fatalf("create permissive directory: %v", err)
 	}
@@ -142,7 +142,7 @@ func TestOpenDoesNotRelaxExistingDirectoryPermissions(t *testing.T) {
 func TestForeignKeysAreEnforcedOnWriteConnections(t *testing.T) {
 	t.Parallel()
 
-	state := openTestStore(t, filepath.Join(t.TempDir(), "stackfort.db"))
+	state := openTestStore(t, filepath.Join(secureTempDir(t), "stackfort.db"))
 	ctx := context.Background()
 	if err := state.Write(ctx, func(executor Executor) error {
 		_, err := executor.ExecContext(ctx, `
@@ -169,7 +169,7 @@ func TestOpenRefusesFutureAndDriftedSchemas(t *testing.T) {
 	t.Parallel()
 
 	t.Run("future", func(t *testing.T) {
-		databasePath := filepath.Join(t.TempDir(), "stackfort.db")
+		databasePath := filepath.Join(secureTempDir(t), "stackfort.db")
 		state := openTestStore(t, databasePath)
 		if err := state.Close(); err != nil {
 			t.Fatalf("close store: %v", err)
@@ -196,7 +196,7 @@ func TestOpenRefusesFutureAndDriftedSchemas(t *testing.T) {
 	})
 
 	t.Run("drift", func(t *testing.T) {
-		databasePath := filepath.Join(t.TempDir(), "stackfort.db")
+		databasePath := filepath.Join(secureTempDir(t), "stackfort.db")
 		state := openTestStore(t, databasePath)
 		if err := state.Close(); err != nil {
 			t.Fatalf("close store: %v", err)
@@ -220,7 +220,7 @@ func TestOpenRefusesFutureAndDriftedSchemas(t *testing.T) {
 func TestOpenRefusesUnmanagedSchema(t *testing.T) {
 	t.Parallel()
 
-	databasePath := filepath.Join(t.TempDir(), "unmanaged.db")
+	databasePath := filepath.Join(secureTempDir(t), "unmanaged.db")
 	raw := openRawDatabase(t, databasePath)
 	if _, err := raw.Exec("CREATE TABLE existing_data (id INTEGER PRIMARY KEY)"); err != nil {
 		t.Fatalf("create unmanaged table: %v", err)
@@ -238,7 +238,7 @@ func TestOpenRefusesUnmanagedSchema(t *testing.T) {
 func TestFailedMigrationRollsBackCompletely(t *testing.T) {
 	t.Parallel()
 
-	state := openTestStore(t, filepath.Join(t.TempDir(), "stackfort.db"))
+	state := openTestStore(t, filepath.Join(secureTempDir(t), "stackfort.db"))
 	failingSQL := "CREATE TABLE migration_partial (id INTEGER PRIMARY KEY) STRICT;\nTHIS IS NOT SQL;\n"
 	checksum := sha256.Sum256([]byte(failingSQL))
 	failingMigration := migration{
@@ -280,7 +280,7 @@ func TestFailedMigrationRollsBackCompletely(t *testing.T) {
 }
 
 func TestConcurrentReadersAndBoundedWriters(t *testing.T) {
-	state := openTestStore(t, filepath.Join(t.TempDir(), "stackfort.db"))
+	state := openTestStore(t, filepath.Join(secureTempDir(t), "stackfort.db"))
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
@@ -352,7 +352,7 @@ func TestConcurrentReadersAndBoundedWriters(t *testing.T) {
 func TestBackupIsConsistentRestorableAndNeverOverwritten(t *testing.T) {
 	t.Parallel()
 
-	state := openTestStore(t, filepath.Join(t.TempDir(), "source", "stackfort.db"))
+	state := openTestStore(t, filepath.Join(secureTempDir(t), "source", "stackfort.db"))
 	ctx := context.Background()
 	if err := state.Write(ctx, func(executor Executor) error {
 		_, err := executor.ExecContext(ctx, `
@@ -363,7 +363,7 @@ func TestBackupIsConsistentRestorableAndNeverOverwritten(t *testing.T) {
 		t.Fatalf("insert backup fixture: %v", err)
 	}
 
-	backupPath := filepath.Join(t.TempDir(), "backups", "state.db")
+	backupPath := filepath.Join(secureTempDir(t), "backups", "state.db")
 	if err := state.Backup(ctx, backupPath); err != nil {
 		t.Fatalf("create backup: %v", err)
 	}
@@ -446,6 +446,17 @@ func openTestStore(t *testing.T, path string) *Store {
 	}
 	t.Cleanup(func() { _ = state.Close() })
 	return state
+}
+
+func secureTempDir(t *testing.T) string {
+	t.Helper()
+	directory := t.TempDir()
+	if runtime.GOOS != "windows" {
+		if err := os.Chmod(directory, 0o700); err != nil {
+			t.Fatalf("secure temporary directory: %v", err)
+		}
+	}
+	return directory
 }
 
 func openRawDatabase(t *testing.T, path string) *sql.DB {
