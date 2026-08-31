@@ -1,0 +1,2 @@
+29 23 253:0 / / rw,relatime - xfs /dev/mapper/rl-root rw
+45 29 253:1 / /srv/hosting rw,relatime,prjquota - xfs /dev/mapper/rl-hosting rw,prjquota

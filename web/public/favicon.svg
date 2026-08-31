@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Stackfort">
+  <rect width="64" height="64" rx="16" fill="#0c1715"/>
+  <path d="M32 10 51 20v22L32 54 13 42V20l19-10Z" fill="#78e8b0"/>
+  <path d="m22 23 10-5 10 5-10 5-10-5Zm0 9 10 5 10-5v8l-10 6-10-6v-8Z" fill="#0c1715"/>
+</svg>

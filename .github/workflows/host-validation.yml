@@ -1,0 +1,40 @@
+name: Supported host validation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Debian 13
+            runner: stackfort-debian-13
+            os_id: debian
+            version: '13'
+          - name: Ubuntu 26.04 LTS
+            runner: stackfort-ubuntu-26.04
+            os_id: ubuntu
+            version: '26.04'
+          - name: Rocky Linux 10
+            runner: stackfort-rocky-10
+            os_id: rocky
+            version: '10'
+    runs-on: [self-hosted, linux, ephemeral, '${{ matrix.runner }}']
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Validate host capabilities
+        env:
+          STACKFORT_EXPECTED_OS_ID: ${{ matrix.os_id }}
+          STACKFORT_EXPECTED_VERSION_PREFIX: ${{ matrix.version }}
+          STACKFORT_QUOTA_PATH: /srv/stackfort-quota
+        run: sudo --preserve-env=STACKFORT_EXPECTED_OS_ID,STACKFORT_EXPECTED_VERSION_PREFIX,STACKFORT_QUOTA_PATH bash scripts/host-capabilities.sh

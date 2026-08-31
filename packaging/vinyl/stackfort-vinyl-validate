@@ -1,0 +1,12 @@
+#!/bin/sh
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+set -eu
+
+output="$(mktemp /tmp/stackfort-vinyl-vcl.XXXXXX)"
+trap 'rm -f -- "$output"' EXIT HUP INT TERM
+if ! /usr/sbin/vinyld -C -f /etc/vinyl-cache/stackfort.vcl >"$output" 2>&1; then
+  printf '%s\n' 'Vinyl VCL validation failed:' >&2
+  cat "$output" >&2
+  exit 1
+fi

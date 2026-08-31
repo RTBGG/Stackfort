@@ -1,0 +1,2 @@
+29 23 8:1 / / rw,relatime - ext4 /dev/vda1 rw
+45 29 8:16 / /srv/hosting rw,relatime,prjquota - ext4 /dev/vdb rw,prjquota

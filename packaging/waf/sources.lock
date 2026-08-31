@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# name|version|sha256|https-url
+libcoraza|1.7.0|d7073cf909e5e6ea40536be12924b881f059acdef29fa5b2ca7c668c0c8aa990|https://github.com/corazawaf/libcoraza/archive/refs/tags/v1.7.0.tar.gz
+coraza|3.7.0|12d9c2ed30b7566b384d462bb048eb0e3fc8159777c1901248f124f32224caf6|https://github.com/corazawaf/coraza/archive/refs/tags/v3.7.0.tar.gz
+coraza-nginx|0.20.0|8e0b1b4730f56c3982f4dde44be5a669a272b772417a36f08413dade54562a0a|https://github.com/corazawaf/coraza-nginx/archive/refs/tags/v0.20.0.tar.gz
+owasp-crs|4.25.1|e314bc5b64a268ae4264822bc93db24eb93c5eb648ff80aed96b23f3fce2c701|https://github.com/coreruleset/coreruleset/releases/download/v4.25.1/coreruleset-4.25.1-minimal.tar.gz
+go-toolchain|1.25.12|234828b7a89e0e303d2556310ee549fbcf253d28de937bac3da13d6294262ac1|https://go.dev/dl/go1.25.12.linux-amd64.tar.gz
+nginx-1.26.3|1.26.3|69ee2b237744036e61d24b836668aad3040dda461fe6f570f1787eab570c75aa|https://nginx.org/download/nginx-1.26.3.tar.gz
+nginx-ubuntu-orig|1.28.3|79b9d602dd8c16ce0c2d459a43a9d837f59930345e7909edb107a7dde1a94acf|https://archive.ubuntu.com/ubuntu/pool/main/n/nginx/nginx_1.28.3.orig.tar.xz
+nginx-ubuntu-debian|1.28.3-2ubuntu1.10|ab2ef8b01c3f7b43ebe17ddd100a4c7f9c65e4db78bf698714ebf0e8497cb819|https://archive.ubuntu.com/ubuntu/pool/main/n/nginx/nginx_1.28.3-2ubuntu1.10.debian.tar.xz
+nginx-ubuntu-dsc|1.28.3-2ubuntu1.10|f2fa183f8a46b9c7c7a8230b592ce15bd11e93e7a735da97f67f2c940fc13ebe|https://archive.ubuntu.com/ubuntu/pool/main/n/nginx/nginx_1.28.3-2ubuntu1.10.dsc

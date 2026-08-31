@@ -1,0 +1,143 @@
+name: Release artifacts
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Semantic version without the v prefix
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  waf-packages:
+    name: WAF package — ${{ matrix.name }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    container: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Debian 13
+            id: debian-13
+            image: debian:13
+          - name: Ubuntu 26.04
+            id: ubuntu-26.04
+            image: ubuntu:26.04
+          - name: Rocky Linux 10
+            id: rocky-10
+            image: rockylinux/rockylinux:10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Prepare exact native build host
+        run: |
+          bash packaging/waf/prepare-build-host.sh
+          useradd --system --user-group --create-home --home-dir /var/tmp/stackfort-build --shell /bin/bash stackfort-build
+          install -d -o stackfort-build -g stackfort-build \
+            /var/tmp/stackfort-waf-bundle /var/tmp/stackfort-waf-native
+      - name: Build hash-pinned native WAF package
+        run: |
+          runuser --user stackfort-build -- env \
+            SOURCE_DATE_EPOCH=0 \
+            bash "$GITHUB_WORKSPACE/packaging/waf/build-bundle.sh" /var/tmp/stackfort-waf-bundle
+          runuser --user stackfort-build -- env \
+            SOURCE_DATE_EPOCH=0 \
+            bash "$GITHUB_WORKSPACE/packaging/waf/build-native-package.sh" \
+            /var/tmp/stackfort-waf-bundle/*.tar.gz /var/tmp/stackfort-waf-native
+      - name: Upload native WAF package
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: stackfort-waf-${{ matrix.id }}
+          path: /var/tmp/stackfort-waf-native/*
+          if-no-files-found: error
+          retention-days: 7
+
+  build:
+    name: Build, inventory, and attest
+    needs: waf-packages
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Check out source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Resolve release metadata
+        id: metadata
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            version="${INPUT_VERSION}"
+          else
+            version="${REF_NAME#v}"
+          fi
+          printf 'version=%s\n' "$version" >>"$GITHUB_OUTPUT"
+      - name: Download native WAF packages
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          pattern: stackfort-waf-*
+          path: waf-native
+          merge-multiple: true
+      - name: Build deterministic archives
+        env:
+          COMMIT: ${{ github.sha }}
+          STACKFORT_WAF_PACKAGE_DIR: ${{ github.workspace }}/waf-native
+          VERSION: ${{ steps.metadata.outputs.version }}
+        run: |
+          export SOURCE_DATE_EPOCH="$(git show -s --format=%ct "$COMMIT")"
+          bash scripts/build-release.sh
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@28d71544de8eaf1b958d335707167c5f783590ad # v0.22.2
+        with:
+          path: dist
+          format: spdx-json
+          output-file: dist/stackfort-${{ steps.metadata.outputs.version }}.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+      - name: Attest release files
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: dist/*
+      - name: Publish immutable GitHub release assets
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            printf 'Release %s already exists; refusing to replace immutable assets.\n' "$RELEASE_TAG" >&2
+            exit 1
+          fi
+          gh release create "$RELEASE_TAG" dist/* --verify-tag --generate-notes --title "Stackfort $RELEASE_TAG"
+      - name: Upload release candidate
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: stackfort-${{ steps.metadata.outputs.version }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30

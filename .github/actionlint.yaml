@@ -1,0 +1,6 @@
+self-hosted-runner:
+  labels:
+    - ephemeral
+    - stackfort-debian-13
+    - stackfort-ubuntu-26.04
+    - stackfort-rocky-10

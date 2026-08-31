@@ -1,0 +1,255 @@
+From: Stackfort Authors <noreply@stackfort.invalid>
+Subject: [PATCH] Emit sanitized rule events through the nginx error log
+
+libcoraza exposes a matched-rule callback, but coraza-nginx 0.20.0 does not
+connect it to nginx. Register the callback for every worker-local WAF and bind
+the currently evaluated request around each Coraza rule phase. The callback
+emits only the rule ID, severity, connector-generated request correlation,
+method, and normalized queryless URI. It deliberately never requests or logs
+Coraza's match data, message, request headers, query string, or body.
+---
+ src/ngx_http_coraza_body_filter.c   |  2 ++
+ src/ngx_http_coraza_common.h        |  5 ++++
+ src/ngx_http_coraza_dl.c            | 26 ++++++++++++++++++++
+ src/ngx_http_coraza_header_filter.c |  2 ++
+ src/ngx_http_coraza_log.c           | 54 +++++++++++++++++++++++++++++++++++++
+ src/ngx_http_coraza_module.c        |  7 +++++
+ src/ngx_http_coraza_pre_access.c    |  2 ++
+ src/ngx_http_coraza_rewrite.c       |  2 ++
+ 8 files changed, 100 insertions(+)
+
+diff --git a/src/ngx_http_coraza_common.h b/src/ngx_http_coraza_common.h
+index 849f34b..9c1f785 100644
+--- a/src/ngx_http_coraza_common.h
++++ b/src/ngx_http_coraza_common.h
+@@ -175,6 +175,11 @@ ngx_http_coraza_process_body_failed(int ret)
+ 
+ extern ngx_module_t ngx_http_coraza_module;
+ 
++/* The nginx worker event loop is single-threaded. Rule-phase callers bind the
++ * active request only for the synchronous libcoraza call below. */
++extern ngx_http_request_t *ngx_http_coraza_active_request;
++void ngx_http_coraza_error_callback(void *user_context, coraza_matched_rule_t rule);
++
+ /* ngx_http_coraza_module.c */
+ ngx_int_t ngx_http_coraza_process_intervention (ngx_http_coraza_ctx_t *ctx, ngx_http_request_t *r, ngx_int_t early_log);
+ ngx_http_coraza_ctx_t *ngx_http_coraza_create_ctx(ngx_http_request_t *r);
+diff --git a/src/ngx_http_coraza_dl.c b/src/ngx_http_coraza_dl.c
+index d113c30..4e0ad6a 100644
+--- a/src/ngx_http_coraza_dl.c
++++ b/src/ngx_http_coraza_dl.c
+@@ -27,6 +27,9 @@ typedef int                  (*fn_coraza_rules_add)(coraza_waf_config_t, char *);
+ typedef int                  (*fn_coraza_rules_add_file)(coraza_waf_config_t, char *);
+ typedef int                  (*fn_coraza_free_waf_config)(coraza_waf_config_t);
+ typedef coraza_waf_t         (*fn_coraza_new_waf)(coraza_waf_config_t, char **);
++typedef int                  (*fn_coraza_add_error_callback)(coraza_waf_config_t, coraza_error_cb, void *);
++typedef int                  (*fn_coraza_matched_rule_get_id)(coraza_matched_rule_t);
++typedef coraza_severity_t    (*fn_coraza_matched_rule_get_severity)(coraza_matched_rule_t);
+ typedef int                  (*fn_coraza_free_waf)(coraza_waf_t);
+ typedef int                  (*fn_coraza_rules_count)(coraza_waf_t);
+ typedef coraza_transaction_t (*fn_coraza_new_transaction)(coraza_waf_t);
+@@ -70,6 +73,9 @@ static fn_coraza_rules_add               dl_rules_add;
+ static fn_coraza_rules_add_file          dl_rules_add_file;
+ static fn_coraza_free_waf_config         dl_free_waf_config;
+ static fn_coraza_new_waf                 dl_new_waf;
++static fn_coraza_add_error_callback      dl_add_error_callback;
++static fn_coraza_matched_rule_get_id     dl_matched_rule_get_id;
++static fn_coraza_matched_rule_get_severity dl_matched_rule_get_severity;
+ static fn_coraza_free_waf                dl_free_waf;
+ static fn_coraza_rules_count             dl_rules_count;
+ static fn_coraza_new_transaction         dl_new_transaction;
+@@ -150,6 +156,9 @@ ngx_http_coraza_dl_open(ngx_log_t *log)
+     DL_SYM(dl_rules_add_file,           coraza_rules_add_file);
+     DL_SYM(dl_free_waf_config,          coraza_free_waf_config);
+     DL_SYM(dl_new_waf,                  coraza_new_waf);
++    DL_SYM(dl_add_error_callback,       coraza_add_error_callback);
++    DL_SYM(dl_matched_rule_get_id,      coraza_matched_rule_get_id);
++    DL_SYM(dl_matched_rule_get_severity, coraza_matched_rule_get_severity);
+     DL_SYM(dl_free_waf,                 coraza_free_waf);
+     DL_SYM(dl_rules_count,              coraza_rules_count);
+     DL_SYM(dl_new_transaction,           coraza_new_transaction);
+@@ -229,6 +238,24 @@ coraza_waf_t coraza_new_waf(coraza_waf_config_t config, char **err)
+     return dl_new_waf(config, err);
+ }
+ 
++int coraza_add_error_callback(coraza_waf_config_t config,
++                              coraza_error_cb callback,
++                              void *user_context)
++{
++    return dl_add_error_callback(config, callback, user_context);
++}
++
++int coraza_matched_rule_get_id(coraza_matched_rule_t rule)
++{
++    return dl_matched_rule_get_id(rule);
++}
++
++coraza_severity_t
++coraza_matched_rule_get_severity(coraza_matched_rule_t rule)
++{
++    return dl_matched_rule_get_severity(rule);
++}
++
+ int coraza_free_waf(coraza_waf_t w)
+ {
+     return dl_free_waf(w);
+diff --git a/src/ngx_http_coraza_log.c b/src/ngx_http_coraza_log.c
+index f4017a5..229f76d 100644
+--- a/src/ngx_http_coraza_log.c
++++ b/src/ngx_http_coraza_log.c
+@@ -13,6 +13,68 @@
+ #include "ngx_http_coraza_common.h"
+ 
+ 
++ngx_http_request_t *ngx_http_coraza_active_request = NULL;
++
++
++static const char *
++ngx_http_coraza_severity_name(coraza_severity_t severity)
++{
++    switch (severity) {
++    case CORAZA_SEVERITY_EMERGENCY: return "EMERGENCY";
++    case CORAZA_SEVERITY_ALERT:     return "ALERT";
++    case CORAZA_SEVERITY_CRITICAL:  return "CRITICAL";
++    case CORAZA_SEVERITY_ERROR:     return "ERROR";
++    case CORAZA_SEVERITY_WARNING:   return "WARNING";
++    case CORAZA_SEVERITY_NOTICE:    return "NOTICE";
++    case CORAZA_SEVERITY_INFO:      return "INFO";
++    case CORAZA_SEVERITY_DEBUG:     return "DEBUG";
++    default:                        return "UNKNOWN";
++    }
++}
++
++
++void
++ngx_http_coraza_error_callback(void *user_context, coraza_matched_rule_t rule)
++{
++    ngx_http_request_t    *r;
++    ngx_http_coraza_ctx_t *ctx;
++    ngx_log_t             sanitized_log;
++    ngx_str_t              method;
++    ngx_str_t              path;
++    ngx_str_t              correlation = ngx_null_string;
++    int                    rule_id;
++
++    (void) user_context;
++    r = ngx_http_coraza_active_request;
++    if (r == NULL || r->connection == NULL) {
++        return;
++    }
++    rule_id = coraza_matched_rule_get_id(rule);
++    if (rule_id <= 0) {
++        return;
++    }
++    ctx = ngx_http_get_module_ctx(r, ngx_http_coraza_module);
++    if (ctx != NULL) {
++        correlation = ctx->transaction_id;
++        if (correlation.len > 128) correlation.len = 128;
++    }
++    method = r->method_name;
++    path = r->uri;
++    if (method.len > 32) method.len = 32;
++    if (path.len > 1024) path.len = 1024;
++    sanitized_log = *r->connection->log;
++    sanitized_log.handler = NULL;
++    sanitized_log.data = NULL;
++
++    ngx_log_error(NGX_LOG_WARN, &sanitized_log, 0,
++        "coraza: Stackfort event [id \"%i\"] [severity \"%s\"] "
++        "[unique_id \"%V\"] request: \"%V %V HTTP/1.1\"",
++        (ngx_int_t) rule_id,
++        ngx_http_coraza_severity_name(coraza_matched_rule_get_severity(rule)),
++        &correlation, &method, &path);
++}
++
++
+ ngx_int_t
+ ngx_http_coraza_log_handler(ngx_http_request_t *r)
+ {
+@@ -34,7 +86,9 @@ ngx_http_coraza_log_handler(ngx_http_request_t *r)
+         return NGX_OK;
+     }
+ 
++    ngx_http_coraza_active_request = r;
+     coraza_process_logging(ctx->coraza_transaction);
++    ngx_http_coraza_active_request = NULL;
+ 
+     return NGX_OK;
+ }
+diff --git a/src/ngx_http_coraza_module.c b/src/ngx_http_coraza_module.c
+index c1e8615..3a5efc8 100644
+--- a/src/ngx_http_coraza_module.c
++++ b/src/ngx_http_coraza_module.c
+@@ -661,6 +661,14 @@ ngx_http_coraza_build_waf(ngx_array_t *rules, ngx_log_t *log)
+ 		return 0;
+ 	}
+ 
++	if (coraza_add_error_callback(config,
++		ngx_http_coraza_error_callback, NULL) != 0) {
++		ngx_log_error(NGX_LOG_ERR, log, 0,
++					  "coraza: failed to register sanitized event callback");
++		coraza_free_waf_config(config);
++		return 0;
++	}
++
+ 	entries = rules->elts;
+ 	for (i = 0; i < rules->nelts; i++) {
+ 		/* Build a null-terminated C string from the ngx_str_t */
+diff --git a/src/ngx_http_coraza_rewrite.c b/src/ngx_http_coraza_rewrite.c
+index 3b90375..94a2e81 100644
+--- a/src/ngx_http_coraza_rewrite.c
++++ b/src/ngx_http_coraza_rewrite.c
+@@ -309,7 +309,9 @@ ngx_http_coraza_rewrite_handler(ngx_http_request_t *r)
+          * to process this information.
+          */
+ 
++        ngx_http_coraza_active_request = r;
+         pret = coraza_process_request_headers(ctx->coraza_transaction);
++        ngx_http_coraza_active_request = NULL;
+         dd("Processing intervention with the request headers information filled in");
+         ret = ngx_http_coraza_poll_after_process(ctx, r, 1, pret);
+         if (r->error_page) {
+diff --git a/src/ngx_http_coraza_pre_access.c b/src/ngx_http_coraza_pre_access.c
+index 8404c9f..725a82f 100644
+--- a/src/ngx_http_coraza_pre_access.c
++++ b/src/ngx_http_coraza_pre_access.c
+@@ -227,7 +227,9 @@ ngx_http_coraza_pre_access_handler(ngx_http_request_t *r)
+             return ret;
+         }
+ 
++        ngx_http_coraza_active_request = r;
+         pret = coraza_process_request_body(ctx->coraza_transaction);
++        ngx_http_coraza_active_request = NULL;
+         if (ngx_http_coraza_process_body_failed(pret))
+         {
+             /*
+diff --git a/src/ngx_http_coraza_header_filter.c b/src/ngx_http_coraza_header_filter.c
+index 8e156d1..b703a71 100644
+--- a/src/ngx_http_coraza_header_filter.c
++++ b/src/ngx_http_coraza_header_filter.c
+@@ -590,7 +590,9 @@ ngx_http_coraza_header_filter(ngx_http_request_t *r)
+     }
+ #endif
+ 
++    ngx_http_coraza_active_request = r;
+     pret = coraza_process_response_headers(ctx->coraza_transaction, status, http_response_ver);
++    ngx_http_coraza_active_request = NULL;
+ 
+     /*
+      * Determine whether response-body inspection is needed for this
+diff --git a/src/ngx_http_coraza_body_filter.c b/src/ngx_http_coraza_body_filter.c
+index ee488a0..c22dcde 100644
+--- a/src/ngx_http_coraza_body_filter.c
++++ b/src/ngx_http_coraza_body_filter.c
+@@ -249,7 +249,9 @@ ngx_http_coraza_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
+             int ret;
+             int pret;
+ 
++            ngx_http_coraza_active_request = r;
+             pret = coraza_process_response_body(ctx->coraza_transaction);
++            ngx_http_coraza_active_request = NULL;
+             if (ngx_http_coraza_process_body_failed(pret))
+             {
+                 /*
+-- 
+2.47.3

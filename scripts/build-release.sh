@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+set -euo pipefail
+
+repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repository_root"
+
+export GOTOOLCHAIN=local
+version="${VERSION:-0.0.0-dev}"
+version="${version#v}"
+commit="${COMMIT:-$(git rev-parse --verify HEAD 2>/dev/null || printf 'unknown')}"
+source_date_epoch="${SOURCE_DATE_EPOCH:-$(git log -1 --format=%ct 2>/dev/null || printf '0')}"
+waf_package_directory="${STACKFORT_WAF_PACKAGE_DIR:-}"
+vinyl_package_directory="${STACKFORT_VINYL_PACKAGE_DIR:-}"
+
+if [[ ! "$version" =~ ^[0-9]+.[0-9]+.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]; then
+  printf 'VERSION is not a supported semantic version: %s\n' "$version" >&2
+  exit 1
+fi
+if [[ ! "$source_date_epoch" =~ ^[0-9]+$ ]]; then
+  printf 'SOURCE_DATE_EPOCH must contain seconds since the Unix epoch.\n' >&2
+  exit 1
+fi
+if [[ -z "$waf_package_directory" && "$version" != '0.0.0-dev' ]]; then
+  printf 'STACKFORT_WAF_PACKAGE_DIR is required for a release build.\n' >&2
+  exit 1
+fi
+if [[ -z "$vinyl_package_directory" && "$version" != '0.0.0-dev' ]]; then
+  printf 'STACKFORT_VINYL_PACKAGE_DIR is required for a release build.\n' >&2
+  exit 1
+fi
+
+build_date="$(date --utc --date="@$source_date_epoch" '+%Y-%m-%dT%H:%M:%SZ')"
+linker_flags="-s -w -buildid= -X github.com/RTBGG/stackfort/internal/buildinfo.Version=$version -X github.com/RTBGG/stackfort/internal/buildinfo.Commit=$commit -X github.com/RTBGG/stackfort/internal/buildinfo.BuildDate=$build_date"
+output_root="$repository_root/dist"
+phpmyadmin_version="5.2.3"
+phpmyadmin_sha256="12ba1c425fa4071abbd4e7668c9ebdeac0b0755a467a6d6d5026122bb47c102b"
+phpmyadmin_workspace="$(mktemp -d)"
+trap 'rm -rf -- "$phpmyadmin_workspace"' EXIT
+phpmyadmin_archive="$phpmyadmin_workspace/phpmyadmin.tar.gz"
+phpmyadmin_root="$phpmyadmin_workspace/root"
+
+curl --fail --location --proto '=https' --tlsv1.2 \
+  --output "$phpmyadmin_archive" \
+  "https://files.phpmyadmin.net/phpMyAdmin/$phpmyadmin_version/phpMyAdmin-$phpmyadmin_version-all-languages.tar.gz"
+printf '%s  %s\n' "$phpmyadmin_sha256" "$phpmyadmin_archive" | sha256sum --check --status
+if tar -tzf "$phpmyadmin_archive" | grep -Eq '(^/|(^|/)\.\.(/|$))'; then
+  printf 'phpMyAdmin archive contains an unsafe path.\n' >&2
+  exit 1
+fi
+mkdir -p "$phpmyadmin_root"
+tar -xzf "$phpmyadmin_archive" --strip-components=1 -C "$phpmyadmin_root"
+if find "$phpmyadmin_root" -type l -print -quit | grep -q .; then
+  printf 'phpMyAdmin archive contains a symbolic link.\n' >&2
+  exit 1
+fi
+rm -rf -- "$phpmyadmin_root/setup" "$phpmyadmin_root/examples"
+cp packaging/phpmyadmin/config.inc.php "$phpmyadmin_root/config.inc.php"
+
+rm -rf -- "$output_root"
+mkdir -p "$output_root"
+
+(
+  cd web
+  npm ci
+  npm run build
+)
+
+architectures=(amd64)
+if [[ "$version" == '0.0.0-dev' ]]; then
+  architectures+=(arm64)
+fi
+
+for architecture in "${architectures[@]}"; do
+  bundle_name="stackfort-$version-linux-$architecture"
+  stage_root="$output_root/$bundle_name"
+  mkdir -p "$stage_root/bin" "$stage_root/web" "$stage_root/phpmyadmin" "$stage_root/phpmyadmin-integration"
+
+  GOOS=linux GOARCH="$architecture" CGO_ENABLED=0 \
+    go build -trimpath -ldflags "$linker_flags" -o "$stage_root/bin/stackfort-api" ./cmd/stackfort-api
+  GOOS=linux GOARCH="$architecture" CGO_ENABLED=0 \
+    go build -trimpath -ldflags "$linker_flags" -o "$stage_root/bin/stackfort-agent" ./cmd/stackfort-agent
+  GOOS=linux GOARCH="$architecture" CGO_ENABLED=0 \
+    go build -trimpath -ldflags "$linker_flags" -o "$stage_root/bin/stackfort-installer" ./cmd/stackfort-installer
+  GOOS=linux GOARCH="$architecture" CGO_ENABLED=0 \
+    go build -trimpath -ldflags "$linker_flags" -o "$output_root/stackfort-installer-$version-linux-$architecture" ./cmd/stackfort-installer
+
+  cp -R web/dist/. "$stage_root/web/"
+  cp -R "$phpmyadmin_root"/. "$stage_root/phpmyadmin/"
+  cp packaging/phpmyadmin/config.inc.php packaging/phpmyadmin/signon.php \
+    packaging/phpmyadmin/stackfort-launch.php "$stage_root/phpmyadmin-integration/"
+  cp LICENSE COPYRIGHT.md README.md "$stage_root/"
+  printf '%s\n' "$version" >"$stage_root/VERSION"
+  printf '%s\n' "$commit" >"$stage_root/COMMIT"
+  manifest_arguments=(
+    --destination "$stage_root"
+    --version "$version"
+    --architecture "$architecture"
+  )
+  if [[ "$architecture" == amd64 && -n "$waf_package_directory" && -n "$vinyl_package_directory" ]]; then
+    manifest_arguments+=(--package-dir "$waf_package_directory" --vinyl-package-dir "$vinyl_package_directory")
+  else
+    manifest_arguments+=(--allow-incomplete)
+  fi
+  go run ./cmd/stackfort-release-manifest "${manifest_arguments[@]}"
+  chmod 0755 "$stage_root/bin/stackfort-api" "$stage_root/bin/stackfort-agent" \
+    "$stage_root/bin/stackfort-installer" "$output_root/stackfort-installer-$version-linux-$architecture"
+  find "$stage_root" -type f ! -path '*/bin/*' -exec chmod 0644 {} +
+  find "$stage_root" -type d -exec chmod 0755 {} +
+  find "$stage_root" -exec touch --date="@$source_date_epoch" {} +
+
+  tar --sort=name --mtime="@$source_date_epoch" --owner=0 --group=0 --numeric-owner \
+    -C "$output_root" -cf - "$bundle_name" | gzip -n >"$output_root/$bundle_name.tar.gz"
+  rm -rf -- "$stage_root"
+done
+
+(
+  cd "$output_root"
+  sha256sum ./*.tar.gz ./stackfort-installer-* | sort -k2 >SHA256SUMS
+)
+
+printf 'Release artifacts created in %s\n' "$output_root"

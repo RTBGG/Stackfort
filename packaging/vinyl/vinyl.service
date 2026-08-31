@@ -1,0 +1,40 @@
+[Unit]
+Description=Stackfort Vinyl Cache edge
+After=network.target
+Before=nginx.service
+
+[Service]
+Type=simple
+User=vinyl
+Group=vinyl
+Slice=stackfort-core.slice
+RuntimeDirectory=vinyl-cache
+RuntimeDirectoryMode=0750
+StateDirectory=vinyl-cache
+StateDirectoryMode=0750
+CacheDirectory=vinyl-cache
+CacheDirectoryMode=0750
+ExecStartPre=/usr/libexec/stackfort-vinyl-validate
+ExecStart=/usr/sbin/vinyld -F -a 127.0.0.1:6081 -T 127.0.0.1:6082 -S /etc/vinyl-cache/secret -f /etc/vinyl-cache/stackfort.vcl -n /var/lib/vinyl-cache -s malloc,256m
+ExecReload=/usr/libexec/stackfort-vinyl-reload
+StandardOutput=null
+StandardError=journal
+Restart=on-failure
+RestartSec=2s
+LimitMEMLOCK=512M
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/vinyl-cache /var/cache/vinyl-cache /run/vinyl-cache
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

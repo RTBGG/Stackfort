@@ -24,4 +24,3 @@
 
 # The qualified Coraza connector patch has a repository SHA-256 lock.
 *.patch -text
-

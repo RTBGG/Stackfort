@@ -1,0 +1,130 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  workflow-hygiene:
+    name: Workflow hygiene
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Require immutable action references
+        run: bash scripts/verify-actions-pinned.sh
+      - name: Check shell scripts
+        run: shellcheck scripts/*.sh packaging/installer/*.sh packaging/waf/*.sh
+      - name: Check workflow syntax
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+
+  go:
+    name: Go
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Check formatting
+        run: test -z "$(find cmd internal -type f -name '*.go' -exec gofmt -l {} +)"
+      - name: Run static analysis
+        run: go vet ./...
+      - name: Run race-enabled tests
+        run: go test -race ./...
+      - name: Exercise the agent Unix socket
+        run: bash scripts/test-agent-smoke.sh
+
+  web:
+    name: Web
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Check out source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Check types
+        run: npm run typecheck
+      - name: Reject untranslated critical UI literals
+        run: npm run check:i18n
+      - name: Run tests
+        run: npm test
+      - name: Build production assets
+        run: npm run build
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
+  artifacts:
+    name: Reproducible artifacts
+    needs: [go, web]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Build release-shaped archives
+        env:
+          COMMIT: ${{ github.sha }}
+          SOURCE_DATE_EPOCH: ${{ github.event.repository.updated_at && github.event.repository.updated_at || '0' }}
+          VERSION: 0.0.0-dev
+        run: |
+          export SOURCE_DATE_EPOCH="$(git show -s --format=%ct "$COMMIT")"
+          bash scripts/build-release.sh
+          cp dist/SHA256SUMS /tmp/stackfort-first-build.sha256
+          bash scripts/build-release.sh
+          diff --unified /tmp/stackfort-first-build.sha256 dist/SHA256SUMS
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: stackfort-${{ github.sha }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14

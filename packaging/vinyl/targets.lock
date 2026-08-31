@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# os-id|version-prefix|architecture|format
+debian|13|amd64|deb
+ubuntu|26.04|amd64|deb
+rocky|10|amd64|rpm
