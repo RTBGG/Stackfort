@@ -105,7 +105,7 @@ func (manager *linuxManager) Prepare(
 		ensureOwnedDirectory(manager.scannerCache, manager.stateUID, manager.stateGID, 0o700) != nil {
 		return ociimage.Result{}, ErrConflict
 	}
-	if err := os.Mkdir(transaction, 0o711); err != nil {
+	if err := os.Mkdir(transaction, 0o711); err != nil { // #nosec G301 -- the account needs traverse-only access to its root-owned transaction.
 		if errors.Is(err, os.ErrExist) {
 			return ociimage.Result{}, ErrConflict
 		}
@@ -320,18 +320,40 @@ func contextBoundRequestDigest(specDigest, sourceDigest string) string {
 }
 
 func chownDirectories(root string, uid, gid uint32, chown func(string, int, int) error) error {
-	return filepath.WalkDir(root, func(name string, entry fs.DirEntry, err error) error {
+	directories := make([]string, 0, 32)
+	if err := filepath.WalkDir(root, func(name string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
+		if entry.Type()&os.ModeSymlink != 0 {
+			return ociimage.ErrBuildContext
+		}
 		if entry.IsDir() {
-			if err := chown(name, int(uid), int(gid)); err != nil {
-				return err
-			}
-			return os.Chmod(name, 0o500)
+			directories = append(directories, name)
 		}
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+	// WalkDir visits parents before children. Hand ownership over in reverse so
+	// the account cannot enter the root until every descendant is final.
+	for index := len(directories) - 1; index >= 0; index-- {
+		directory := directories[index]
+		file, err := os.OpenFile(directory, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_DIRECTORY, 0) // #nosec G304 -- collected below a new root-owned transaction snapshot.
+		if err != nil {
+			return err
+		}
+		info, statErr := file.Stat()
+		chmodErr := file.Chmod(0o500) // #nosec G302 -- an account-owned directory requires owner execute for traversal.
+		closeErr := file.Close()
+		if statErr != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 || chmodErr != nil || closeErr != nil {
+			return ociimage.ErrBuildContext
+		}
+		if err := chown(directory, int(uid), int(gid)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (manager *linuxManager) manifestPath(spec ociimage.PrepareSpec) string {

@@ -159,6 +159,33 @@ func TestSnapshotBuildInputsBindsContentAndNormalizedExecutableMode(t *testing.T
 	}
 }
 
+func TestChownDirectoriesHandsSnapshotRootOverLast(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "a", "b"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chmod(root, 0o700)
+		_ = os.Chmod(filepath.Join(root, "a"), 0o700)
+		_ = os.Chmod(filepath.Join(root, "a", "b"), 0o700)
+	})
+	changed := make([]string, 0, 3)
+	if err := chownDirectories(root, uint32(os.Getuid()), uint32(os.Getgid()), func(name string, _, _ int) error {
+		relative, err := filepath.Rel(root, name)
+		if err != nil {
+			return err
+		}
+		changed = append(changed, filepath.ToSlash(relative))
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"a/b", "a", "."}; !reflect.DeepEqual(changed, want) {
+		t.Fatalf("ownership order = %#v, want %#v", changed, want)
+	}
+}
+
 type imageCommandRunner struct {
 	transactions string
 	report       string
