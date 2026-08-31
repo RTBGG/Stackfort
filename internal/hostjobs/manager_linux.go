@@ -333,7 +333,8 @@ func atomicWriteUnit(path string, content []byte, mode os.FileMode) error {
 }
 
 func syncDirectory(path string) error {
-	directory, err := os.Open(path)
+	// Callers provide the validated fixed systemd unit root or the parent of a validated unit path.
+	directory, err := os.Open(path) // #nosec G304 -- Validated systemd directory used only for fsync.
 	if err != nil {
 		return err
 	}
