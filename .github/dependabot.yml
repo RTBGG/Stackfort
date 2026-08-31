@@ -7,9 +7,16 @@ updates:
     groups:
       frontend-minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: typescript
+        versions: ["7.x"]
     open-pull-requests-limit: 5
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    groups:
+      codeql:
+        patterns:
+          - github/codeql-action/*
     open-pull-requests-limit: 5
