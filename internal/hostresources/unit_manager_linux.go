@@ -51,7 +51,20 @@ func (manager *linuxUnitManager) Reconcile(spec hostingresources.Spec, processor
 	}
 	changed := false
 	for _, unit := range units {
-		unitChanged, err := reconcileUnitFile(directoryFD, unit)
+		parentFD := directoryFD
+		if unit.directory != "" {
+			parentFD, err = ensureUnitDropInDirectory(directoryFD, unit.directory)
+			if err != nil {
+				return false, err
+			}
+		}
+		unitChanged, err := reconcileUnitFile(parentFD, unit)
+		if parentFD != directoryFD {
+			if unitChanged && err == nil && unix.Fsync(parentFD) != nil {
+				err = ErrMutationFailed
+			}
+			_ = unix.Close(parentFD)
+		}
 		if err != nil {
 			return false, err
 		}
@@ -61,6 +74,33 @@ func (manager *linuxUnitManager) Reconcile(spec hostingresources.Spec, processor
 		return false, ErrMutationFailed
 	}
 	return changed, nil
+}
+
+func ensureUnitDropInDirectory(directoryFD int, name string) (int, error) {
+	if name == "" || name == "." || name == ".." || strings.Contains(name, "/") ||
+		!strings.HasPrefix(name, "user@") || !strings.HasSuffix(name, ".service.d") {
+		return -1, ErrMutationFailed
+	}
+	fd, err := unix.Openat(directoryFD, name, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
+	if errors.Is(err, unix.ENOENT) {
+		if err := unix.Mkdirat(directoryFD, name, 0o755); err != nil && !errors.Is(err, unix.EEXIST) {
+			return -1, ErrMutationFailed
+		}
+		fd, err = unix.Openat(directoryFD, name, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
+	}
+	if err != nil {
+		if errors.Is(err, unix.ELOOP) || errors.Is(err, unix.ENOTDIR) {
+			return -1, ErrConflict
+		}
+		return -1, ErrMutationFailed
+	}
+	var stat unix.Stat_t
+	if unix.Fstat(fd, &stat) != nil || stat.Uid != 0 || stat.Gid != 0 ||
+		stat.Mode&unix.S_IFMT != unix.S_IFDIR || stat.Mode&0o022 != 0 {
+		_ = unix.Close(fd)
+		return -1, ErrConflict
+	}
+	return fd, nil
 }
 
 func reconcileUnitFile(directoryFD int, unit renderedUnit) (bool, error) {
@@ -161,7 +201,10 @@ func (manager *linuxUnitManager) Verify(spec hostingresources.Spec) (string, err
 	if err != nil {
 		return "", ErrMutationFailed
 	}
-	controlGroup := "/stackfort.slice/stackfort-accounts.slice/" + unit
+	controlGroup, err := hostingresources.AccountControlGroup(spec.Identity.UID)
+	if err != nil {
+		return "", ErrMutationFailed
+	}
 	directory := filepath.Join(manager.cgroupRoot, "stackfort.slice", "stackfort-accounts.slice", unit)
 	if err := verifyCPU(filepath.Join(directory, "cpu.max"), spec.CPUQuotaPercent); err != nil {
 		return "", err

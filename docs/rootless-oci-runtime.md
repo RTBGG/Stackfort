@@ -45,6 +45,7 @@ The derived paths are also fixed:
 | Rootless storage | `/srv/hosting/accounts/<account>/.local/share/containers` | account UID:GID, `0700` |
 | User runtime | `/run/user/<uid>` | account UID:GID, `0700` |
 | Future Quadlets | `/etc/containers/systemd/users/<uid>` | root:root, `0755` |
+| User-manager placement | `/etc/systemd/system/user@<uid>.service.d/50-stackfort-account-boundary.conf` | root:root, `0644` |
 
 Creation walks directory descriptors without following symlinks. Existing
 objects with unexpected type, ownership, link behavior, or writable trusted
@@ -66,8 +67,9 @@ configuration, or future application schema.
 
 Runtime preparation occurs through staged, replay-safe Unix identity calls.
 The base call creates the group, user, and empty account root. Stackfort then
-assigns the project and creates the quota-controlled layout before the runtime
-call performs these steps:
+assigns the project and creates the quota-controlled layout, reconciles the
+account slice and user-manager drop-in, and only then performs the runtime
+call:
 
 1. inspect all OCI prerequisites without mutation;
 2. add and re-read the exact subordinate UID/GID ranges;
@@ -76,6 +78,13 @@ call performs these steps:
 5. create and verify the fixed storage and Quadlet directories below the
    already project-inheriting account root; and
 6. reject any per-user Podman API socket before returning success.
+
+`user@<uid>.service` is placed directly below
+`stackfort-accounts-<uid>.slice`. Its delegated `app.slice` and every rootless
+Quadlet are therefore hierarchical descendants of the same package boundary
+already used directly by PHP pools and scheduled jobs. Reconciliation detects
+and migrates a previously active manager outside that path, and verifies the
+live cgroup rather than trusting the drop-in alone.
 
 The control database records an immutable `oci_runtime_reconciled_at` marker.
 Identity, filesystem, and resource reconciliation alone no longer make an

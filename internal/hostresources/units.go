@@ -13,8 +13,9 @@ import (
 const managedUnitHeader = "# Managed by Stackfort. Do not edit.\n"
 
 type renderedUnit struct {
-	name    string
-	content string
+	directory string
+	name      string
+	content   string
 }
 
 func renderUnits(spec hostingresources.Spec, processorCount int) ([]renderedUnit, error) {
@@ -71,9 +72,20 @@ TasksAccounting=yes
 	if strings.Contains(account.String(), "\x00") {
 		return nil, fmt.Errorf("%w: rendered unit contains NUL", ErrMutationFailed)
 	}
+	userManager, err := hostingresources.UserManagerUnitName(spec.Identity.UID)
+	if err != nil {
+		return nil, ErrMutationFailed
+	}
+	userManagerDropIn := managedUnitHeader + `[Service]
+Slice=` + accountUnit + `
+`
 	return []renderedUnit{
 		{name: "stackfort-core.slice", content: core},
 		{name: "stackfort-accounts.slice", content: accounts},
 		{name: accountUnit, content: account.String()},
+		{
+			directory: userManager + ".d", name: "50-stackfort-account-boundary.conf",
+			content: userManagerDropIn,
+		},
 	}, nil
 }

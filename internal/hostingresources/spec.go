@@ -89,6 +89,36 @@ func AccountSliceName(uid uint32) (string, error) {
 	return "stackfort-accounts-" + strconv.FormatUint(uint64(uid), 10) + ".slice", nil
 }
 
+// AccountControlGroup is the canonical cgroup-v2 path for every workload that
+// belongs to one hosting identity.
+func AccountControlGroup(uid uint32) (string, error) {
+	unit, err := AccountSliceName(uid)
+	if err != nil {
+		return "", err
+	}
+	return "/stackfort.slice/stackfort-accounts.slice/" + unit, nil
+}
+
+// UserManagerUnitName returns the only system user-manager instance that may
+// own rootless OCI workloads for a managed hosting identity.
+func UserManagerUnitName(uid uint32) (string, error) {
+	if _, err := AccountSliceName(uid); err != nil {
+		return "", err
+	}
+	return "user@" + strconv.FormatUint(uint64(uid), 10) + ".service", nil
+}
+
+// UserManagerControlGroup is the expected delegated subtree for the managed
+// user manager and all rootless Quadlet processes below it.
+func UserManagerControlGroup(uid uint32) (string, error) {
+	account, err := AccountControlGroup(uid)
+	if err != nil {
+		return "", err
+	}
+	unit, _ := UserManagerUnitName(uid)
+	return account + "/" + unit, nil
+}
+
 // ParseAccountSliceName validates and extracts the managed UID from a slice
 // name without accepting another systemd unit namespace.
 func ParseAccountSliceName(name string) (uint32, error) {

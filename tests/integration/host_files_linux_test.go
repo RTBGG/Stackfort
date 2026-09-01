@@ -34,7 +34,7 @@ func TestDisposableHostFileManagerNavigation(t *testing.T) {
 	if os.Geteuid() != 0 {
 		t.Fatal("disposable host integration test must run as root")
 	}
-	identity := disposableIdentity(t, availableManagedID(t, 589_000))
+	identity := disposableIdentity(t, availableManagedID(t, 249_000))
 	t.Cleanup(func() { cleanupIdentity(t, identity) })
 	if _, err := hostidentity.NewReconciler().ReconcileBase(t.Context(), identity); err != nil {
 		t.Fatalf("reconcile identity: %v", err)
@@ -159,7 +159,7 @@ func TestDisposableHostFileArchiveOperations(t *testing.T) {
 	if helper == "" {
 		t.Fatal("STACKFORT_AGENT_HELPER must name the separately built stackfort-agent binary")
 	}
-	identity := disposableIdentity(t, availableManagedID(t, 585_000))
+	identity := disposableIdentity(t, availableManagedID(t, 249_020))
 	t.Cleanup(func() { cleanupIdentity(t, identity) })
 	if _, err := hostidentity.NewReconciler().ReconcileBase(t.Context(), identity); err != nil {
 		t.Fatalf("reconcile identity: %v", err)
@@ -404,7 +404,7 @@ func TestDisposableHostFileManagerDownload(t *testing.T) {
 	if helper == "" {
 		t.Fatal("STACKFORT_AGENT_HELPER must name the separately built stackfort-agent binary")
 	}
-	identity := disposableIdentity(t, availableManagedID(t, 588_000))
+	identity := disposableIdentity(t, availableManagedID(t, 249_040))
 	t.Cleanup(func() { cleanupIdentity(t, identity) })
 	if _, err := hostidentity.NewReconciler().ReconcileBase(t.Context(), identity); err != nil {
 		t.Fatalf("reconcile identity: %v", err)
@@ -516,7 +516,7 @@ func TestDisposableHostFileManagerWrite(t *testing.T) {
 	if helper == "" {
 		t.Fatal("STACKFORT_AGENT_HELPER must name the separately built stackfort-agent binary")
 	}
-	identity := disposableIdentity(t, availableManagedID(t, 587_000))
+	identity := disposableIdentity(t, availableManagedID(t, 249_060))
 	t.Cleanup(func() { cleanupIdentity(t, identity) })
 	if _, err := hostidentity.NewReconciler().ReconcileBase(t.Context(), identity); err != nil {
 		t.Fatalf("reconcile identity: %v", err)
@@ -654,7 +654,7 @@ func TestDisposableHostFileManagerOperations(t *testing.T) {
 	if helper == "" {
 		t.Fatal("STACKFORT_AGENT_HELPER must name the separately built stackfort-agent binary")
 	}
-	identity := disposableIdentity(t, availableManagedID(t, 586_000))
+	identity := disposableIdentity(t, availableManagedID(t, 249_080))
 	t.Cleanup(func() { cleanupIdentity(t, identity) })
 	if _, err := hostidentity.NewReconciler().ReconcileBase(t.Context(), identity); err != nil {
 		t.Fatalf("reconcile identity: %v", err)

@@ -46,7 +46,9 @@ func TestReconcileWritesStartsAppliesAndVerifiesFixedSlice(t *testing.T) {
 	t.Parallel()
 	spec := resourceSpec(t)
 	values, _ := hostingresources.InvocationValues(spec)
-	commands := &fakeResourceCommands{}
+	commands := &fakeResourceCommands{result: agentexec.Result{
+		Stdout: "ActiveState=inactive\nControlGroup=\n",
+	}}
 	units := &fakeUnitManager{changed: true, controlGroup: "/stackfort.slice/stackfort-accounts.slice/stackfort-accounts-200000.slice"}
 	reconciler := &Reconciler{
 		capabilities: availableResourceCapabilities(), commands: commands, units: units,
@@ -64,9 +66,59 @@ func TestReconcileWritesStartsAppliesAndVerifiesFixedSlice(t *testing.T) {
 		{Profile: agentexec.ProfileSystemdDaemonReload},
 		{Profile: agentexec.ProfileSystemdStartAccountSlice, Values: values},
 		{Profile: agentexec.ProfileSystemdApplyAccountLimits, Values: values},
+		{Profile: agentexec.ProfileSystemdShowAccountUserManager, Values: values},
 	}
 	if units.processorCount != 8 || !reflect.DeepEqual(commands.invocations, want) {
 		t.Fatalf("processor count = %d, invocations = %#v", units.processorCount, commands.invocations)
+	}
+}
+
+func TestReconcileMovesAnExistingUserManagerIntoTheAccountBoundary(t *testing.T) {
+	t.Parallel()
+	spec := resourceSpec(t)
+	values, _ := hostingresources.InvocationValues(spec)
+	wanted, _ := hostingresources.UserManagerControlGroup(spec.Identity.UID)
+	commands := &fakeResourceCommands{results: map[agentexec.ProfileID][]agentexec.Result{
+		agentexec.ProfileSystemdShowAccountUserManager: {
+			{Stdout: "ActiveState=active\nControlGroup=/user.slice/user-200000.slice/user@200000.service\n"},
+			{Stdout: "ControlGroup=" + wanted + "\nActiveState=active\n"},
+		},
+	}}
+	reconciler := &Reconciler{
+		capabilities: availableResourceCapabilities(), commands: commands,
+		units:      &fakeUnitManager{controlGroup: "/stackfort.slice/stackfort-accounts.slice/stackfort-accounts-200000.slice"},
+		processors: func() int { return 4 },
+	}
+	result, err := reconciler.Reconcile(t.Context(), spec)
+	if err != nil || result.UserManagerControlGroup != wanted {
+		t.Fatalf("Reconcile = %#v, %v", result, err)
+	}
+	want := []agentexec.Invocation{
+		{Profile: agentexec.ProfileSystemdDaemonReload},
+		{Profile: agentexec.ProfileSystemdStartAccountSlice, Values: values},
+		{Profile: agentexec.ProfileSystemdApplyAccountLimits, Values: values},
+		{Profile: agentexec.ProfileSystemdShowAccountUserManager, Values: values},
+		{Profile: agentexec.ProfileSystemdRestartAccountUserManager, Values: values},
+		{Profile: agentexec.ProfileSystemdShowAccountUserManager, Values: values},
+	}
+	if !reflect.DeepEqual(commands.invocations, want) {
+		t.Fatalf("invocations = %#v", commands.invocations)
+	}
+}
+
+func TestReconcileRejectsAmbiguousUserManagerState(t *testing.T) {
+	t.Parallel()
+	spec := resourceSpec(t)
+	commands := &fakeResourceCommands{result: agentexec.Result{
+		Stdout: "ActiveState=active\nActiveState=inactive\nControlGroup=\n",
+	}}
+	reconciler := &Reconciler{
+		capabilities: availableResourceCapabilities(), commands: commands,
+		units:      &fakeUnitManager{controlGroup: "/stackfort.slice/stackfort-accounts.slice/stackfort-accounts-200000.slice"},
+		processors: func() int { return 4 },
+	}
+	if _, err := reconciler.Reconcile(t.Context(), spec); !errors.Is(err, ErrMutationFailed) {
+		t.Fatalf("Reconcile error = %v", err)
 	}
 }
 
@@ -77,7 +129,7 @@ func TestRenderUnitsReservesHostCapacityAndMapsAllAccountLimits(t *testing.T) {
 	if err != nil {
 		t.Fatalf("renderUnits: %v", err)
 	}
-	if len(units) != 3 || units[1].name != "stackfort-accounts.slice" ||
+	if len(units) != 4 || units[1].name != "stackfort-accounts.slice" ||
 		!strings.Contains(units[1].content, "CPUQuota=320%\n") ||
 		!strings.Contains(units[1].content, "MemoryMax=80%\n") ||
 		!strings.Contains(units[0].content, "MemoryLow=20%\n") {
@@ -91,6 +143,11 @@ func TestRenderUnitsReservesHostCapacityAndMapsAllAccountLimits(t *testing.T) {
 		if !strings.Contains(account, line) {
 			t.Fatalf("account unit omitted %q:\n%s", line, account)
 		}
+	}
+	if units[3].directory != "user@200000.service.d" ||
+		units[3].name != "50-stackfort-account-boundary.conf" ||
+		!strings.Contains(units[3].content, "[Service]\nSlice=stackfort-accounts-200000.slice\n") {
+		t.Fatalf("user manager drop-in = %#v", units[3])
 	}
 }
 
@@ -120,11 +177,17 @@ func availableCapability() agentprotocol.Capability {
 type fakeResourceCommands struct {
 	invocations []agentexec.Invocation
 	result      agentexec.Result
+	results     map[agentexec.ProfileID][]agentexec.Result
 	err         error
 }
 
 func (commands *fakeResourceCommands) Run(_ context.Context, invocation agentexec.Invocation) (agentexec.Result, error) {
 	commands.invocations = append(commands.invocations, invocation)
+	if results := commands.results[invocation.Profile]; len(results) > 0 {
+		result := results[0]
+		commands.results[invocation.Profile] = results[1:]
+		return result, commands.err
+	}
 	return commands.result, commands.err
 }
 

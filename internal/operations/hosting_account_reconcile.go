@@ -111,21 +111,21 @@ func (handler *HostingAccountReconcileHandler) Run(
 	if err != nil || filesystem.ProjectID != payload.Storage.ProjectID {
 		return nil, classifyHostingAccountAgentFailure(err)
 	}
-	if err := reporter.Checkpoint(ctx, "oci_runtime", 50, "hosting_account.reconcile.oci_runtime", nil); err != nil {
-		return nil, err
-	}
-	if _, err := handler.client.ReconcileHostingOCIRuntime(
-		ctx, string(operation.ID)+"-oci-runtime", correlation, payload.Identity,
-	); err != nil {
-		return nil, classifyHostingAccountAgentFailure(err)
-	}
-	if err := reporter.Checkpoint(ctx, "resources", 70, "hosting_account.reconcile.resources", nil); err != nil {
+	if err := reporter.Checkpoint(ctx, "resources", 50, "hosting_account.reconcile.resources", nil); err != nil {
 		return nil, err
 	}
 	resources, err := handler.client.ReconcileHostingResources(
 		ctx, string(operation.ID)+"-resources", correlation, payload.Resources,
 	)
 	if err != nil || resources.UID != payload.Identity.UID {
+		return nil, classifyHostingAccountAgentFailure(err)
+	}
+	if err := reporter.Checkpoint(ctx, "oci_runtime", 70, "hosting_account.reconcile.oci_runtime", nil); err != nil {
+		return nil, err
+	}
+	if _, err := handler.client.ReconcileHostingOCIRuntime(
+		ctx, string(operation.ID)+"-oci-runtime", correlation, payload.Identity,
+	); err != nil {
 		return nil, classifyHostingAccountAgentFailure(err)
 	}
 	if err := reporter.Checkpoint(ctx, "confirming", 90, "hosting_account.reconcile.confirming", nil); err != nil {

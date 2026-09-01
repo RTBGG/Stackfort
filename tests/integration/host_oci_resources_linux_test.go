@@ -5,18 +5,22 @@
 package integration_test
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/RTBGG/stackfort/internal/hostfilesystem"
 	"github.com/RTBGG/stackfort/internal/hostidentity"
 	"github.com/RTBGG/stackfort/internal/hostingidentity"
+	"github.com/RTBGG/stackfort/internal/hostingresources"
 	"github.com/RTBGG/stackfort/internal/hostingstorage"
 	"github.com/RTBGG/stackfort/internal/hostociresources"
+	"github.com/RTBGG/stackfort/internal/hostresources"
 	"github.com/RTBGG/stackfort/internal/ociapps"
 	"github.com/RTBGG/stackfort/internal/ociresources"
 	"github.com/google/uuid"
@@ -34,7 +38,7 @@ func TestDisposableHostOCIPrivateResources(t *testing.T) {
 	second := disposableIdentity(t, availableManagedID(t, first.UID+1))
 	for _, identity := range []hostingidentity.Spec{second, first} {
 		identity := identity
-		t.Cleanup(func() { cleanupIdentity(t, identity) })
+		t.Cleanup(func() { cleanupOCIRuntimeIdentity(t, identity) })
 	}
 	for _, identity := range []hostingidentity.Spec{first, second} {
 		if _, err := hostidentity.NewReconciler().ReconcileBase(t.Context(), identity); err != nil {
@@ -45,9 +49,26 @@ func TestDisposableHostOCIPrivateResources(t *testing.T) {
 		}); err != nil {
 			t.Fatalf("reconcile filesystem %s: %v", identity.Username, err)
 		}
+		boundary, err := hostresources.NewReconciler().Reconcile(t.Context(), hostingresources.Spec{
+			Identity: identity,
+		})
+		if err != nil {
+			t.Fatalf("reconcile resources %s: %v", identity.Username, err)
+		}
+		t.Cleanup(func() { cleanupResourceSlice(t, boundary.UnitName) })
 		if _, err := hostidentity.NewReconciler().ReconcileRuntime(t.Context(), identity); err != nil {
 			t.Fatalf("reconcile OCI runtime %s: %v", identity.Username, err)
 		}
+		wanted, _ := hostingresources.UserManagerControlGroup(identity.UID)
+		unit, _ := hostingresources.UserManagerUnitName(identity.UID)
+		if actual := systemdProperty(t, unit, "ControlGroup"); actual != wanted {
+			t.Fatalf("user manager %s cgroup = %q, want %q", identity.Username, actual, wanted)
+		}
+	}
+	firstManager, _ := hostingresources.UserManagerUnitName(first.UID)
+	managerPID := systemdProperty(t, firstManager, "MainPID")
+	if managerPID == "" || managerPID == "0" || runAs(second, "/bin/kill", "-0", managerPID) == nil {
+		t.Fatalf("cross-account process signaling was not rejected: pid=%q", managerPID)
 	}
 
 	applicationID := mustIntegrationUUIDv7(t)
@@ -125,6 +146,23 @@ func TestDisposableHostOCIPrivateResources(t *testing.T) {
 	}
 
 	t.Log("STACKFORT_QUALIFICATION oci-private-resources=passed")
+}
+
+func cleanupOCIRuntimeIdentity(t *testing.T, identity hostingidentity.Spec) {
+	t.Helper()
+	if filepath.Dir(identity.HomeDirectory) != hostingidentity.ManagedAccountsRoot {
+		t.Errorf("refusing unsafe OCI identity cleanup path %q", identity.HomeDirectory)
+		return
+	}
+	if err := os.RemoveAll(identity.HomeDirectory); err != nil {
+		t.Errorf("remove OCI account home: %v", err)
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	if _, err := hostidentity.NewReconciler().Delete(ctx, identity); err != nil {
+		t.Errorf("delete OCI runtime identity: %v", err)
+	}
 }
 
 func runRootlessPodman(identity hostingidentity.Spec, arguments ...string) ([]byte, error) {

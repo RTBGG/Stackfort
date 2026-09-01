@@ -32,7 +32,7 @@ func TestDisposableHostLocalBackupRestore(t *testing.T) {
 	if helper == "" {
 		t.Fatal("STACKFORT_AGENT_HELPER must name the separately built stackfort-agent binary")
 	}
-	identity := disposableIdentity(t, availableManagedID(t, 584_000))
+	identity := disposableIdentity(t, availableManagedID(t, 249_200))
 	t.Cleanup(func() {
 		cleanupBackupRepository(t, identity)
 		cleanupIdentity(t, identity)

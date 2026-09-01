@@ -13,14 +13,18 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/RTBGG/stackfort/internal/hostfilesystem"
 	"github.com/RTBGG/stackfort/internal/hostidentity"
+	"github.com/RTBGG/stackfort/internal/hostingidentity"
+	"github.com/RTBGG/stackfort/internal/hostingresources"
 	"github.com/RTBGG/stackfort/internal/hostingstorage"
 	"github.com/RTBGG/stackfort/internal/hostocideployment"
 	"github.com/RTBGG/stackfort/internal/hostociresources"
+	"github.com/RTBGG/stackfort/internal/hostresources"
 	"github.com/RTBGG/stackfort/internal/ociapps"
 	"github.com/RTBGG/stackfort/internal/ocideployment"
 	"github.com/RTBGG/stackfort/internal/ociresources"
@@ -49,6 +53,17 @@ func TestDisposableHostOCIDeploymentLifecycle(t *testing.T) {
 		Identity: identity, ProjectID: identity.UID}); err != nil {
 		t.Fatal(err)
 	}
+	accountResources := hostingresources.Spec{
+		Identity:     identity,
+		MemoryBytes:  hostingresources.OptionalUint64{Set: true, Value: 256 << 20},
+		SwapBytes:    hostingresources.OptionalUint64{Set: true, Value: 0},
+		ProcessLimit: hostingresources.OptionalUint64{Set: true, Value: 128},
+	}
+	accountBoundary, err := hostresources.NewReconciler().Reconcile(t.Context(), accountResources)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { cleanupResourceSlice(t, accountBoundary.UnitName) })
 	if _, err := hostidentity.NewReconciler().ReconcileRuntime(t.Context(), identity); err != nil {
 		t.Fatal(err)
 	}
@@ -103,6 +118,7 @@ func TestDisposableHostOCIDeploymentLifecycle(t *testing.T) {
 	if err != nil || deployed.State != ocideployment.StateActive || !deployed.Healthy || deployed.Deployment == nil {
 		t.Fatalf("deploy = %#v / %v", deployed, err)
 	}
+	assertOCIAccountBoundary(t, identity, spec, accountResources, accountBoundary.ControlGroup)
 	if _, err := runRootlessPodman(identity, "secret", "inspect", ocideployment.SecretName(spec.EnvironmentReferences[0])); err != nil {
 		t.Fatalf("deployment secret is missing: %v", err)
 	}
@@ -175,6 +191,58 @@ func TestDisposableHostOCIDeploymentLifecycle(t *testing.T) {
 		t.Fatal("deployment secret remains after remove")
 	}
 	t.Log("STACKFORT_QUALIFICATION oci-deployment-lifecycle=passed")
+}
+
+func assertOCIAccountBoundary(
+	t *testing.T, identity hostingidentity.Spec, deployment ocideployment.Spec,
+	resources hostingresources.Spec, accountControlGroup string,
+) {
+	t.Helper()
+	wantedManager, err := hostingresources.UserManagerControlGroup(identity.UID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	userManager := "user@" + strconv.FormatUint(uint64(identity.UID), 10) + ".service"
+	if actual := systemdProperty(t, userManager, "ControlGroup"); actual != wantedManager {
+		t.Fatalf("user manager control group = %q, want %q", actual, wantedManager)
+	}
+	container := ocideployment.ContainerName(deployment.ApplicationID)
+	pidOutput, err := runRootlessPodman(identity, "inspect", "--format", "{{.State.Pid}}", container)
+	pid, parseErr := strconv.Atoi(strings.TrimSpace(string(pidOutput)))
+	if err != nil || parseErr != nil || pid < 2 {
+		t.Fatalf("inspect container PID: %v / %v / %q", err, parseErr, pidOutput)
+	}
+	cgroup, err := os.ReadFile(filepath.Join("/proc", strconv.Itoa(pid), "cgroup"))
+	if err != nil || !strings.Contains(string(cgroup), "0::"+wantedManager+"/") {
+		t.Fatalf("container cgroup = %q / %v, want descendant of %q", cgroup, err, wantedManager)
+	}
+	info, err := os.Stat(filepath.Join("/proc", strconv.Itoa(pid)))
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	if err != nil || !ok || stat.Uid == 0 {
+		t.Fatalf("rootless container host UID = %#v / %v", stat, err)
+	}
+
+	cgroupRoot := filepath.Join("/sys/fs/cgroup", strings.TrimPrefix(accountControlGroup, "/"))
+	pidsBefore := cgroupEvent(t, filepath.Join(cgroupRoot, "pids.events"), "max")
+	currentBytes, err := os.ReadFile(filepath.Join(cgroupRoot, "pids.current"))
+	current, parseErr := strconv.ParseUint(strings.TrimSpace(string(currentBytes)), 10, 64)
+	if err != nil || parseErr != nil {
+		t.Fatalf("read account pids.current: %v / %v", err, parseErr)
+	}
+	limited := resources
+	limited.ProcessLimit = hostingresources.OptionalUint64{Set: true, Value: current + 4}
+	if _, err := hostresources.NewReconciler().Reconcile(t.Context(), limited); err != nil {
+		t.Fatalf("apply OCI exhaustion limit: %v", err)
+	}
+	_, _ = runRootlessPodman(identity, "exec", container, "/bin/sh", "-c",
+		`n=0; while [ "$n" -lt 32 ]; do /bin/sleep 2 & n=$((n+1)); done; wait`)
+	pidsAfter := cgroupEvent(t, filepath.Join(cgroupRoot, "pids.events"), "max")
+	if pidsAfter <= pidsBefore {
+		t.Fatalf("OCI process exhaustion was not contained: before=%d after=%d", pidsBefore, pidsAfter)
+	}
+	if _, err := hostresources.NewReconciler().Reconcile(t.Context(), resources); err != nil {
+		t.Fatalf("restore OCI account limits: %v", err)
+	}
 }
 
 func availableLoopbackPort(t *testing.T) int {

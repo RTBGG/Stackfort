@@ -32,11 +32,16 @@ which must remain distinguishable because zero disables account swap.
    live. Refuse to adopt another file at a managed unit name.
 6. Report success only after verifying the corresponding `cpu.max`,
    `cpu.weight`, `memory.max`, `memory.swap.max`, and `pids.max` files.
+7. Place each managed `user@<UID>.service` through an exact root-owned drop-in
+   below the same account slice. Reconcile resources before starting the
+   rootless runtime; inspect live placement and migrate an already active user
+   manager through fixed systemd profiles when necessary.
 
 ## Consequences
 
-- All account workload units must explicitly use the account slice; otherwise
-  a UID alone does not place a process in the resource boundary.
+- PHP and job units explicitly use the account slice. Rootless Quadlets inherit
+  it through the delegated per-account user manager; a UID alone still does
+  not place a process in the resource boundary.
 - Account limits remain hierarchical: an account's configured maximum may be
   further constrained by the aggregate customer ceiling under contention.
 - `TasksMax` limits tasks/threads, not only process leaders.

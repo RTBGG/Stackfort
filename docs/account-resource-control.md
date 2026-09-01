@@ -17,6 +17,10 @@ stackfort.slice
 ├── stackfort-core.slice
 └── stackfort-accounts.slice
     └── stackfort-accounts-<UID>.slice
+        ├── stackfort-php-<UID>-*.service
+        ├── stackfort-job-<UID>-*.service
+        └── user@<UID>.service
+            └── app.slice/... (rootless Quadlets)
 ```
 
 `stackfort-accounts.slice` receives `CPUQuota=<online CPUs × 80>%` and
@@ -58,13 +62,23 @@ resource spec and audit correlation. The caller cannot select a unit name,
 property, executable, raw argument, or path. The agent:
 
 1. rechecks systemd, unified cgroup v2, and CPU/memory/PIDs controllers;
-2. renders the two platform slices and the UID-derived account slice;
+2. renders the two platform slices, the UID-derived account slice, and one
+   exact `user@<UID>.service.d/50-stackfort-account-boundary.conf` drop-in;
 3. refuses an existing symlink, insecure/oversized file, or file without the
    Stackfort ownership marker;
 4. replaces changed units atomically, reloads systemd, starts the account
    slice, and applies all live properties in one fixed `set-property` call; and
-5. reads `cpu.max`, `cpu.weight`, `memory.max`, `memory.swap.max`, and
+5. inspects the account user manager, restarts it through a fixed derived
+   profile only when it is active outside the boundary, and verifies its exact
+   cgroup; and
+6. reads `cpu.max`, `cpu.weight`, `memory.max`, `memory.swap.max`, and
    `pids.max`, returning success only when every value matches.
+
+The provisioning sequence is identity, project-backed filesystem, resources,
+then rootless runtime. Consequently the first user-manager start is already
+below the account slice. An unconditional bounded daemon reload closes the
+write-before-reload crash gap, while inactive managers are not started merely
+to apply resource intent.
 
 Systemd documents that `set-property` applies supported resource settings
 immediately and can set multiple properties together; the runtime overlay is
@@ -79,3 +93,10 @@ applied/blocked persistence. The disposable root integration test runs on
 Debian 13, Ubuntu 26.04, and Rocky Linux 10. It verifies a live limit change,
 observes a rejected fork in `pids.events`, and observes an over-limit memory
 probe killed inside the account cgroup through `memory.events`.
+The Phase 5 matrix additionally verifies that the rootless user manager and
+container PID are descendants of the same account path, triggers the parent
+`pids.max` from inside a live OCI container, and confirms placement after a
+real reboot. See the
+[Phase 5 result](../infra/host-tests/results/2026-09-01-oci-phase5-exit-matrix-hyper-v.md)
+and systemd's upstream
+[`Slice=` resource-control contract](https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html).

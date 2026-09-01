@@ -39,7 +39,7 @@ func TestDisposableHostDomainLogPrivacyAndRetention(t *testing.T) {
 		t.Fatalf("reconcile NGINX baseline: %v", err)
 	}
 
-	identity := disposableIdentity(t, availableManagedID(t, 596_000))
+	identity := disposableIdentity(t, availableManagedID(t, 249_300))
 	t.Cleanup(func() { cleanupIdentity(t, identity) })
 	t.Cleanup(func() { removeDisposableDomainLogDirectory(t, identity.AccountID) })
 	activated := false
@@ -139,7 +139,7 @@ func TestDisposableHostDomainLogPrivacyAndRetention(t *testing.T) {
 		t.Fatalf("read prior access log page = %#v, %v", second, err)
 	}
 
-	foreign := disposableIdentity(t, availableManagedID(t, 596_500))
+	foreign := disposableIdentity(t, availableManagedID(t, 249_350))
 	if _, err := manager.Read(t.Context(), agentprotocol.HostingLogReadRequest{
 		Identity: foreign, Domain: domain, Kind: agentprotocol.HostingLogAccess, Limit: 1,
 	}); !errors.Is(err, hostlogs.ErrNotFound) {
@@ -160,7 +160,7 @@ func TestDisposableHostDomainLogPrivacyAndRetention(t *testing.T) {
 		}
 	}
 
-	symlinkIdentity := disposableIdentity(t, availableManagedID(t, 597_000))
+	symlinkIdentity := disposableIdentity(t, availableManagedID(t, 249_400))
 	symlinkPath := filepath.Join(hostinglogs.RootDirectory, symlinkIdentity.AccountID)
 	if err := os.Symlink("/etc", symlinkPath); err != nil {
 		t.Fatalf("create log-directory symlink fixture: %v", err)

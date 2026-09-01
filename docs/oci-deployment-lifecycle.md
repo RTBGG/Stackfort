@@ -75,10 +75,16 @@ and operation replay. On 2026-09-01 the focused production manager test passed
 on the disposable Debian 13 Hyper-V guest with real rootless Podman and systemd:
 deploy and health, loopback-only ingress, replay, bounded logs, suspend, resume,
 rollback, removal, secret retirement, and clean identity teardown all passed.
-The three-distribution resource/isolation/reboot matrix remains L-006.
+The L-006 exit matrix now passes on Debian 13, Ubuntu 26.04, and Rocky Linux
+10. It verifies the exact account/user-manager/container cgroup ancestry,
+parent PID exhaustion from inside the container, generic memory OOM behavior,
+loopback-only ingress, hostile policy inputs, cross-account filesystem/network/
+process isolation, and healthy automatic recovery after a real guest reboot.
 
 See [ADR 0058](adr/0058-health-gated-rootless-quadlet-lifecycle.md) and the
 [qualification record](../infra/host-tests/results/2026-09-01-oci-deployment-lifecycle-hyper-v.md).
+The complete Phase 5 evidence is in the
+[exit-matrix record](../infra/host-tests/results/2026-09-01-oci-phase5-exit-matrix-hyper-v.md).
 
 Upstream references:
 

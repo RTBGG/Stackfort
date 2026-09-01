@@ -145,17 +145,17 @@ replacement and why the proprietary module is not a Stackfort dependency.
 
 ## Phase 5: Rootless OCI applications
 
-- Constrained application/project schema.
-- Image pull by digest, build limits, private networking, health checks, logs,
+- [x] Constrained application/project schema.
+- [x] Image pull by digest, build limits, private networking, health checks, logs,
   environment secrets, volumes, and domain routing.
-- Rootless Podman and systemd Quadlet lifecycle.
-- Explicit rejection of privileged/host-level container features.
-- Account-wide cgroup aggregation across PHP, jobs, and OCI applications.
+- [x] Rootless Podman and systemd Quadlet lifecycle.
+- [x] Explicit rejection of privileged/host-level container features.
+- [x] Account-wide cgroup aggregation across PHP, jobs, and OCI applications.
 
 Exit gate: container escape-resistance configuration and cross-account tests pass
 and no user workload binds a public host port directly.
 
-Current status: L-001 through L-005 are complete. Tenant-owned, revision-fenced
+Status: complete. Tenant-owned, revision-fenced
 application drafts accept only constrained sources, ports, and health checks.
 Hosts now expose typed rootless-Podman readiness, and each account receives a
 deterministic subordinate-ID, storage, runtime, and Quadlet foundation without
@@ -166,14 +166,16 @@ envelope-encrypted environment references, and descriptor-verified account
 volumes are prepared through durable metadata-only operations. Fixed rootless
 Quadlets now deploy approved revisions behind stable loopback ports; transient
 secrets, health-gated evidence, bounded logs, replay-safe lifecycle actions,
-and atomic NGINX application routing are implemented and Debian-13-qualified.
-L-006 is the remaining Phase 5 aggregate accounting, reboot, exhaustion, and
-three-guest isolation matrix. See the
+and atomic NGINX application routing are implemented. The L-006 account-user-
+manager placement closes aggregate accounting across PHP, jobs, and OCI. Real
+resource exhaustion, private ingress, hostile policy, cross-account isolation,
+and reboot recovery pass on Debian 13, Ubuntu 26.04, and Rocky Linux 10. See the
 [OCI application foundation](oci-application-foundation.md) and
 [rootless OCI runtime](rootless-oci-runtime.md), and
 [bounded image preparation](oci-image-preparation.md), and
 [private OCI resources](oci-private-resources.md), and
-[deployment lifecycle](oci-deployment-lifecycle.md).
+[deployment lifecycle](oci-deployment-lifecycle.md), and
+[Phase 5 exit matrix](../infra/host-tests/results/2026-09-01-oci-phase5-exit-matrix-hyper-v.md).
 
 ## Phase 6: Installer, updater, and public beta
 

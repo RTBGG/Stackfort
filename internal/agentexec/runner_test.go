@@ -270,6 +270,30 @@ func TestProductionProfilesUseFixedPathsAndTemplates(t *testing.T) {
 			executable string
 			arguments  []string
 			timeout    time.Duration
+		}{
+			ProfileSystemdShowAccountUserManager, resourceValues, "/usr/bin/systemctl",
+			[]string{
+				"show", "--no-pager", "--property=ActiveState", "--property=ControlGroup",
+				"user@200000.service",
+			},
+			accountMutationTimeout,
+		},
+		struct {
+			id         ProfileID
+			values     []string
+			executable string
+			arguments  []string
+			timeout    time.Duration
+		}{
+			ProfileSystemdRestartAccountUserManager, resourceValues, "/usr/bin/systemctl",
+			[]string{"restart", "user@200000.service"}, accountMutationTimeout,
+		},
+		struct {
+			id         ProfileID
+			values     []string
+			executable string
+			arguments  []string
+			timeout    time.Duration
 		}{ProfileNGINXVersion, nil, "/usr/sbin/nginx", []string{"-v"}, defaultTimeout},
 		struct {
 			id         ProfileID
@@ -659,6 +683,8 @@ func TestRunnerRejectsUnknownProfilesAndValues(t *testing.T) {
 		{Profile: ProfileSystemdEnableNGINX, Values: []string{"--now"}},
 		{Profile: ProfileSystemdStartAccountSlice, Values: append(append([]string(nil), accountValues...), "-", "-", "-", "-", "0")},
 		{Profile: ProfileSystemdApplyAccountLimits, Values: append(append([]string(nil), accountValues...), "1%;id", "-", "-", "-", "-")},
+		{Profile: ProfileSystemdShowAccountUserManager, Values: append(append([]string(nil), accountValues...), "-", "-", "-", "-", "0")},
+		{Profile: ProfileSystemdRestartAccountUserManager, Values: append(append([]string(nil), accountValues...), "1%;id", "-", "-", "-", "-")},
 		{Profile: ProfilePHPFPM84Test, Values: append(append([]string(nil), accountValues...), "8.4;id")},
 		{Profile: ProfilePHPFPM84Test, Values: append(append([]string(nil), accountValues...), "8.5")},
 		{Profile: ProfileSystemdRestartPHPPool, Values: append(append([]string(nil), accountValues...), "latest")},

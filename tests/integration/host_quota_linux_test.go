@@ -41,7 +41,7 @@ func TestDisposableHostProjectQuotaAndAccountIsolation(t *testing.T) {
 		t.Fatalf("managed filesystem lacks project quota: %#v", filesystem)
 	}
 
-	first := disposableIdentity(t, availableManagedID(t, 590_000))
+	first := disposableIdentity(t, availableManagedID(t, 249_600))
 	second := disposableIdentity(t, availableManagedID(t, first.UID+1))
 	for _, identity := range []hostingidentity.Spec{second, first} {
 		identity := identity
@@ -50,7 +50,7 @@ func TestDisposableHostProjectQuotaAndAccountIsolation(t *testing.T) {
 
 	identityReconciler := hostidentity.NewReconciler()
 	for _, identity := range []hostingidentity.Spec{first, second} {
-		if _, err := identityReconciler.Reconcile(t.Context(), identity); err != nil {
+		if _, err := identityReconciler.ReconcileBase(t.Context(), identity); err != nil {
 			t.Fatalf("reconcile identity %s: %v", identity.Username, err)
 		}
 	}
@@ -227,6 +227,19 @@ func cleanupResourceSlice(t *testing.T, unit string) {
 	}
 	if err := os.Remove(unitPath); err != nil && !errors.Is(err, os.ErrNotExist) {
 		t.Errorf("remove disposable account slice: %v", err)
+	}
+	userManager, _ := hostingresources.UserManagerUnitName(uid)
+	dropInDirectory := filepath.Join("/etc/systemd/system", userManager+".d")
+	dropIn := filepath.Join(dropInDirectory, "50-stackfort-account-boundary.conf")
+	if filepath.Dir(dropInDirectory) != "/etc/systemd/system" || filepath.Dir(dropIn) != dropInDirectory {
+		t.Errorf("refusing unsafe user-manager drop-in cleanup path: %q", dropIn)
+		return
+	}
+	if err := os.Remove(dropIn); err != nil && !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("remove disposable user-manager drop-in: %v", err)
+	}
+	if err := os.Remove(dropInDirectory); err != nil && !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("remove disposable user-manager drop-in directory: %v", err)
 	}
 	runtimeDropIn := filepath.Join("/run/systemd/system.control", unit+".d")
 	if filepath.Dir(runtimeDropIn) != "/run/systemd/system.control" {

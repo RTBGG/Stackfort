@@ -60,8 +60,8 @@ func TestHostingAccountReconcileHandlerAppliesAndConfirmsWholeBoundary(t *testin
 	if result["accountId"] != string(account.ID) || result["unixIdentityReconciled"] != true {
 		t.Fatalf("result = %#v", result)
 	}
-	if !reflect.DeepEqual(reporter.stages, []string{"identity", "filesystem", "oci_runtime", "resources", "confirming"}) ||
-		!reflect.DeepEqual(client.calls, []string{"identity", "filesystem", "oci_runtime", "resources"}) {
+	if !reflect.DeepEqual(reporter.stages, []string{"identity", "filesystem", "resources", "oci_runtime", "confirming"}) ||
+		!reflect.DeepEqual(client.calls, []string{"identity", "filesystem", "resources", "oci_runtime"}) {
 		t.Fatalf("stages/calls = %#v / %#v", reporter.stages, client.calls)
 	}
 	ready, err := repository.HostingAccountHostReady(ctx, account.ID)

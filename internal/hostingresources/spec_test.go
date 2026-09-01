@@ -87,6 +87,25 @@ func TestAccountSliceNameIsCanonicalAndBounded(t *testing.T) {
 	}
 }
 
+func TestAccountAndUserManagerControlGroupsAreCanonical(t *testing.T) {
+	t.Parallel()
+	account, err := AccountControlGroup(hostingidentity.MinimumID)
+	if err != nil || account != "/stackfort.slice/stackfort-accounts.slice/stackfort-accounts-200000.slice" {
+		t.Fatalf("AccountControlGroup = %q, %v", account, err)
+	}
+	unit, err := UserManagerUnitName(hostingidentity.MinimumID)
+	if err != nil || unit != "user@200000.service" {
+		t.Fatalf("UserManagerUnitName = %q, %v", unit, err)
+	}
+	manager, err := UserManagerControlGroup(hostingidentity.MinimumID)
+	if err != nil || manager != account+"/"+unit {
+		t.Fatalf("UserManagerControlGroup = %q, %v", manager, err)
+	}
+	if _, err := UserManagerControlGroup(hostingidentity.MinimumID - 1); err == nil {
+		t.Fatal("out-of-range user manager control group accepted")
+	}
+}
+
 func TestSystemdPropertiesResetUnlimitedCPUQuotaWithEmptyAssignment(t *testing.T) {
 	t.Parallel()
 	properties, err := SystemdProperties(testSpec(t))

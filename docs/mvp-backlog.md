@@ -1346,12 +1346,25 @@ See [Rootless OCI deployment lifecycle](oci-deployment-lifecycle.md),
 [ADR 0058](adr/0058-health-gated-rootless-quadlet-lifecycle.md), and the
 [qualification result](../infra/host-tests/results/2026-09-01-oci-deployment-lifecycle-hyper-v.md).
 
-### L-006 — Aggregate accounting and three-guest exit matrix (`P0`)
+### L-006 — Aggregate accounting and three-guest exit matrix (`P0`, complete)
 
 Place PHP, scheduled jobs, and OCI applications below the same account slice;
 then qualify resource exhaustion, reboot recovery, private ingress, malicious
 images/builds, and cross-account filesystem/network/process isolation on all
 supported distributions.
+
+The resource reconciler now installs one marker-owned, UID-derived
+`user@<uid>.service.d` drop-in and verifies the live user-manager cgroup. A
+wrongly placed existing manager is restarted only through a fixed profile and
+must reappear below the account slice. Account provisioning applies the slice
+before enabling the rootless runtime, closing the first-start and crash gaps.
+
+The disposable Hyper-V matrix passes on Debian 13, Ubuntu 26.04, and Rocky
+Linux 10. It covers OCI and generic PID/memory exhaustion, loopback-only
+ingress, hostile source/Containerfile/schema/mount inputs, separate rootless
+networks, filesystem traversal and process-signal denial, plus a real reboot
+and healthy Quadlet replay. See the
+[qualification result](../infra/host-tests/results/2026-09-01-oci-phase5-exit-matrix-hyper-v.md).
 
 ## Deferred from the current Phase 2 slice
 

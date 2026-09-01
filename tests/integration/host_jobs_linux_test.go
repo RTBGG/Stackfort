@@ -36,7 +36,7 @@ func TestDisposableHostScheduledJobs(t *testing.T) {
 		t.Fatal("disposable host integration test must run as root")
 	}
 
-	identity := disposableIdentity(t, availableManagedID(t, 598_000))
+	identity := disposableIdentity(t, availableManagedID(t, 249_500))
 	if _, err := hostidentity.NewReconciler().ReconcileBase(t.Context(), identity); err != nil {
 		t.Fatalf("reconcile identity: %v", err)
 	}

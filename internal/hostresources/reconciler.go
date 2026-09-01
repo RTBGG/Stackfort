@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"runtime"
+	"strings"
 
 	"github.com/RTBGG/stackfort/internal/agentexec"
 	"github.com/RTBGG/stackfort/internal/agentprotocol"
@@ -24,11 +25,12 @@ var (
 )
 
 type Result struct {
-	UnitName      string
-	ControlGroup  string
-	UnitsChanged  bool
-	LimitsApplied bool
-	Capability    agentprotocol.Capability
+	UnitName                string
+	ControlGroup            string
+	UnitsChanged            bool
+	LimitsApplied           bool
+	UserManagerControlGroup string
+	Capability              agentprotocol.Capability
 }
 
 type CapabilityError struct {
@@ -100,10 +102,11 @@ func (reconciler *Reconciler) Reconcile(ctx context.Context, spec hostingresourc
 	if err != nil {
 		return Result{}, ErrMutationFailed
 	}
-	if changed {
-		if err := reconciler.run(ctx, agentexec.Invocation{Profile: agentexec.ProfileSystemdDaemonReload}); err != nil {
-			return Result{}, err
-		}
+	// Always reload. This closes the crash gap where the managed drop-in was
+	// fsynced but PID 1 had not consumed it before the previous reconciliation
+	// stopped.
+	if err := reconciler.run(ctx, agentexec.Invocation{Profile: agentexec.ProfileSystemdDaemonReload}); err != nil {
+		return Result{}, err
 	}
 	for _, profile := range []agentexec.ProfileID{
 		agentexec.ProfileSystemdStartAccountSlice,
@@ -117,11 +120,77 @@ func (reconciler *Reconciler) Reconcile(ctx context.Context, spec hostingresourc
 	if err != nil {
 		return Result{}, ErrMutationFailed
 	}
+	userManagerControlGroup, err := reconciler.ensureUserManagerPlacement(ctx, values, spec.Identity.UID)
+	if err != nil {
+		return Result{}, err
+	}
 	unitName, _ := hostingresources.AccountSliceName(spec.Identity.UID)
 	return Result{
 		UnitName: unitName, ControlGroup: controlGroup, UnitsChanged: changed, LimitsApplied: true,
-		Capability: agentprotocol.Capability{Status: agentprotocol.CapabilityAvailable},
+		UserManagerControlGroup: userManagerControlGroup,
+		Capability:              agentprotocol.Capability{Status: agentprotocol.CapabilityAvailable},
 	}, nil
+}
+
+func (reconciler *Reconciler) ensureUserManagerPlacement(
+	ctx context.Context, values []string, uid uint32,
+) (string, error) {
+	wanted, err := hostingresources.UserManagerControlGroup(uid)
+	if err != nil {
+		return "", ErrMutationFailed
+	}
+	state, controlGroup, err := reconciler.userManagerState(ctx, values)
+	if err != nil {
+		return "", err
+	}
+	if state == "inactive" || state == "failed" {
+		if controlGroup != "" {
+			return "", ErrMutationFailed
+		}
+		return "", nil
+	}
+	if state != "active" && state != "activating" && state != "reloading" {
+		return "", ErrMutationFailed
+	}
+	if controlGroup == wanted {
+		return controlGroup, nil
+	}
+	if err := reconciler.run(ctx, agentexec.Invocation{
+		Profile: agentexec.ProfileSystemdRestartAccountUserManager, Values: values,
+	}); err != nil {
+		return "", err
+	}
+	state, controlGroup, err = reconciler.userManagerState(ctx, values)
+	if err != nil || state != "active" || controlGroup != wanted {
+		return "", ErrMutationFailed
+	}
+	return controlGroup, nil
+}
+
+func (reconciler *Reconciler) userManagerState(ctx context.Context, values []string) (string, string, error) {
+	result, err := reconciler.commands.Run(ctx, agentexec.Invocation{
+		Profile: agentexec.ProfileSystemdShowAccountUserManager, Values: values,
+	})
+	if err != nil || result.ExitCode != 0 {
+		return "", "", ErrMutationFailed
+	}
+	properties := map[string]string{}
+	for _, line := range strings.Split(strings.TrimSpace(result.Stdout), "\n") {
+		name, value, found := strings.Cut(strings.TrimSuffix(line, "\r"), "=")
+		if !found || (name != "ActiveState" && name != "ControlGroup") {
+			return "", "", ErrMutationFailed
+		}
+		if _, duplicate := properties[name]; duplicate {
+			return "", "", ErrMutationFailed
+		}
+		properties[name] = value
+	}
+	state, stateOK := properties["ActiveState"]
+	controlGroup, groupOK := properties["ControlGroup"]
+	if !stateOK || !groupOK || strings.ContainsRune(controlGroup, '\x00') {
+		return "", "", ErrMutationFailed
+	}
+	return state, controlGroup, nil
 }
 
 func (reconciler *Reconciler) run(ctx context.Context, invocation agentexec.Invocation) error {

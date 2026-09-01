@@ -12,7 +12,7 @@ focused server administration, and secure application hosting without making
 the web interface itself a privileged system process.
 
 > [!WARNING]
-> Stackfort is under active development. Phase 5 is in progress, and the
+> Stackfort is under active development. Phase 6 is in progress, and the
 > project is not ready for production servers or valuable data.
 
 [Roadmap](docs/roadmap.md) · [Architecture](docs/architecture.md) ·
@@ -28,7 +28,7 @@ the web interface itself a privileged system process.
 | Databases | Tenant-scoped MariaDB, guided lifecycle, credential rotation, and phpMyAdmin sign-on |
 | File management | Browse, upload, download, copy, move, trash, archives, and local file backups |
 | Installation | Fresh-host installer qualified on Debian 13, Ubuntu 26.04, and Rocky Linux 10 |
-| Containers | Constrained drafts and rootless Podman account-runtime foundation; no workload execution yet |
+| Containers | Rootless Podman, scanned images, private resources, health-gated Quadlets, routing, and three-OS isolation qualification |
 
 ## Design goals
 
@@ -54,7 +54,7 @@ Client
       -> static file
       -> NGINX origin -> PHP-FPM account pool
       -> optional cache -> NGINX origin -> PHP-FPM account pool
-      -> rootless OCI application (planned)
+      -> rootless OCI application over a loopback-only upstream
 ```
 
 Static files are served directly by NGINX. Full-page caching is optional and
@@ -116,14 +116,17 @@ personalized applications bypass it by default.
   Podman secrets through stdin, health-gate activation, expose bounded logs,
   and support replay-safe deploy, suspend, resume, rollback, and removal.
 - Active OCI domain targets use fixed NGINX upstreams and the existing atomic
-  validate/reload/probe/rollback pipeline. The three-guest isolation and
-  resource-exhaustion matrix remains the final Phase 5 step.
+  validate/reload/probe/rollback pipeline.
+- PHP, scheduled jobs, and the delegated rootless user manager share one
+  account cgroup boundary. Exhaustion, hostile policy, cross-account isolation,
+  private ingress, and reboot recovery pass on all three supported guests.
 
 [Application schema](docs/oci-application-foundation.md) ·
 [Rootless runtime](docs/rootless-oci-runtime.md) ·
 [Image preparation](docs/oci-image-preparation.md) ·
 [Private resources](docs/oci-private-resources.md) ·
-[Deployment lifecycle](docs/oci-deployment-lifecycle.md)
+[Deployment lifecycle](docs/oci-deployment-lifecycle.md) ·
+[Phase 5 qualification](infra/host-tests/results/2026-09-01-oci-phase5-exit-matrix-hyper-v.md)
 
 </details>
 

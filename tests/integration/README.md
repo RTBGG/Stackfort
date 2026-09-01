@@ -42,17 +42,6 @@ go test -tags=integration -c -o /tmp/stackfort-host-integration.test ./tests/int
 sudo STACKFORT_DISPOSABLE_HOST_TEST=1 /tmp/stackfort-host-integration.test -test.v
 ```
 
-L-004 adds `TestDisposableHostOCIPrivateResources`. It stages the base identity
-before project assignment, then prepares the rootless runtime and production
-private-resource manager. It verifies the exact DNS/bridge/isolation/label
-network policy, account namespace separation, descriptor-derived volume modes,
-cross-account traversal denial, and replay:
-
-```sh
-sudo STACKFORT_DISPOSABLE_HOST_TEST=1 /tmp/stackfort-host-integration.test \
-  -test.v -test.run '^TestDisposableHostOCIPrivateResources$'
-```
-
 It creates temporary reserved-range Unix identities below `/srv/hosting`,
 proves hard byte and inode enforcement, checks that a second account cannot
 traverse the first account root, and verifies that document-root creation does
@@ -61,6 +50,31 @@ limit changes, proves the aggregate task limit through `pids.events`, and
 observes a contained account OOM kill through `memory.events`. Cleanup is
 limited to the randomly generated account paths, identities, and exact
 disposable account slice.
+
+L-004 adds `TestDisposableHostOCIPrivateResources`. It stages the base identity
+before project assignment, then prepares the resource boundary, rootless
+runtime, and production private-resource manager. It verifies the exact
+DNS/bridge/isolation/label network policy, account namespace separation,
+descriptor-derived volume modes, cross-account traversal denial, and replay:
+
+```sh
+sudo STACKFORT_DISPOSABLE_HOST_TEST=1 /tmp/stackfort-host-integration.test \
+  -test.v -test.run '^TestDisposableHostOCIPrivateResources$'
+```
+
+L-006 adds the aggregate Phase 5 exit matrix. The wrapper runs the project
+quota/OOM test, private-resource isolation, hardened deployment lifecycle,
+malicious policy corpus, then persists a live deployment across a real guest
+reboot and verifies the same user-manager/container cgroup ancestry and healthy
+loopback endpoint before exact cleanup:
+
+```powershell
+.\infra\host-tests\Test-StackfortOCIExitMatrixHyperVVm.ps1 `
+  -ImageId debian-13 -VmName stackfort-debian-13
+```
+
+Run the same command with `ubuntu-26.04`/`stackfort-ubuntu-26-04-v2` and
+`rocky-10`/`stackfort-rocky-10` for the supported matrix.
 
 K-001 adds `TestDisposableHostFileManagerNavigation` to the same disposable
 binary. It verifies the fixed managed root, bounded resumable pages across more
