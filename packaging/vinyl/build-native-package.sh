@@ -4,7 +4,6 @@
 set -euo pipefail
 
 script_directory="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-repository_root="$(cd "$script_directory/../.." && pwd)"
 output_directory="$(realpath -m "${1:-$PWD/dist/native}")"
 source_date_epoch="${SOURCE_DATE_EPOCH:-0}"
 
