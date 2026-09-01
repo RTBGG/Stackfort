@@ -329,6 +329,7 @@ func readQuadlet(path string, accountUID uint32) ([]byte, bool, error) {
 	if !ok || status.Uid != 0 || status.Gid != 0 {
 		return nil, false, ErrConflict
 	}
+	// #nosec G304 -- path is an exact derived Quadlet basename below the validated root-owned UID directory.
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return nil, false, ErrUnavailable
@@ -357,6 +358,7 @@ func writeQuadlet(path string, accountUID uint32, content []byte) error {
 	if err := os.Rename(temporaryPath, path); err != nil {
 		return ErrMutation
 	}
+	// #nosec G304 -- parent was matched to the exact root-owned Quadlet UID directory above.
 	directory, err := os.Open(parent)
 	if err != nil {
 		return ErrMutation
@@ -396,8 +398,14 @@ func (manager *linuxManager) writeManifest(spec ocideployment.Spec, manifest rep
 	if err != nil || len(encoded) > 64<<10 {
 		return ErrInvalid
 	}
-	path := filepath.Join(directory, "r"+strconv.FormatInt(spec.Revision, 10)+"-"+manifest.RequestDigest[7:]+".json")
-	if existing, err := os.ReadFile(path); err == nil {
+	relativePath := filepath.Join(spec.Identity.AccountID, spec.ApplicationID,
+		"r"+strconv.FormatInt(spec.Revision, 10)+"-"+manifest.RequestDigest[7:]+".json")
+	root, err := os.OpenRoot(manager.stateRoot)
+	if err != nil {
+		return ErrMutation
+	}
+	defer root.Close()
+	if existing, err := root.ReadFile(relativePath); err == nil {
 		if !bytes.Equal(existing, encoded) {
 			return ErrConflict
 		}
@@ -405,7 +413,7 @@ func (manager *linuxManager) writeManifest(spec ocideployment.Spec, manifest rep
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return ErrUnavailable
 	}
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	file, err := root.OpenFile(relativePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
 		return ErrMutation
 	}
