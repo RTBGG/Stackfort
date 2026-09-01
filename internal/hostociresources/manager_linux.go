@@ -251,21 +251,29 @@ func ensureVolumeDirectoryAt(
 	return created, descriptor, nil
 }
 
-func (manager *linuxManager) manifestPath(spec ociresources.Spec) string {
+func manifestRelativePath(spec ociresources.Spec) string {
 	digest, err := ociresources.SemanticDigest(spec)
 	if err != nil {
 		return ""
 	}
-	return filepath.Join(manager.artifacts, spec.Identity.AccountID, spec.ApplicationID,
+	return filepath.Join(spec.Identity.AccountID, spec.ApplicationID,
 		"r"+strconv.FormatInt(spec.Revision, 10)+"-"+digest[7:]+".json")
 }
 
 func (manager *linuxManager) loadManifest(spec ociresources.Spec) (replayManifest, bool, error) {
-	path := manager.manifestPath(spec)
+	path := manifestRelativePath(spec)
 	if path == "" {
 		return replayManifest{}, false, ErrInvalid
 	}
-	info, err := os.Lstat(path)
+	root, err := os.OpenRoot(manager.artifacts)
+	if errors.Is(err, os.ErrNotExist) {
+		return replayManifest{}, false, nil
+	}
+	if err != nil {
+		return replayManifest{}, false, ErrUnavailable
+	}
+	defer root.Close()
+	info, err := root.Lstat(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return replayManifest{}, false, nil
 	}
@@ -276,7 +284,7 @@ func (manager *linuxManager) loadManifest(spec ociresources.Spec) (replayManifes
 	if !ok || status.Uid != manager.stateUID || status.Gid != manager.stateGID || info.Size() <= 0 || info.Size() > 64<<10 {
 		return replayManifest{}, false, ErrConflict
 	}
-	content, err := os.ReadFile(path)
+	content, err := root.ReadFile(path)
 	if err != nil {
 		return replayManifest{}, false, ErrUnavailable
 	}
@@ -306,11 +314,16 @@ func (manager *linuxManager) writeManifest(spec ociresources.Spec, manifest repl
 	if err != nil || len(encoded) > 64<<10 {
 		return ErrInvalid
 	}
-	path := manager.manifestPath(spec)
+	path := manifestRelativePath(spec)
 	if path == "" {
 		return ErrInvalid
 	}
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	root, err := os.OpenRoot(manager.artifacts)
+	if err != nil {
+		return ErrMutation
+	}
+	defer root.Close()
+	file, err := root.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
 		if errors.Is(err, os.ErrExist) {
 			return ErrConflict
