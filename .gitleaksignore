@@ -1,0 +1,19 @@
+# Known synthetic UUIDv7 resource references introduced by L-004 tests.
+fb4dc378b50c434b83084a3fc6834a27d5612a5d:internal/agentclient/client_test.go:generic-api-key:90
+fb4dc378b50c434b83084a3fc6834a27d5612a5d:internal/agentprotocol/protocol_test.go:generic-api-key:247
+fb4dc378b50c434b83084a3fc6834a27d5612a5d:internal/hostociresources/manager_linux_test.go:generic-api-key:151
+fb4dc378b50c434b83084a3fc6834a27d5612a5d:internal/ociapps/spec_test.go:generic-api-key:46
+fb4dc378b50c434b83084a3fc6834a27d5612a5d:internal/ociapps/spec_test.go:generic-api-key:47
+fb4dc378b50c434b83084a3fc6834a27d5612a5d:internal/ociapps/spec_test.go:generic-api-key:95
+fb4dc378b50c434b83084a3fc6834a27d5612a5d:internal/ociapps/spec_test.go:generic-api-key:96
+fb4dc378b50c434b83084a3fc6834a27d5612a5d:internal/ociresources/spec_test.go:generic-api-key:19
+fb4dc378b50c434b83084a3fc6834a27d5612a5d:internal/ociresources/spec_test.go:generic-api-key:20
+fb4dc378b50c434b83084a3fc6834a27d5612a5d:internal/ociresources/spec_test.go:generic-api-key:58
+fb4dc378b50c434b83084a3fc6834a27d5612a5d:internal/ociresources/spec_test.go:generic-api-key:66
+fb4dc378b50c434b83084a3fc6834a27d5612a5d:internal/operations/oci_resources_test.go:generic-api-key:28
+
+# Known synthetic ACME challenge and agent smoke-test fixtures.
+60d06c8f54c341fb93f2d07f35d7f6183f79fd74:internal/acmehttp01/spec_test.go:generic-api-key:13
+60d06c8f54c341fb93f2d07f35d7f6183f79fd74:internal/agentprotocol/acme_http01_test.go:generic-api-key:16
+60d06c8f54c341fb93f2d07f35d7f6183f79fd74:internal/hostacme/presenter_test.go:generic-api-key:19
+60d06c8f54c341fb93f2d07f35d7f6183f79fd74:scripts/test-agent-smoke.sh:generic-api-key:75
