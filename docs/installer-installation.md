@@ -46,6 +46,34 @@ version instead of silently switching to the newest release.
 
 ## Manual release installation
 
+### Native release package
+
+GitHub Releases provide a `stackfort-release` DEB for Debian/Ubuntu and an RPM
+for Rocky Linux. Download the matching package together with `SHA256SUMS`, then
+verify the exact filename before installing it:
+
+```sh
+grep " ./<downloaded-package>$" SHA256SUMS | sha256sum --check --strict
+
+# Debian 13 or Ubuntu 26.04
+sudo dpkg -i ./stackfort-release_<native-version>_amd64.deb
+
+# Rocky Linux 10
+sudo rpm -Uvh ./stackfort-release-<native-version>.x86_64.rpm
+
+sudo stackfort-install preflight
+sudo stackfort-install --yes
+```
+
+The native package is a passive carrier. It lays down one immutable release at
+`/usr/lib/stackfort/releases/<version>` and `/usr/sbin/stackfort-install`, but
+has no maintainer scripts/scriptlets and does not configure or start Stackfort.
+Removing it later removes only those packaged source files; it is not an
+uninstaller and does not delete an active installation or customer data. See
+[ADR 0059](adr/0059-passive-native-release-carrier.md).
+
+### Release archive
+
 After independently downloading the archive and `SHA256SUMS`, verify and
 extract it as root so the installer's source-trust contract is preserved:
 
@@ -86,8 +114,9 @@ A successful second run performs verification only and returns:
 ```
 
 The fresh-host installer intentionally refuses another source digest or
-version. Updates, automatic update checks, repair, rollback across versions,
-and uninstall are later roadmap work.
+version. Installing a newer carrier package does not bypass that fence.
+Functional updates, automatic update checks, repair, rollback across versions,
+and uninstall are separate roadmap work.
 
 ## First browser access
 

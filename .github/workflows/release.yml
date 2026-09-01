@@ -60,9 +60,51 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  vinyl-packages:
+    name: Vinyl package — ${{ matrix.name }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    container: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Debian 13
+            id: debian-13
+            image: debian:13
+          - name: Ubuntu 26.04
+            id: ubuntu-26.04
+            image: ubuntu:26.04
+          - name: Rocky Linux 10
+            id: rocky-10
+            image: rockylinux/rockylinux:10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Prepare exact native build host
+        run: |
+          bash packaging/vinyl/prepare-build-host.sh
+          useradd --system --user-group --create-home --home-dir /var/tmp/stackfort-build --shell /bin/bash stackfort-build
+          install -d -o stackfort-build -g stackfort-build /var/tmp/stackfort-vinyl-native
+      - name: Build hash-pinned native Vinyl package
+        run: |
+          runuser --user stackfort-build -- env \
+            SOURCE_DATE_EPOCH=0 \
+            bash "$GITHUB_WORKSPACE/packaging/vinyl/build-native-package.sh" \
+            /var/tmp/stackfort-vinyl-native
+      - name: Upload native Vinyl package
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: stackfort-vinyl-${{ matrix.id }}
+          path: /var/tmp/stackfort-vinyl-native/*
+          if-no-files-found: error
+          retention-days: 7
+
   build:
     name: Build, inventory, and attest
-    needs: waf-packages
+    needs: [waf-packages, vinyl-packages]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -85,6 +127,10 @@ jobs:
         with:
           node-version-file: .nvmrc
           package-manager-cache: false
+      - name: Install native package build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cpio rpm
       - name: Resolve release metadata
         id: metadata
         env:
@@ -103,10 +149,17 @@ jobs:
           pattern: stackfort-waf-*
           path: waf-native
           merge-multiple: true
+      - name: Download native Vinyl packages
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: stackfort-vinyl-*
+          path: vinyl-native
+          merge-multiple: true
       - name: Build deterministic archives
         env:
           COMMIT: ${{ github.sha }}
           STACKFORT_WAF_PACKAGE_DIR: ${{ github.workspace }}/waf-native
+          STACKFORT_VINYL_PACKAGE_DIR: ${{ github.workspace }}/vinyl-native
           VERSION: ${{ steps.metadata.outputs.version }}
         run: |
           SOURCE_DATE_EPOCH="$(git show -s --format=%ct "$COMMIT")"

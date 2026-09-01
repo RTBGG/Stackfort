@@ -133,6 +133,14 @@ identity teardown. It requires the `oci-deployment-lifecycle=passed` marker and
 returns a VM it started to Off. The recorded focused result is
 [2026-09-01-oci-deployment-lifecycle-hyper-v.md](results/2026-09-01-oci-deployment-lifecycle-hyper-v.md).
 
+The Phase 6 native carrier qualification builds the passive
+`stackfort-release` package twice per format and runs
+`packaging/core/test-native-package-lifecycle.sh` as root in each guest. The
+closed lifecycle checks package paths, empty maintainer-script/scriptlet
+surfaces, prerelease upgrade ordering, ownership, wrapper execution, removal,
+and non-interference with active Stackfort payload files. The recorded matrix
+is [2026-09-01-native-core-packages-hyper-v.md](results/2026-09-01-native-core-packages-hyper-v.md).
+
 `Test-StackfortWAFHyperVVm.ps1` is the focused K-010 runtime qualification
 wrapper. It exercises WAF off, detection-only, and blocking PL1 through the
 production domain lifecycle across static and PHP routes, verifies WAF ordering

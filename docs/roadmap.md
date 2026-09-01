@@ -179,7 +179,7 @@ and reboot recovery pass on Debian 13, Ubuntu 26.04, and Rocky Linux 10. See the
 
 ## Phase 6: Installer, updater, and public beta
 
-- Versioned DEB/RPM packages where appropriate.
+- [x] Versioned DEB/RPM packages where appropriate.
 - Verified one-line and manual installers for clean hosts.
 - Stable/beta GitHub Release channels and update checks.
 - Staged update, migration, health check, and rollback.
@@ -187,6 +187,14 @@ and reboot recovery pass on Debian 13, Ubuntu 26.04, and Rocky Linux 10. See the
 - Documentation, operations guide, security policy, contribution guide, and
   published benchmark methodology/results.
 - Complete English and German critical workflows.
+
+The first item is complete: release automation now produces a reproducible,
+scriptlet-free `stackfort-release` DEB for Debian/Ubuntu and RPM for Rocky. The
+packages carry one immutable release tree and delegate all host mutation to the
+existing journaled installer. Build reproducibility plus install, prerelease
+upgrade, removal, path ownership, and active-payload non-interference passed on
+all three supported guests. See [ADR 0059](adr/0059-passive-native-release-carrier.md)
+and the [qualification record](../infra/host-tests/results/2026-09-01-native-core-packages-hyper-v.md).
 
 Exit gate: the success criteria in `product-spec.md` pass, followed by a limited
 public beta with an explicit support window.

@@ -1,0 +1,22 @@
+#!/bin/sh
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+set -eu
+
+release_root='/usr/lib/stackfort/releases/@STACKFORT_VERSION@'
+installer="$release_root/bin/stackfort-installer"
+
+case "${1:-}" in
+  preflight | version)
+    command="$1"
+    shift
+    exec "$installer" "$command" "$@"
+    ;;
+  install)
+    shift
+    exec "$installer" install --source-dir="$release_root" "$@"
+    ;;
+  *)
+    exec "$installer" install --source-dir="$release_root" "$@"
+    ;;
+esac

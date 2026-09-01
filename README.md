@@ -27,7 +27,7 @@ the web interface itself a privileged system process.
 | Security | Role and account isolation, MFA, audit chain, Coraza WAF, and hardened services |
 | Databases | Tenant-scoped MariaDB, guided lifecycle, credential rotation, and phpMyAdmin sign-on |
 | File management | Browse, upload, download, copy, move, trash, archives, and local file backups |
-| Installation | Fresh-host installer qualified on Debian 13, Ubuntu 26.04, and Rocky Linux 10 |
+| Installation | Qualified fresh-host installer plus versioned passive DEB/RPM release carriers |
 | Containers | Rootless Podman, scanned images, private resources, health-gated Quadlets, routing, and three-OS isolation qualification |
 
 ## Design goals
@@ -183,6 +183,8 @@ a free cross-platform dependency under its current license/package matrix.
 - Read-only installer preflight with actionable blockers and text/JSON output.
 - Release-bound fresh-host installer with immutable payload checks, hardened
   systemd units, MAC/firewall integration, and interruption recovery.
+- Reproducible, scriptlet-free DEB/RPM release carriers that preserve the
+  journaled installer as the only host-mutation path.
 - Crash-recoverable NGINX revisions with syntax validation, atomic activation,
   health checks, rollback, and replay-safe reconciliation.
 - Immutable-reference CI, CodeQL, secret and vulnerability scanning,
@@ -204,7 +206,7 @@ See the [Phase 1 qualification](docs/phase1-qualification.md),
 | Architecture and security | [Architecture](docs/architecture.md), [security model](docs/security.md), [ADRs](docs/adr) |
 | Accounts and hosting | [Administrator flows](docs/administrator-phase1-flows.md), [account-owner flows](docs/account-owner-phase1-flows.md), [PHP controls](docs/account-php-controls.md) |
 | Databases | [MariaDB lifecycle](docs/account-database-lifecycle.md), [phpMyAdmin sign-on](docs/phpmyadmin-signon.md) |
-| Installation and qualification | [Installer preflight](docs/installer-preflight.md), [panel ingress](docs/installed-panel-ingress.md), [qualification](docs/phase1-qualification.md) |
+| Installation and qualification | [Installation](docs/installer-installation.md), [installer preflight](docs/installer-preflight.md), [panel ingress](docs/installed-panel-ingress.md), [qualification](docs/phase1-qualification.md) |
 | Research and performance | [Research notes](docs/research-notes.md), [performance baseline](docs/phase1-performance-baseline.md), [cache results](infra/host-tests/results/2026-08-31-vinyl-cache-hyper-v.md), [PageSpeed evaluation](infra/host-tests/results/2026-09-01-mod-pagespeed-nginx-evaluation.md) |
 
 <details>

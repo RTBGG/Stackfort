@@ -159,12 +159,18 @@ for architecture in "${architectures[@]}"; do
 
   tar --sort=name --mtime="@$source_date_epoch" --owner=0 --group=0 --numeric-owner \
     -C "$output_root" -cf - "$bundle_name" | gzip -n >"$output_root/$bundle_name.tar.gz"
+  if [[ "$architecture" == amd64 ]]; then
+    SOURCE_DATE_EPOCH="$source_date_epoch" \
+      bash packaging/core/build-native-package.sh "$stage_root" deb "$output_root"
+    SOURCE_DATE_EPOCH="$source_date_epoch" \
+      bash packaging/core/build-native-package.sh "$stage_root" rpm "$output_root"
+  fi
   rm -rf -- "$stage_root"
 done
 
 (
   cd "$output_root"
-  sha256sum ./*.tar.gz ./stackfort-installer-* | sort -k2 >SHA256SUMS
+  sha256sum ./*.tar.gz ./*.deb ./*.rpm ./stackfort-installer-* ./*.release.json | sort -k2 >SHA256SUMS
 )
 
 printf 'Release artifacts created in %s\n' "$output_root"

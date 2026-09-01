@@ -35,5 +35,7 @@ fi
 )
 
 bash scripts/verify-actions-pinned.sh
+bash -n packaging/core/*.sh packaging/core/stackfort-install.in
 bash packaging/waf/verify-locks.sh
+bash packaging/vinyl/verify-locks.sh
 printf 'Stackfort verification passed.\n'

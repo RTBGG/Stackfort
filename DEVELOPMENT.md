@@ -209,23 +209,30 @@ VERSION=0.1.0 \
 COMMIT="$(git rev-parse HEAD)" \
 SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)" \
 STACKFORT_WAF_PACKAGE_DIR=/path/to/three-native-package-records \
+STACKFORT_VINYL_PACKAGE_DIR=/path/to/three-native-vinyl-records \
 bash scripts/build-release.sh
 ```
+
+Release builds also require `dpkg-deb`, `rpmbuild`, `rpm`, `rpm2cpio`, and
+`cpio` to create and byte-verify the passive `stackfort-release` DEB/RPM. The
+shared contract and standalone commands are documented in
+[`packaging/core/README.md`](packaging/core/README.md).
 
 CI performs the build twice and rejects differing archive checksums. A tag or
 manual release-candidate run also creates an SPDX JSON SBOM and GitHub/Sigstore
 build attestations. It does not automatically create or publish a GitHub
 Release.
 
-The WAF package directory must contain the three native packages and their
-adjacent `*.release.json` records produced on the locked Debian 13, Ubuntu
-26.04, and Rocky Linux 10 targets. Non-development release versions fail
-closed without this complete matrix. A development build may omit it and then
-contains an explicit incomplete component manifest; that archive is useful for
-cross-build reproducibility checks but source inspection rejects it before
-journal creation or host mutation. Public non-development archives remain
-amd64-only until arm64 WAF packages are qualified. The release workflow builds
-the matrix before assembling and attesting the final archives.
+The WAF and Vinyl package directories must each contain their three native
+packages and adjacent `*.release.json` records produced on the locked Debian
+13, Ubuntu 26.04, and Rocky Linux 10 targets. Non-development release versions
+fail closed without both complete matrices. A development build may omit them
+and then contains an explicit incomplete component manifest; that archive is
+useful for cross-build reproducibility checks but source inspection rejects it
+before journal creation or host mutation. Public non-development archives
+remain amd64-only until native arm64 components are qualified. The release
+workflow builds both matrices before assembling and attesting the final
+archives.
 
 ## Local verification boundary
 
