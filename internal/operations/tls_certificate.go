@@ -544,6 +544,14 @@ func (handler *TLSCertificateLifecycleHandler) activationRevision(
 		return core.DesiredStateRevision{}, nil, nginxconfig.Options{}, core.ErrNotFound
 	}
 	options := nginxconfig.DefaultOptions()
+	if provider, ok := handler.repository.(interface {
+		ListOCIApplicationUpstreams(context.Context, core.ID) ([]core.OCIApplicationUpstream, error)
+	}); ok {
+		options.OCIUpstreams, err = provider.ListOCIApplicationUpstreams(ctx, *operation.AccountID)
+		if err != nil {
+			return core.DesiredStateRevision{}, nil, nginxconfig.Options{}, err
+		}
+	}
 	specs, err := nginxconfig.SpecsFromDomains(identity, domains, options)
 	if err != nil {
 		return core.DesiredStateRevision{}, nil, nginxconfig.Options{}, core.ErrConflict

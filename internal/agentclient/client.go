@@ -27,6 +27,7 @@ import (
 	"github.com/RTBGG/stackfort/internal/hostingresources"
 	"github.com/RTBGG/stackfort/internal/hostingstorage"
 	"github.com/RTBGG/stackfort/internal/nginxconfig"
+	"github.com/RTBGG/stackfort/internal/ocideployment"
 	"github.com/RTBGG/stackfort/internal/ociimage"
 	"github.com/RTBGG/stackfort/internal/ociresources"
 	"github.com/RTBGG/stackfort/internal/phpruntime"
@@ -1118,6 +1119,53 @@ func (client *Client) ReconcileOCIResources(
 	return *response.OCIResources, nil
 }
 
+func (client *Client) ReconcileOCIDeployment(ctx context.Context, idempotencyKey string,
+	correlation agentprotocol.AuditCorrelation, request ocideployment.Request) (agentprotocol.OCIDeploymentResponse, error) {
+	requestID, err := newRequestID()
+	if err != nil {
+		return agentprotocol.OCIDeploymentResponse{}, err
+	}
+	protocolRequest := agentprotocol.Request{ProtocolVersion: agentprotocol.WireVersion, RequestID: requestID,
+		IdempotencyKey: idempotencyKey, Operation: agentprotocol.OperationReconcileOCIDeployment,
+		Correlation: &correlation, ReconcileOCIDeployment: &agentprotocol.OCIDeploymentRequest{Request: request}}
+	response, status, err := client.callValidated(ctx, protocolRequest)
+	for index := range protocolRequest.ReconcileOCIDeployment.Request.Values {
+		protocolRequest.ReconcileOCIDeployment.Request.Values[index].Value = ""
+	}
+	if err != nil {
+		return agentprotocol.OCIDeploymentResponse{}, err
+	}
+	if response.Error != nil {
+		return agentprotocol.OCIDeploymentResponse{}, remoteError(status, response.Error)
+	}
+	if status != http.StatusOK || response.OCIDeployment == nil {
+		return agentprotocol.OCIDeploymentResponse{}, errors.New("agent returned an invalid OCI deployment status")
+	}
+	return *response.OCIDeployment, nil
+}
+
+func (client *Client) ReadOCIApplicationLogs(ctx context.Context, idempotencyKey string,
+	spec ocideployment.LogSpec) (agentprotocol.OCIApplicationLogReadResponse, error) {
+	requestID, err := newRequestID()
+	if err != nil {
+		return agentprotocol.OCIApplicationLogReadResponse{}, err
+	}
+	request := agentprotocol.Request{ProtocolVersion: agentprotocol.WireVersion, RequestID: requestID,
+		IdempotencyKey: idempotencyKey, Operation: agentprotocol.OperationReadOCIApplicationLogs,
+		ReadOCIApplicationLogs: &agentprotocol.OCIApplicationLogReadRequest{Spec: spec}}
+	response, status, err := client.callValidated(ctx, request)
+	if err != nil {
+		return agentprotocol.OCIApplicationLogReadResponse{}, err
+	}
+	if response.Error != nil {
+		return agentprotocol.OCIApplicationLogReadResponse{}, remoteError(status, response.Error)
+	}
+	if status != http.StatusOK || response.OCIApplicationLogs == nil {
+		return agentprotocol.OCIApplicationLogReadResponse{}, errors.New("agent returned invalid OCI application logs")
+	}
+	return *response.OCIApplicationLogs, nil
+}
+
 // InspectPHPPools reads only bounded aggregate health/accounting for derived
 // account pool units. Unit names, cgroup paths, and process details are not
 // returned by the protocol.
@@ -1221,6 +1269,8 @@ func (client *Client) call(
 		timeout = time.Duration(ociimage.PreparationTimeoutSeconds+60) * time.Second
 	} else if request.Operation == agentprotocol.OperationReconcileOCIResources {
 		timeout = time.Duration(ociresources.ReconciliationTimeoutSeconds+60) * time.Second
+	} else if request.Operation == agentprotocol.OperationReconcileOCIDeployment {
+		timeout = 4 * time.Minute
 	}
 	requestContext, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()

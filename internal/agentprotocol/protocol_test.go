@@ -179,7 +179,7 @@ func TestSupportedOperationsAreCopiedAndHaveExplicitPolicies(t *testing.T) {
 	t.Parallel()
 
 	operations := SupportedOperations()
-	if len(operations) != 24 || operations[0] != OperationHandshake ||
+	if len(operations) != 26 || operations[0] != OperationHandshake ||
 		operations[1] != OperationInspectCapabilities ||
 		operations[2] != OperationReconcileIdentity || operations[3] != OperationDeleteIdentity ||
 		operations[4] != OperationReconcileFilesystem || operations[5] != OperationListFiles ||
@@ -191,7 +191,8 @@ func TestSupportedOperationsAreCopiedAndHaveExplicitPolicies(t *testing.T) {
 		operations[16] != OperationInspectPHPPools || operations[17] != OperationReconcilePHPPools ||
 		operations[18] != OperationProvisionDatabase || operations[19] != OperationRotateDatabasePassword ||
 		operations[20] != OperationDropDatabase || operations[21] != OperationReconcileScheduledJob ||
-		operations[22] != OperationPrepareOCIImage || operations[23] != OperationReconcileOCIResources {
+		operations[22] != OperationPrepareOCIImage || operations[23] != OperationReconcileOCIResources ||
+		operations[24] != OperationReconcileOCIDeployment || operations[25] != OperationReadOCIApplicationLogs {
 		t.Fatalf("supported operations = %#v", operations)
 	}
 	operations[0] = "mutated.by.caller"

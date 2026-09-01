@@ -124,6 +124,15 @@ systemd tools, executes real Shell and PHP jobs as a disposable hosting
 identity, tests the account slice/sandbox and hostile-link fences, requires the
 `scheduled-jobs=passed` marker, and returns a VM it started to Off.
 
+`Test-StackfortOCIDeploymentHyperVVm.ps1` is the focused L-005 qualification
+wrapper. It builds one Linux integration binary, prepares the guest's rootless
+Podman helpers, and exercises the production Quadlet lifecycle with a real
+digest-pinned workload: health-gated deploy, loopback-only ingress, replay,
+bounded logs, suspend, resume, rollback, removal, secret retirement, and clean
+identity teardown. It requires the `oci-deployment-lifecycle=passed` marker and
+returns a VM it started to Off. The recorded focused result is
+[2026-09-01-oci-deployment-lifecycle-hyper-v.md](results/2026-09-01-oci-deployment-lifecycle-hyper-v.md).
+
 `Test-StackfortWAFHyperVVm.ps1` is the focused K-010 runtime qualification
 wrapper. It exercises WAF off, detection-only, and blocking PL1 through the
 production domain lifecycle across static and PHP routes, verifies WAF ordering

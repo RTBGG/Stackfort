@@ -25,6 +25,7 @@ import (
 	"github.com/RTBGG/stackfort/internal/hostingidentity"
 	"github.com/RTBGG/stackfort/internal/hostinglogs"
 	"github.com/RTBGG/stackfort/internal/hostingpath"
+	"github.com/RTBGG/stackfort/internal/ocideployment"
 	"github.com/RTBGG/stackfort/internal/phpruntime"
 	"github.com/RTBGG/stackfort/internal/tlsartifact"
 	"github.com/RTBGG/stackfort/internal/wafconfig"
@@ -51,8 +52,9 @@ const (
 )
 
 type Options struct {
-	HeaderPolicies       []HeaderPolicy `json:"headerPolicies"`
-	ActivationRevisionID string         `json:"-"`
+	HeaderPolicies       []HeaderPolicy                `json:"headerPolicies"`
+	OCIUpstreams         []core.OCIApplicationUpstream `json:"ociUpstreams"`
+	ActivationRevisionID string                        `json:"-"`
 }
 
 // DomainSpec is the minimal account-scoped domain intent allowed to cross the
@@ -80,10 +82,11 @@ type WAFExceptionSpec struct {
 // TargetSpec is a tagged union for the target types implemented by this
 // renderer. DocumentRoot is account-relative and Redirect is structured.
 type TargetSpec struct {
-	Type         core.DomainTargetType `json:"type"`
-	DocumentRoot string                `json:"documentRoot,omitempty"`
-	PHPVersion   string                `json:"phpVersion,omitempty"`
-	Redirect     *RedirectSpec         `json:"redirect,omitempty"`
+	Type          core.DomainTargetType `json:"type"`
+	DocumentRoot  string                `json:"documentRoot,omitempty"`
+	PHPVersion    string                `json:"phpVersion,omitempty"`
+	Redirect      *RedirectSpec         `json:"redirect,omitempty"`
+	ApplicationID string                `json:"applicationId,omitempty"`
 }
 
 type RedirectSpec struct {
@@ -126,6 +129,8 @@ type preparedDomain struct {
 	cachePreset        core.CachePreset
 	activationVariable string
 	redirect           *preparedRedirect
+	upstreamPort       int64
+	applicationID      string
 }
 
 type preparedWAFException struct {
@@ -161,6 +166,10 @@ func RenderAccount(
 	if err != nil {
 		return Rendered{}, err
 	}
+	upstreams, err := prepareOCIUpstreams(options.OCIUpstreams)
+	if err != nil {
+		return Rendered{}, err
+	}
 	activationVariable := ""
 	if options.ActivationRevisionID != "" {
 		revisionID, err := core.ParseID(options.ActivationRevisionID)
@@ -171,7 +180,7 @@ func RenderAccount(
 	}
 	prepared := make([]preparedDomain, 0, len(domains))
 	for _, domain := range domains {
-		item, include, err := prepareDomain(identity, domain)
+		item, include, err := prepareDomain(identity, domain, upstreams)
 		if err != nil {
 			return Rendered{}, err
 		}
@@ -201,11 +210,14 @@ func RenderAccount(
 			writeQueryMap(&output, item.redirect.queryVariable)
 		}
 	}
+	writeOCIUpstreamBlocks(&output, prepared)
 	if output.Len() > MaximumRenderedBytes {
 		return Rendered{}, ErrRenderedTooLarge
 	}
 	for _, item := range prepared {
-		if item.cachePreset != core.CachePresetDisabled {
+		if item.upstreamPort != 0 {
+			writeOCIApplicationDomain(&output, item, headers)
+		} else if item.cachePreset != core.CachePresetDisabled {
 			writeCachedDomain(&output, item, headers)
 		} else if item.redirect == nil {
 			writeStaticDomain(&output, item, headers)
@@ -269,6 +281,11 @@ func SpecsFromDomains(
 				PreservePath:  redirect.PreservePath,
 				PreserveQuery: redirect.PreserveQuery, WildcardSubdomains: redirect.WildcardSubdomains,
 			}
+		case core.DomainTargetOCIApplication:
+			if domain.Target.ApplicationID == nil {
+				return nil, ErrInvalidSpec
+			}
+			spec.Target.ApplicationID = string(*domain.Target.ApplicationID)
 		default:
 			return nil, ErrUnsupportedTarget
 		}
@@ -337,7 +354,12 @@ func RenderSpecs(
 				PreserveQuery: redirect.PreserveQuery, WildcardSubdomains: redirect.WildcardSubdomains,
 			}
 		case core.DomainTargetOCIApplication:
-			return Rendered{}, ErrUnsupportedTarget
+			applicationID, err := core.ParseID(domain.Target.ApplicationID)
+			if err != nil || domain.Target.ApplicationID != string(applicationID) ||
+				domain.Target.DocumentRoot != "" || domain.Target.PHPVersion != "" || domain.Target.Redirect != nil {
+				return Rendered{}, ErrInvalidSpec
+			}
+			item.Target.ApplicationID = &applicationID
 		default:
 			return Rendered{}, ErrInvalidSpec
 		}
@@ -372,7 +394,32 @@ func prepareHeaders(policies []HeaderPolicy) ([]renderedHeader, error) {
 	return headers, nil
 }
 
-func prepareDomain(identity hostingidentity.Spec, domain core.Domain) (preparedDomain, bool, error) {
+func prepareOCIUpstreams(values []core.OCIApplicationUpstream) (map[core.ID]int64, error) {
+	if len(values) > MaximumDomains {
+		return nil, ErrInvalidSpec
+	}
+	result := make(map[core.ID]int64, len(values))
+	ports := make(map[int64]struct{}, len(values))
+	previous := ""
+	for _, upstream := range values {
+		applicationID, err := core.ParseID(string(upstream.ApplicationID))
+		if err != nil || applicationID != upstream.ApplicationID || string(applicationID) <= previous ||
+			upstream.LoopbackPort < ocideployment.MinimumLoopbackPort ||
+			upstream.LoopbackPort > ocideployment.MaximumLoopbackPort {
+			return nil, ErrInvalidSpec
+		}
+		if _, duplicate := ports[upstream.LoopbackPort]; duplicate {
+			return nil, ErrInvalidSpec
+		}
+		previous = string(applicationID)
+		ports[upstream.LoopbackPort] = struct{}{}
+		result[applicationID] = upstream.LoopbackPort
+	}
+	return result, nil
+}
+
+func prepareDomain(identity hostingidentity.Spec, domain core.Domain,
+	upstreams map[core.ID]int64) (preparedDomain, bool, error) {
 	if string(domain.AccountID) != identity.AccountID {
 		return preparedDomain{}, false, ErrInvalidSpec
 	}
@@ -448,7 +495,16 @@ func prepareDomain(identity hostingidentity.Spec, domain core.Domain) (preparedD
 		}
 		item.redirect = redirect
 	case core.DomainTargetOCIApplication:
-		return preparedDomain{}, false, ErrUnsupportedTarget
+		if domain.Target.ApplicationID == nil || domain.Target.DocumentRoot != nil ||
+			domain.Target.Redirect != nil || domain.Target.PHPVersion != "" {
+			return preparedDomain{}, false, ErrInvalidSpec
+		}
+		port, found := upstreams[*domain.Target.ApplicationID]
+		if !found {
+			return preparedDomain{}, false, ErrInvalidSpec
+		}
+		item.upstreamPort = port
+		item.applicationID = string(*domain.Target.ApplicationID)
 	default:
 		return preparedDomain{}, false, ErrInvalidSpec
 	}
@@ -590,6 +646,100 @@ func writeActivationMap(output *bytes.Buffer, variable, revisionID string) {
 	output.WriteString(" {\n    default \"\";\n    \"/.__stackfort_activation_probe__\" ")
 	output.WriteString(quoteLiteral(revisionID))
 	output.WriteString(";\n}\n\n")
+}
+
+func writeOCIUpstreamBlocks(output *bytes.Buffer, domains []preparedDomain) {
+	seen := make(map[string]struct{})
+	for _, item := range domains {
+		if item.applicationID == "" {
+			continue
+		}
+		if _, exists := seen[item.applicationID]; exists {
+			continue
+		}
+		seen[item.applicationID] = struct{}{}
+		output.WriteString("upstream ")
+		output.WriteString(ociUpstreamName(item.applicationID))
+		output.WriteString(" {\n    server 127.0.0.1:")
+		output.WriteString(strconv.FormatInt(item.upstreamPort, 10))
+		output.WriteString(";\n    keepalive 32;\n}\n\n")
+	}
+}
+
+func ociUpstreamName(applicationID string) string {
+	return "sf_app_" + strings.ReplaceAll(applicationID, "-", "")
+}
+
+func writeOCIApplicationDomain(output *bytes.Buffer, item preparedDomain, headers []renderedHeader) {
+	canonical, alias := canonicalHosts(item.base, item.domain.CanonicalMode)
+	if alias != "" {
+		writeHTTPServerStart(output, []string{alias})
+		writeDomainLogs(output, item)
+		writeWAFPolicy(output, item)
+		writeHeaders(output, headers, item.activationVariable)
+		if item.http01 {
+			writeHTTP01Location(output, item.wafProfile != "")
+		}
+		if item.wafProfile != "" {
+			writeWAFReturnLocation(output, 301, "https://"+canonical, "$request_uri")
+		} else {
+			writeReturnLocation(output, 301, "https://"+canonical, "$request_uri")
+		}
+		output.WriteString("}\n\n")
+		if item.certificateID != "" {
+			writeHTTPSServerStart(output, []string{alias}, item.certificateID)
+			writeDomainLogs(output, item)
+			writeWAFPolicy(output, item)
+			writeHeaders(output, headers, item.activationVariable)
+			if item.wafProfile != "" {
+				writeWAFReturnLocation(output, 301, "https://"+canonical, "$request_uri")
+			} else {
+				writeReturnLocation(output, 301, "https://"+canonical, "$request_uri")
+			}
+			output.WriteString("}\n\n")
+		}
+	}
+	hosts := []string{canonical}
+	if item.domain.CanonicalMode == core.CanonicalServeBoth {
+		hosts = []string{item.base, "www." + item.base}
+	}
+	if item.certificateID != "" {
+		writeHTTPServerStart(output, hosts)
+		writeDomainLogs(output, item)
+		writeWAFPolicy(output, item)
+		writeHeaders(output, headers, item.activationVariable)
+		if item.http01 {
+			writeHTTP01Location(output, item.wafProfile != "")
+		}
+		redirectHost, variables := "https://"+canonical, "$request_uri"
+		if item.domain.CanonicalMode == core.CanonicalServeBoth {
+			redirectHost, variables = "https://", "$host$request_uri"
+		}
+		if item.wafProfile != "" {
+			writeWAFReturnLocation(output, 301, redirectHost, variables)
+		} else {
+			writeReturnLocation(output, 301, redirectHost, variables)
+		}
+		output.WriteString("}\n\n")
+		writeHTTPSServerStart(output, hosts, item.certificateID)
+	} else {
+		writeHTTPServerStart(output, hosts)
+	}
+	writeDomainLogs(output, item)
+	writeWAFPolicy(output, item)
+	writeHeaders(output, headers, item.activationVariable)
+	if item.http01 && item.certificateID == "" {
+		writeHTTP01Location(output, item.wafProfile != "")
+	}
+	output.WriteString("\n    location / {\n        proxy_http_version 1.1;\n")
+	output.WriteString("        proxy_set_header Connection \"\";\n        proxy_set_header Host $host;\n")
+	output.WriteString("        proxy_set_header X-Forwarded-Proto $scheme;\n")
+	output.WriteString("        proxy_set_header X-Forwarded-For $remote_addr;\n")
+	output.WriteString("        proxy_set_header X-Forwarded-Host $host;\n")
+	output.WriteString("        proxy_connect_timeout 2s;\n        proxy_send_timeout 60s;\n        proxy_read_timeout 60s;\n")
+	output.WriteString("        proxy_pass http://")
+	output.WriteString(ociUpstreamName(item.applicationID))
+	output.WriteString(";\n    }\n}\n\n")
 }
 
 func writeStaticDomain(output *bytes.Buffer, item preparedDomain, headers []renderedHeader) {

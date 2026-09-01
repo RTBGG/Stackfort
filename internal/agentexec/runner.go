@@ -26,6 +26,7 @@ import (
 	"github.com/RTBGG/stackfort/internal/hostingstorage"
 	"github.com/RTBGG/stackfort/internal/nginxbaseline"
 	"github.com/RTBGG/stackfort/internal/ociapps"
+	"github.com/RTBGG/stackfort/internal/ocideployment"
 	"github.com/RTBGG/stackfort/internal/ociimage"
 	"github.com/RTBGG/stackfort/internal/ociresources"
 	"github.com/RTBGG/stackfort/internal/phpruntime"
@@ -100,6 +101,14 @@ const (
 	ProfilePodmanNetworkExists        ProfileID = "oci.podman-network-exists"
 	ProfilePodmanNetworkCreate        ProfileID = "oci.podman-network-create"
 	ProfilePodmanNetworkInspect       ProfileID = "oci.podman-network-inspect"
+	ProfilePodmanSecretCreate         ProfileID = "oci.podman-secret-create" // #nosec G101 -- allowlisted profile identifier, not credential material.
+	ProfilePodmanSecretRemove         ProfileID = "oci.podman-secret-remove" // #nosec G101 -- allowlisted profile identifier, not credential material.
+	ProfileSystemdUserDaemonReload    ProfileID = "oci.systemd-user-daemon-reload"
+	ProfileSystemdUserRestart         ProfileID = "oci.systemd-user-restart"
+	ProfileSystemdUserStart           ProfileID = "oci.systemd-user-start"
+	ProfileSystemdUserStop            ProfileID = "oci.systemd-user-stop"
+	ProfileSystemdUserIsActive        ProfileID = "oci.systemd-user-is-active"
+	ProfileJournalUserUnit            ProfileID = "oci.journal-user-unit"
 	ProfileTrivyScan                  ProfileID = "oci.trivy-scan"
 )
 
@@ -108,6 +117,7 @@ const (
 type Invocation struct {
 	Profile ProfileID
 	Values  []string
+	Input   []byte
 }
 
 // Result is returned for successful starts, including ordinary non-zero exit
@@ -155,6 +165,8 @@ type executionProfile struct {
 	resolve         argumentResolver
 	sensitiveInputs map[int]struct{}
 	accountProcess  bool
+	acceptsInput    bool
+	inputLimit      int
 }
 
 // Runner owns immutable execution profiles. NewRunner is the only production
@@ -373,6 +385,65 @@ func NewRunner() *Runner {
 		ProfilePodmanNetworkInspect: accountOCIResourceProfile(func(identity hostingidentity.Spec) []string {
 			return []string{"network", "inspect", "--format=json", ociresources.NetworkName}
 		}, time.Minute, 1<<20),
+		ProfilePodmanSecretCreate: func() executionProfile {
+			profile := accountOCIDeploymentProfile("/usr/bin/podman", func(_ hostingidentity.Spec, applicationID string, extra []string) ([]string, error) {
+				if len(extra) != 3 {
+					return nil, ErrInvalidInvocation
+				}
+				generation, err := strconv.ParseInt(extra[2], 10, 64)
+				reference := ocideployment.EnvironmentReference{ValueID: extra[0], Environment: extra[1], Generation: generation}
+				name := ocideployment.SecretName(reference)
+				normalized, normalizeErr := ociapps.NormalizeSecretReferences([]ociapps.EnvironmentSecretReference{{
+					SecretID: reference.ValueID, Environment: reference.Environment}})
+				if err != nil || name == "" || normalizeErr != nil || len(normalized) != 1 ||
+					normalized[0].Environment != reference.Environment {
+					return nil, ErrInvalidInvocation
+				}
+				return []string{"secret", "create", "--replace",
+					"--label=io.stackfort.managed=true", "--label=io.stackfort.application=" + applicationID,
+					name, "-"}, nil
+			}, time.Minute, defaultOutputLimit)
+			profile.acceptsInput, profile.inputLimit = true, ocideployment.MaximumValueBytes
+			return profile
+		}(),
+		ProfilePodmanSecretRemove: accountOCIDeploymentProfile("/usr/bin/podman", func(_ hostingidentity.Spec, _ string, extra []string) ([]string, error) {
+			if len(extra) != 3 {
+				return nil, ErrInvalidInvocation
+			}
+			generation, err := strconv.ParseInt(extra[2], 10, 64)
+			reference := ocideployment.EnvironmentReference{ValueID: extra[0], Environment: extra[1], Generation: generation}
+			name := ocideployment.SecretName(reference)
+			if err != nil || name == "" {
+				return nil, ErrInvalidInvocation
+			}
+			return []string{"secret", "rm", "--ignore", name}, nil
+		}, time.Minute, defaultOutputLimit),
+		ProfileSystemdUserDaemonReload: accountOCIDeploymentProfile("/usr/bin/systemctl", func(_ hostingidentity.Spec, _ string, extra []string) ([]string, error) {
+			if len(extra) != 0 {
+				return nil, ErrInvalidInvocation
+			}
+			return []string{"--user", "daemon-reload"}, nil
+		}, time.Minute, defaultOutputLimit),
+		ProfileSystemdUserRestart: accountOCISystemdProfile("restart"),
+		ProfileSystemdUserStart:   accountOCISystemdProfile("start"),
+		ProfileSystemdUserStop:    accountOCISystemdProfile("stop"),
+		ProfileSystemdUserIsActive: accountOCIDeploymentProfile("/usr/bin/systemctl", func(_ hostingidentity.Spec, applicationID string, extra []string) ([]string, error) {
+			if len(extra) != 0 {
+				return nil, ErrInvalidInvocation
+			}
+			return []string{"--user", "is-active", "--quiet", ocideployment.UnitNameFromApplication(applicationID)}, nil
+		}, time.Minute, defaultOutputLimit),
+		ProfileJournalUserUnit: accountOCIDeploymentProfile("/usr/bin/journalctl", func(_ hostingidentity.Spec, applicationID string, extra []string) ([]string, error) {
+			if len(extra) != 1 {
+				return nil, ErrInvalidInvocation
+			}
+			tail, err := strconv.Atoi(extra[0])
+			if err != nil || tail < 1 || tail > ocideployment.MaximumLogEntries {
+				return nil, ErrInvalidInvocation
+			}
+			return []string{"--user", "--unit=" + ocideployment.UnitNameFromApplication(applicationID),
+				"--lines=" + strconv.Itoa(tail), "--output=json", "--no-pager"}, nil
+		}, time.Minute, ocideployment.MaximumLogBytes),
 		ProfileTrivyScan: func() executionProfile {
 			profile := mutationProfile(ociimage.ScannerExecutable, func(values []string) ([]string, error) {
 				if len(values) != 1 {
@@ -439,6 +510,33 @@ func accountOCIProfileWithExecutable(
 	profile.stdoutLimit, profile.stderrLimit = outputLimit, outputLimit
 	profile.accountProcess = true
 	return profile
+}
+
+func accountOCIDeploymentProfile(executable string,
+	resolve func(hostingidentity.Spec, string, []string) ([]string, error), timeout time.Duration,
+	outputLimit int) executionProfile {
+	profile := newProfile(executable, func(values []string) ([]string, error) {
+		if len(values) < 6 {
+			return nil, ErrInvalidInvocation
+		}
+		identity, applicationID, err := ocideployment.IdentityAndApplication(values[:6])
+		if err != nil {
+			return nil, ErrInvalidInvocation
+		}
+		return resolve(identity, applicationID, values[6:])
+	})
+	profile.timeout, profile.stdoutLimit, profile.stderrLimit = timeout, outputLimit, outputLimit
+	profile.accountProcess = true
+	return profile
+}
+
+func accountOCISystemdProfile(action string) executionProfile {
+	return accountOCIDeploymentProfile("/usr/bin/systemctl", func(_ hostingidentity.Spec, applicationID string, extra []string) ([]string, error) {
+		if len(extra) != 0 || action != "start" && action != "restart" && action != "stop" {
+			return nil, ErrInvalidInvocation
+		}
+		return []string{"--user", action, ocideployment.UnitNameFromApplication(applicationID)}, nil
+	}, 2*time.Minute, defaultOutputLimit)
 }
 
 func ociImageTarget(spec ociimage.PrepareSpec) (string, error) {
@@ -852,6 +950,10 @@ func (runner *Runner) Run(ctx context.Context, invocation Invocation) (Result, e
 	if err := validateProfile(profile); err != nil {
 		return Result{}, newRunError(ErrInvalidInvocation, nil)
 	}
+	if len(invocation.Input) != 0 && (!profile.acceptsInput || len(invocation.Input) > profile.inputLimit) ||
+		len(invocation.Input) == 0 && profile.acceptsInput {
+		return Result{}, newRunError(ErrInvalidInvocation, nil)
+	}
 	arguments, err := profile.resolve(append([]string(nil), invocation.Values...))
 	if err != nil {
 		if errors.Is(err, ErrNotAllowlisted) {
@@ -882,7 +984,11 @@ func (runner *Runner) Run(ctx context.Context, invocation Invocation) (Result, e
 			"LOGNAME="+parsed.Username, "XDG_RUNTIME_DIR=/run/user/"+strconv.FormatUint(uint64(parsed.UID), 10))
 		command.Dir = parsed.HomeDirectory
 	}
-	command.Stdin = nil
+	if profile.acceptsInput {
+		command.Stdin = bytes.NewReader(invocation.Input)
+	} else {
+		command.Stdin = nil
+	}
 	command.WaitDelay = profile.waitDelay
 	if err := configureProcess(command, identity); err != nil {
 		return Result{}, err
@@ -954,7 +1060,8 @@ const (
 func validateProfile(profile executionProfile) error {
 	if !path.IsAbs(profile.executable) || path.Clean(profile.executable) != profile.executable ||
 		profile.resolve == nil || profile.timeout <= 0 || profile.stdoutLimit <= 0 ||
-		profile.stderrLimit <= 0 || profile.waitDelay <= 0 {
+		profile.stderrLimit <= 0 || profile.waitDelay <= 0 || profile.acceptsInput != (profile.inputLimit > 0) ||
+		profile.inputLimit > 1<<20 {
 		return ErrInvalidInvocation
 	}
 	return nil

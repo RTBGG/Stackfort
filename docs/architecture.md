@@ -397,6 +397,18 @@ policy evidence can move the draft to `pending`; see
 [Bounded OCI image preparation](oci-image-preparation.md) and
 [ADR 0055](adr/0055-digest-pinned-bounded-oci-image-preparation.md).
 
+L-004 adds the account-private network, encrypted environment references, and
+descriptor-verified managed volumes. L-005 then reserves one stable loopback
+port and renders a fixed root-owned Quadlet from only the approved image and
+resource evidence. The agent injects transient values through fixed Podman
+stdin, starts the rootless systemd unit, and requires a real loopback health
+probe before SQLite marks the exact revision active/applied. NGINX can route
+only that state and promotes the fixed application upstream through its
+existing atomic activation/rollback pipeline. See
+[Private OCI resources](oci-private-resources.md),
+[Rootless OCI deployment lifecycle](oci-deployment-lifecycle.md), and
+[ADR 0058](adr/0058-health-gated-rootless-quadlet-lifecycle.md).
+
 ## 6. Resource accounting
 
 ### 6.1 Hard limits

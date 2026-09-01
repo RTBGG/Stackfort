@@ -15,6 +15,7 @@ import (
 	"github.com/RTBGG/stackfort/internal/hostingidentity"
 	"github.com/RTBGG/stackfort/internal/hostingresources"
 	"github.com/RTBGG/stackfort/internal/ociapps"
+	"github.com/RTBGG/stackfort/internal/ocideployment"
 	"github.com/RTBGG/stackfort/internal/ociimage"
 	"github.com/RTBGG/stackfort/internal/ociresources"
 )
@@ -468,7 +469,7 @@ func TestProductionProfilesUseFixedPathsAndTemplates(t *testing.T) {
 			`req.http.host == "example.test" && req.url ~ "^/news\\.php(?:/|\\?|$)"`,
 		}, accountMutationTimeout},
 	)
-	if len(runner.profiles) != len(tests)+9 {
+	if len(runner.profiles) != len(tests)+17 {
 		t.Fatalf("production profile count = %d", len(runner.profiles))
 	}
 	for _, test := range tests {
@@ -553,6 +554,42 @@ func TestOCIProfilesDeriveAccountExecutionAndFixedLimits(t *testing.T) {
 	if scanErr != nil || scan.executable != ociimage.ScannerExecutable || scan.accountProcess ||
 		scan.stdoutLimit != ociimage.MaximumScanReportBytes || slices.Contains(scanArguments, "--output") {
 		t.Fatalf("scanner profile = %#v", scan)
+	}
+	deploymentSpec, err := ocideployment.Normalize(ocideployment.Spec{Identity: spec.Identity,
+		ApplicationID: spec.ApplicationID, Revision: spec.Revision,
+		ImageDigest: "sha256:" + strings.Repeat("a", 64), ResourceDigest: "sha256:" + strings.Repeat("b", 64),
+		InternalPort: 8080, LoopbackPort: 20042,
+		Health: ociapps.HealthCheck{Kind: ociapps.HealthTCP, IntervalSeconds: 10, TimeoutSeconds: 2, Retries: 2},
+		EnvironmentReferences: []ocideployment.EnvironmentReference{{
+			ValueID: "019d2eaa-52d0-7f52-8ac7-0aeb932455dc", Environment: "TOKEN", Generation: 4}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	deploymentValues, _ := ocideployment.InvocationValues(deploymentSpec)
+	secretProfile := runner.profiles[ProfilePodmanSecretCreate]
+	secretArguments, err := secretProfile.resolve(append(deploymentValues,
+		deploymentSpec.EnvironmentReferences[0].ValueID, "TOKEN", "4"))
+	if err != nil || !secretProfile.accountProcess || !secretProfile.acceptsInput ||
+		secretProfile.inputLimit != ocideployment.MaximumValueBytes || !reflect.DeepEqual(secretArguments, []string{
+		"secret", "create", "--replace", "--label=io.stackfort.managed=true",
+		"--label=io.stackfort.application=" + spec.ApplicationID,
+		"sf-019d2eaa52d07f528ac70aeb932455dc-g4", "-",
+	}) {
+		t.Fatalf("secret profile = %#v / %#v / %v", secretProfile, secretArguments, err)
+	}
+	secretRemove := runner.profiles[ProfilePodmanSecretRemove]
+	secretRemoveArguments, err := secretRemove.resolve(append(deploymentValues,
+		deploymentSpec.EnvironmentReferences[0].ValueID, "TOKEN", "4"))
+	if err != nil || !secretRemove.accountProcess || secretRemove.acceptsInput || !reflect.DeepEqual(secretRemoveArguments, []string{
+		"secret", "rm", "--ignore", "sf-019d2eaa52d07f528ac70aeb932455dc-g4",
+	}) {
+		t.Fatalf("secret remove profile = %#v / %#v / %v", secretRemove, secretRemoveArguments, err)
+	}
+	restartArguments, err := runner.profiles[ProfileSystemdUserRestart].resolve(deploymentValues)
+	if err != nil || !reflect.DeepEqual(restartArguments, []string{"--user", "restart",
+		"stackfort-019d2eaa52d07f528ac70aeb932455db.service"}) {
+		t.Fatalf("rootless systemd profile = %#v / %v", restartArguments, err)
 	}
 }
 

@@ -352,6 +352,12 @@ func validateCapabilityUnion(response Response, expected Operation) error {
 	if response.OCIResources != nil {
 		resultCount++
 	}
+	if response.OCIDeployment != nil {
+		resultCount++
+	}
+	if response.OCIApplicationLogs != nil {
+		resultCount++
+	}
 	if response.Error != nil {
 		resultCount++
 	}
@@ -452,6 +458,14 @@ func validateCapabilityUnion(response Response, expected Operation) error {
 		}
 	case OperationReconcileOCIResources:
 		if response.OCIResources == nil {
+			return fmt.Errorf("agent protocol response does not match %s", expected)
+		}
+	case OperationReconcileOCIDeployment:
+		if response.OCIDeployment == nil {
+			return fmt.Errorf("agent protocol response does not match %s", expected)
+		}
+	case OperationReadOCIApplicationLogs:
+		if response.OCIApplicationLogs == nil {
 			return fmt.Errorf("agent protocol response does not match %s", expected)
 		}
 	default:

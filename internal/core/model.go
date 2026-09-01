@@ -9,6 +9,7 @@ import (
 
 	"github.com/RTBGG/stackfort/internal/cacheconfig"
 	"github.com/RTBGG/stackfort/internal/ociapps"
+	"github.com/RTBGG/stackfort/internal/ocideployment"
 	"github.com/RTBGG/stackfort/internal/ociimage"
 	"github.com/RTBGG/stackfort/internal/ociresources"
 	"github.com/RTBGG/stackfort/internal/scheduledjobs"
@@ -646,6 +647,39 @@ type RecordOCIResourceArtifactParams struct {
 	Result           ociresources.Result
 	ActorID          ID
 	RequestID        string
+}
+
+type OCIDeploymentArtifact struct {
+	ApplicationID        ID                   `json:"applicationId"`
+	AccountID            ID                   `json:"accountId"`
+	ApplicationRevision  int64                `json:"applicationRevision"`
+	Result               ocideployment.Result `json:"result"`
+	DeployedAt           time.Time            `json:"deployedAt"`
+	DeployedByIdentityID ID                   `json:"deployedByIdentityId"`
+}
+
+type OCIApplicationUpstream struct {
+	ApplicationID ID    `json:"applicationId"`
+	LoopbackPort  int64 `json:"loopbackPort"`
+}
+
+type RecordOCIDeploymentArtifactParams struct {
+	AccountID        ID
+	ApplicationID    ID
+	ExpectedRevision int64
+	Result           ocideployment.Result
+	ActorID          ID
+	RequestID        string
+}
+
+type ChangeOCIApplicationDeploymentStatusParams struct {
+	AccountID     ID
+	ApplicationID ID
+	Expected      OCIApplicationStatus
+	Status        OCIApplicationStatus
+	ActorID       ID
+	OperationID   ID
+	RequestID     string
 }
 
 type OCIEnvironmentSecret struct {

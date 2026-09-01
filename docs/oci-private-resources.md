@@ -1,8 +1,8 @@
 # OCI private networks, environment references, and volumes
 
 L-004 prepares the private host resources for one image-approved application
-revision. It still does not start a container, expose a host port, or generate
-a Quadlet; those lifecycle actions belong to L-005.
+revision. L-005 now consumes this closed resource evidence to generate and
+health-gate the rootless Quadlet lifecycle.
 
 ## Encrypted environment values
 
@@ -19,7 +19,7 @@ are rejected. Rotation replaces the encrypted envelope and increments the
 generation without exposing plaintext. Logical removal destroys the retained
 envelope bytes.
 
-L-005 will own the narrow deployment-time plaintext boundary. L-004 deliberately
+L-005 owns the narrow deployment-time plaintext boundary. L-004 deliberately
 does not place values in Podman storage before a workload exists.
 
 ## Account-private network
@@ -91,7 +91,8 @@ exit gate.
 
 See [ADR 0057](adr/0057-account-private-oci-resources.md), the
 [rootless account runtime](rootless-oci-runtime.md), and
-[bounded image preparation](oci-image-preparation.md).
+[bounded image preparation](oci-image-preparation.md), and the
+[deployment lifecycle](oci-deployment-lifecycle.md).
 
 Upstream references:
 

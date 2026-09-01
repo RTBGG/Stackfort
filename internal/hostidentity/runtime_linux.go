@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/RTBGG/stackfort/internal/agentexec"
 	"github.com/RTBGG/stackfort/internal/agentprotocol"
@@ -95,43 +96,99 @@ func (manager *linuxRuntimeManager) RemoveRuntime(
 	identity hostingidentity.Spec,
 ) (RuntimeRemovalResult, error) {
 	if manager == nil || manager.commands == nil {
-		return RuntimeRemovalResult{}, ErrMutationFailed
+		return RuntimeRemovalResult{}, fmt.Errorf("%w: runtime manager", ErrMutationFailed)
 	}
 	spec, err := hostingoci.ForIdentity(identity)
 	if err != nil {
-		return RuntimeRemovalResult{}, ErrMutationFailed
+		return RuntimeRemovalResult{}, fmt.Errorf("%w: runtime specification", ErrMutationFailed)
 	}
 	if err := rejectPodmanAPISocket(spec.RuntimeRoot); err != nil {
-		return RuntimeRemovalResult{}, err
+		return RuntimeRemovalResult{}, fmt.Errorf("inspect rootless Podman API socket: %w", err)
 	}
 	result := RuntimeRemovalResult{}
 	removed, err := removeEmptyQuadletRoot(spec)
 	if err != nil {
-		return RuntimeRemovalResult{}, err
+		return RuntimeRemovalResult{}, fmt.Errorf("remove empty Quadlet directory: %w", err)
 	}
 	result.RuntimeRemoved = removed
 	lingerEnabled, err := manager.lingerEnabled(spec)
 	if err != nil {
-		return RuntimeRemovalResult{}, err
+		return RuntimeRemovalResult{}, fmt.Errorf("inspect user linger: %w", err)
 	}
 	if lingerEnabled {
-		if err := manager.run(ctx, agentexec.ProfileTerminateUser, identity); err != nil {
-			return RuntimeRemovalResult{}, err
-		}
 		if err := manager.run(ctx, agentexec.ProfileDisableUserLinger, identity); err != nil {
-			return RuntimeRemovalResult{}, err
+			return RuntimeRemovalResult{}, fmt.Errorf("disable user linger: %w", err)
 		}
 		result.LingerDisabled = true
+		if err := manager.run(ctx, agentexec.ProfileTerminateUser, identity); err != nil {
+			return RuntimeRemovalResult{}, fmt.Errorf("terminate user manager: %w", err)
+		}
+		if err := waitForUserProcessesExit(ctx, identity.UID); err != nil {
+			return RuntimeRemovalResult{}, fmt.Errorf("wait for user processes: %w", err)
+		}
 	}
 	result.SubUIDsRemoved, err = manager.removeSubordinateRange(ctx, spec, manager.subuid, false)
 	if err != nil {
-		return RuntimeRemovalResult{}, err
+		return RuntimeRemovalResult{}, fmt.Errorf("remove subordinate UIDs: %w", err)
 	}
 	result.SubGIDsRemoved, err = manager.removeSubordinateRange(ctx, spec, manager.subgid, true)
 	if err != nil {
-		return RuntimeRemovalResult{}, err
+		return RuntimeRemovalResult{}, fmt.Errorf("remove subordinate GIDs: %w", err)
 	}
 	return result, nil
+}
+
+func waitForUserProcessesExit(ctx context.Context, uid uint32) error {
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	ticker := time.NewTicker(50 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		present, err := userProcessPresent(uid)
+		if err != nil {
+			return ErrMutationFailed
+		}
+		if !present {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ErrMutationFailed
+		case <-deadline.C:
+			return ErrMutationFailed
+		case <-ticker.C:
+		}
+	}
+}
+
+func userProcessPresent(uid uint32) (bool, error) {
+	entries, err := os.ReadDir("/proc")
+	if err != nil {
+		return false, err
+	}
+	expected := strconv.FormatUint(uint64(uid), 10)
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		if _, err := strconv.ParseUint(entry.Name(), 10, 32); err != nil {
+			continue
+		}
+		status, err := os.ReadFile(filepath.Join("/proc", entry.Name(), "status"))
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return false, err
+		}
+		for _, line := range strings.Split(string(status), "\n") {
+			fields := strings.Fields(line)
+			if len(fields) >= 2 && fields[0] == "Uid:" && fields[1] == expected {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }
 
 func firstUnavailableRuntimeCapability(runtime agentprotocol.OCIRuntimeCapabilities) agentprotocol.Capability {

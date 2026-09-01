@@ -298,6 +298,13 @@ than adopting them. See [Account systemd slices and cgroup-v2 limits](account-re
   and fixed Trivy rejects scanner failure or HIGH/CRITICAL findings. Host replay
   manifests and SQLite image evidence are create-only; see
   [Bounded OCI image preparation](oci-image-preparation.md).
+- L-005 renders only digest-pinned, root-owned Quadlets with a private network,
+  all capabilities dropped, no-new-privileges, a read-only image filesystem,
+  managed volumes/secrets, and a single derived `127.0.0.1` port. The agent
+  health-checks that endpoint before active evidence and NGINX routing; failed
+  candidates restore prior state. Plaintext exists only across the authenticated
+  local deployment call and fixed Podman stdin, is never durable or logged, and
+  is cleared after use. See [Rootless OCI deployment lifecycle](oci-deployment-lifecycle.md).
 
 ### 4.8 Databases and phpMyAdmin
 

@@ -263,6 +263,11 @@ func run(logger *slog.Logger) (returnErr error) {
 			return fmt.Errorf("initialize OCI private-resource operation handler: %w", handlerErr)
 		}
 		handlers[operations.OCIResourceReconcileKind] = ociResourceHandler
+		ociDeploymentHandler, handlerErr := operations.NewOCIDeploymentLifecycleHandler(repository, hostCapabilityClient)
+		if handlerErr != nil {
+			return fmt.Errorf("initialize OCI deployment lifecycle handler: %w", handlerErr)
+		}
+		handlers[operations.OCIDeploymentLifecycleKind] = ociDeploymentHandler
 	}
 	runner, err := operations.NewRunner(repository, handlers, operations.RunnerOptions{})
 	if err != nil {

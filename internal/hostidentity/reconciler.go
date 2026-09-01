@@ -245,21 +245,31 @@ func (reconciler *Reconciler) Delete(
 	result.LingerDisabled = runtimeResult.LingerDisabled
 	if userExists {
 		if err := reconciler.run(ctx, agentexec.ProfileUserDel, spec); err != nil {
-			return DeleteResult{}, err
+			return DeleteResult{}, fmt.Errorf("delete managed user: %w", err)
 		}
 		result.UserDeleted = true
-		if err := reconciler.verify(ctx, spec, groupExists, false, true); err != nil {
+		postDelete, err := reconciler.lookup.Load(ctx)
+		if err != nil {
 			return DeleteResult{}, err
 		}
+		remainingGroup, remainingUser, _, err := inspectExpectedIdentity(postDelete, spec, true)
+		if err != nil || remainingUser {
+			if err != nil {
+				return DeleteResult{}, fmt.Errorf("verify managed user deletion: %w", err)
+			}
+			return DeleteResult{}, fmt.Errorf("verify managed user deletion: %w", ErrMutationFailed)
+		}
+		result.GroupDeleted = groupExists && !remainingGroup
+		groupExists = remainingGroup
 	}
 	if groupExists {
 		if err := reconciler.run(ctx, agentexec.ProfileGroupDel, spec); err != nil {
-			return DeleteResult{}, err
+			return DeleteResult{}, fmt.Errorf("delete managed group: %w", err)
 		}
 		result.GroupDeleted = true
 	}
 	if err := reconciler.verify(ctx, spec, false, false, true); err != nil {
-		return DeleteResult{}, err
+		return DeleteResult{}, fmt.Errorf("verify managed identity deletion: %w", err)
 	}
 	return result, nil
 }

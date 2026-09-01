@@ -103,7 +103,7 @@ func run(logger *slog.Logger) error {
 		ErrorLog:          agentrpc.NewRedactedHTTPErrorLogger(logger),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
-		WriteTimeout:      10 * time.Second,
+		WriteTimeout:      4 * time.Minute,
 		IdleTimeout:       30 * time.Second,
 		MaxHeaderBytes:    64 << 10,
 	}

@@ -1305,7 +1305,7 @@ arbitrary mounts, devices, namespaces, and capabilities.
 Acceptance:
 
 - Envelope-encrypt tenant values and keep plaintext out of public records,
-  jobs, audit events, agent payloads, and replay artifacts.
+  jobs, audit events, command arguments, and persistent agent/replay artifacts.
 - Reconcile a deterministic per-account rootless bridge with DNS, strict
   Netavark isolation, exact labels, and no public host-port field.
 - Derive all account-owned volume paths below a hidden reserved root, verify
@@ -1319,11 +1319,32 @@ Acceptance:
 See [Private OCI resources](oci-private-resources.md) and
 [ADR 0057](adr/0057-account-private-oci-resources.md).
 
-### L-005 — Quadlet lifecycle, health, logs, and domain routing (`P0`)
+### L-005 — Quadlet lifecycle, health, logs, and domain routing (`P0`, complete)
 
 Generate fixed rootless Quadlets, reconcile through the typed agent boundary,
 health-check before atomic domain activation, expose bounded sanitized logs,
 and provide replay-safe deploy, suspend, resume, rollback, and remove flows.
+
+Acceptance:
+
+- Allocate one immutable high loopback port and render only fixed, root-owned,
+  digest-pinned, private-network Quadlets with hardening and managed resources.
+- Decrypt generation-fenced values only immediately before the authenticated
+  local agent call, inject them through fixed Podman stdin, clear transient
+  buffers, and retain no plaintext replay state.
+- Probe the real loopback HTTP/TCP endpoint before persisting active/applied
+  evidence; restore the previous workload on candidate failure.
+- Render active OCI domain targets through fixed NGINX upstreams and the
+  existing atomic activation/rollback pipeline; refuse disruptive lifecycle
+  actions while an active route remains.
+- Bound and sanitize journald output and make deploy, suspend, resume,
+  rollback, and remove converge safely, including derived secret retirement.
+- Pass unit/repository/protocol tests and the focused real Podman/systemd
+  lifecycle qualification on the disposable Debian 13 guest.
+
+See [Rootless OCI deployment lifecycle](oci-deployment-lifecycle.md),
+[ADR 0058](adr/0058-health-gated-rootless-quadlet-lifecycle.md), and the
+[qualification result](../infra/host-tests/results/2026-09-01-oci-deployment-lifecycle-hyper-v.md).
 
 ### L-006 — Aggregate accounting and three-guest exit matrix (`P0`)
 

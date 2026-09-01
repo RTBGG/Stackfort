@@ -31,8 +31,8 @@ const (
 	WireVersion       = 1
 	MinimumVersion    = 1
 	MaximumVersion    = 1
-	MaxRequestBytes   = 64 << 10
-	MaxResponseBytes  = 64 << 10
+	MaxRequestBytes   = 2 << 20
+	MaxResponseBytes  = 512 << 10
 )
 
 type Operation string
@@ -62,6 +62,8 @@ const (
 	OperationReconcileScheduledJob  Operation = "hosting.jobs.reconcile"
 	OperationPrepareOCIImage        Operation = "oci.image.prepare"
 	OperationReconcileOCIResources  Operation = "oci.resources.reconcile"
+	OperationReconcileOCIDeployment Operation = "oci.deployment.reconcile"
+	OperationReadOCIApplicationLogs Operation = "oci.logs.read"
 )
 
 type ActorKind string
@@ -119,6 +121,8 @@ var operationPolicies = [...]operationPolicy{
 	{operation: OperationReconcileScheduledJob, access: operationPrivilegedMutation},
 	{operation: OperationPrepareOCIImage, access: operationPrivilegedMutation},
 	{operation: OperationReconcileOCIResources, access: operationPrivilegedMutation},
+	{operation: OperationReconcileOCIDeployment, access: operationPrivilegedMutation},
+	{operation: OperationReadOCIApplicationLogs, access: operationReadOnly},
 }
 
 type ErrorCode string
@@ -185,6 +189,10 @@ const (
 	ErrorOCIResourceInvalid         ErrorCode = "oci_resource_invalid"
 	ErrorOCIResourceConflict        ErrorCode = "oci_resource_conflict"
 	ErrorOCIResourceUnavailable     ErrorCode = "oci_resource_unavailable"
+	ErrorOCIDeploymentInvalid       ErrorCode = "oci_deployment_invalid"
+	ErrorOCIDeploymentConflict      ErrorCode = "oci_deployment_conflict"
+	ErrorOCIDeploymentUnhealthy     ErrorCode = "oci_deployment_unhealthy"
+	ErrorOCIDeploymentUnavailable   ErrorCode = "oci_deployment_unavailable"
 	ErrorMutationFailed             ErrorCode = "mutation_failed"
 	ErrorInternal                   ErrorCode = "internal_error"
 )
@@ -227,6 +235,8 @@ type Request struct {
 	ReconcileScheduledJob  *ScheduledJobReconcileRequest  `json:"reconcileScheduledJob,omitempty"`
 	PrepareOCIImage        *OCIImagePrepareRequest        `json:"prepareOciImage,omitempty"`
 	ReconcileOCIResources  *OCIResourceReconcileRequest   `json:"reconcileOciResources,omitempty"`
+	ReconcileOCIDeployment *OCIDeploymentRequest          `json:"reconcileOciDeployment,omitempty"`
+	ReadOCIApplicationLogs *OCIApplicationLogReadRequest  `json:"readOciApplicationLogs,omitempty"`
 }
 
 type HandshakeRequest struct {
@@ -261,6 +271,8 @@ type Response struct {
 	ScheduledJob             *ScheduledJobReconcileResponse  `json:"scheduledJob,omitempty"`
 	OCIImage                 *OCIImagePrepareResponse        `json:"ociImage,omitempty"`
 	OCIResources             *OCIResourceReconcileResponse   `json:"ociResources,omitempty"`
+	OCIDeployment            *OCIDeploymentResponse          `json:"ociDeployment,omitempty"`
+	OCIApplicationLogs       *OCIApplicationLogReadResponse  `json:"ociApplicationLogs,omitempty"`
 	Error                    *ResponseError                  `json:"error,omitempty"`
 }
 
@@ -463,6 +475,16 @@ func ValidateRequest(request Request) error {
 			validateOCIResourceReconcileRequest(request.Correlation, *request.ReconcileOCIResources) != nil {
 			return fmt.Errorf("%w: OCI private-resource intent is malformed", ErrInvalidRequest)
 		}
+	case OperationReconcileOCIDeployment:
+		if request.ReconcileOCIDeployment == nil || requestPayloadCount(request) != 1 ||
+			validateOCIDeploymentRequest(request.Correlation, *request.ReconcileOCIDeployment) != nil {
+			return fmt.Errorf("%w: OCI deployment intent is malformed", ErrInvalidRequest)
+		}
+	case OperationReadOCIApplicationLogs:
+		if request.ReadOCIApplicationLogs == nil || requestPayloadCount(request) != 1 ||
+			validateOCIApplicationLogReadRequest(*request.ReadOCIApplicationLogs) != nil {
+			return fmt.Errorf("%w: OCI application log request is malformed", ErrInvalidRequest)
+		}
 	default:
 		return fmt.Errorf("%w: operation payload policy is missing", ErrInvalidRequest)
 	}
@@ -486,6 +508,7 @@ func ValidateResponse(response Response, requestID string, expectedOperation Ope
 			response.Error.Code == ErrorOCIRuntimeUnavailable ||
 			response.Error.Code == ErrorOCIImageUnavailable ||
 			response.Error.Code == ErrorOCIResourceUnavailable ||
+			response.Error.Code == ErrorOCIDeploymentUnavailable ||
 			response.Error.Code == ErrorNGINXUnavailable || response.Error.Code == ErrorPHPUnavailable ||
 			response.Error.Code == ErrorScheduledJobUnavailable || response.Error.Code == ErrorCacheUnavailable {
 			if response.Error.Capability == nil || validateCapability(*response.Error.Capability) != nil ||
@@ -562,6 +585,12 @@ func ValidateResponse(response Response, requestID string, expectedOperation Ope
 	}
 	if response.OCIResources != nil {
 		return validateOCIResourceReconcileResponse(*response.OCIResources, expectedOperation)
+	}
+	if response.OCIDeployment != nil {
+		return validateOCIDeploymentResponse(*response.OCIDeployment, expectedOperation)
+	}
+	if response.OCIApplicationLogs != nil {
+		return validateOCIApplicationLogReadResponse(*response.OCIApplicationLogs, expectedOperation)
 	}
 	if response.Handshake.AgentMinimumVersion < 1 ||
 		response.Handshake.AgentMaximumVersion < response.Handshake.AgentMinimumVersion ||
@@ -733,6 +762,7 @@ func validErrorCode(code ErrorCode) bool {
 		ErrorCacheConflict, ErrorCacheUnavailable,
 		ErrorOCIImageInvalid, ErrorOCIImageUnavailable, ErrorOCIImageRejected,
 		ErrorOCIResourceInvalid, ErrorOCIResourceConflict, ErrorOCIResourceUnavailable,
+		ErrorOCIDeploymentInvalid, ErrorOCIDeploymentConflict, ErrorOCIDeploymentUnhealthy, ErrorOCIDeploymentUnavailable,
 		ErrorMutationFailed, ErrorInternal:
 		return true
 	default:
@@ -762,6 +792,8 @@ func requestPayloadCount(request Request) int {
 		request.ReconcileScheduledJob != nil,
 		request.PrepareOCIImage != nil,
 		request.ReconcileOCIResources != nil,
+		request.ReconcileOCIDeployment != nil,
+		request.ReadOCIApplicationLogs != nil,
 	} {
 		if present {
 			count++

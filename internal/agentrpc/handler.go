@@ -38,12 +38,14 @@ import (
 	"github.com/RTBGG/stackfort/internal/hostjobs"
 	"github.com/RTBGG/stackfort/internal/hostlogs"
 	"github.com/RTBGG/stackfort/internal/hostnginx"
+	"github.com/RTBGG/stackfort/internal/hostocideployment"
 	"github.com/RTBGG/stackfort/internal/hostociimage"
 	"github.com/RTBGG/stackfort/internal/hostociresources"
 	"github.com/RTBGG/stackfort/internal/hostphp"
 	"github.com/RTBGG/stackfort/internal/hostresources"
 	"github.com/RTBGG/stackfort/internal/hosttls"
 	"github.com/RTBGG/stackfort/internal/nginxbaseline"
+	"github.com/RTBGG/stackfort/internal/ocideployment"
 	"github.com/RTBGG/stackfort/internal/ociimage"
 	"github.com/RTBGG/stackfort/internal/ociresources"
 	"github.com/RTBGG/stackfort/internal/phpruntime"
@@ -81,6 +83,7 @@ type Handler struct {
 	jobs            scheduledJobReconciler
 	images          ociImagePreparer
 	ociResources    ociResourceReconciler
+	ociDeployments  ociDeploymentReconciler
 }
 
 type capabilityInspector interface {
@@ -174,6 +177,11 @@ type ociImagePreparer interface {
 
 type ociResourceReconciler interface {
 	Reconcile(context.Context, string, ociresources.Spec) (ociresources.Result, error)
+}
+
+type ociDeploymentReconciler interface {
+	Reconcile(context.Context, string, ocideployment.Request) (ocideployment.LifecycleResult, error)
+	ReadLogs(context.Context, ocideployment.LogSpec) (ocideployment.LogResult, error)
 }
 
 type cachedResponse struct {
@@ -295,6 +303,7 @@ func newHandlerWithNGINXActivationServices(
 		jobs:            hostjobs.NewReconciler(),
 		images:          hostociimage.NewManager(),
 		ociResources:    hostociresources.NewManager(),
+		ociDeployments:  hostocideployment.NewManager(),
 	}
 }
 
@@ -748,6 +757,14 @@ func (handler *Handler) handleRPC(w http.ResponseWriter, request *http.Request) 
 	if decoded.RotateDatabasePassword != nil {
 		defer clear(decoded.RotateDatabasePassword.Password)
 	}
+	if decoded.ReconcileOCIDeployment != nil {
+		defer func() {
+			for index := range decoded.ReconcileOCIDeployment.Request.Values {
+				decoded.ReconcileOCIDeployment.Request.Values[index].Value = ""
+			}
+			clear(decoded.ReconcileOCIDeployment.Request.Values)
+		}()
+	}
 	if decoded.Operation == agentprotocol.OperationPrepareOCIImage {
 		// The server's short default protects every ordinary RPC. Image
 		// preparation has a separate policy-bound deadline because its fixed
@@ -759,6 +776,8 @@ func (handler *Handler) handleRPC(w http.ResponseWriter, request *http.Request) 
 		_ = http.NewResponseController(w).SetWriteDeadline(
 			handler.now().UTC().Add(time.Duration(ociresources.ReconciliationTimeoutSeconds+60) * time.Second),
 		)
+	} else if decoded.Operation == agentprotocol.OperationReconcileOCIDeployment {
+		_ = http.NewResponseController(w).SetWriteDeadline(handler.now().UTC().Add(4 * time.Minute))
 	}
 	digest, err := agentprotocol.SemanticDigest(decoded)
 	if err != nil {
@@ -1080,6 +1099,25 @@ func (handler *Handler) dispatch(ctx context.Context, request agentprotocol.Requ
 		}
 		response.OCIResources = &agentprotocol.OCIResourceReconcileResponse{Result: result}
 		return http.StatusOK, response
+	case agentprotocol.OperationReconcileOCIDeployment:
+		intent := request.ReconcileOCIDeployment.Request
+		result, err := handler.ociDeployments.Reconcile(ctx, request.Correlation.OperationID, intent)
+		for index := range intent.Values {
+			intent.Values[index].Value = ""
+		}
+		clear(intent.Values)
+		if err != nil {
+			return handler.ociDeploymentError(response, request, err)
+		}
+		response.OCIDeployment = &agentprotocol.OCIDeploymentResponse{Result: result}
+		return http.StatusOK, response
+	case agentprotocol.OperationReadOCIApplicationLogs:
+		result, err := handler.ociDeployments.ReadLogs(ctx, request.ReadOCIApplicationLogs.Spec)
+		if err != nil {
+			return handler.ociDeploymentError(response, request, err)
+		}
+		response.OCIApplicationLogs = &agentprotocol.OCIApplicationLogReadResponse{Result: result}
+		return http.StatusOK, response
 	default:
 		response.Error = &agentprotocol.ResponseError{
 			Code:    agentprotocol.ErrorUnsupportedOperation,
@@ -1087,6 +1125,42 @@ func (handler *Handler) dispatch(ctx context.Context, request agentprotocol.Requ
 		}
 		return http.StatusBadRequest, response
 	}
+}
+
+func (handler *Handler) ociDeploymentError(response agentprotocol.Response,
+	request agentprotocol.Request, err error) (int, agentprotocol.Response) {
+	status, code, message := http.StatusServiceUnavailable, agentprotocol.ErrorOCIDeploymentUnavailable,
+		"The OCI application deployment is unavailable."
+	var capabilityError *hostocideployment.CapabilityError
+	switch {
+	case errors.As(err, &capabilityError):
+		status, message = http.StatusUnprocessableEntity, "OCI deployment is unavailable on this host."
+		response.Error = &agentprotocol.ResponseError{Code: code, Message: message,
+			Capability: &capabilityError.Capability}
+	case errors.Is(err, hostocideployment.ErrInvalid):
+		status, code, message = http.StatusBadRequest, agentprotocol.ErrorOCIDeploymentInvalid,
+			"The OCI deployment intent is invalid."
+	case errors.Is(err, hostocideployment.ErrConflict):
+		status, code, message = http.StatusConflict, agentprotocol.ErrorOCIDeploymentConflict,
+			"The OCI deployment conflicts with managed host state."
+	case errors.Is(err, hostocideployment.ErrUnhealthy):
+		status, code, message = http.StatusUnprocessableEntity, agentprotocol.ErrorOCIDeploymentUnhealthy,
+			"The OCI application did not become healthy; the previous Quadlet was restored."
+	}
+	operationID, accountID := "", ""
+	if request.Correlation != nil {
+		operationID, accountID = request.Correlation.OperationID, request.Correlation.AccountID
+	}
+	handler.logger.Error("OCI deployment operation failed", "request_id", request.RequestID,
+		"operation_id", operationID, "account_id", accountID)
+	if response.Error == nil {
+		response.Error = &agentprotocol.ResponseError{Code: code, Message: message}
+		if code == agentprotocol.ErrorOCIDeploymentUnavailable {
+			response.Error.Capability = &agentprotocol.Capability{Status: agentprotocol.CapabilityUnknown,
+				ReasonCode: "oci-deployment-operation-failed"}
+		}
+	}
+	return status, response
 }
 
 func (handler *Handler) ociResourceError(

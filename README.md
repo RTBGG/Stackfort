@@ -75,7 +75,7 @@ personalized applications bypass it by default.
 | Optional page cache | Vinyl Cache 9.x or NGINX FastCGI cache |
 | Web application firewall | Coraza 3, coraza-nginx, and OWASP Core Rule Set |
 | Managed SQL service | MariaDB |
-| Container runtime | Rootless Podman with systemd Quadlets (account foundation implemented) |
+| Container runtime | Rootless Podman with health-gated systemd Quadlets |
 | Resource control | systemd, cgroup v2, and filesystem project quotas |
 
 </details>
@@ -112,13 +112,18 @@ personalized applications bypass it by default.
   digest can be recorded; HIGH/CRITICAL findings fail closed.
 - Account-private rootless bridge networks, envelope-encrypted environment
   references, and descriptor-verified quota-bound volumes are implemented.
-- Quadlet workload execution, health, logs, and domain routing remain the next
-  Phase 5 step.
+- Fixed rootless Quadlets publish only stable loopback ports, load transient
+  Podman secrets through stdin, health-gate activation, expose bounded logs,
+  and support replay-safe deploy, suspend, resume, rollback, and removal.
+- Active OCI domain targets use fixed NGINX upstreams and the existing atomic
+  validate/reload/probe/rollback pipeline. The three-guest isolation and
+  resource-exhaustion matrix remains the final Phase 5 step.
 
 [Application schema](docs/oci-application-foundation.md) ·
 [Rootless runtime](docs/rootless-oci-runtime.md) ·
 [Image preparation](docs/oci-image-preparation.md) ·
-[Private resources](docs/oci-private-resources.md)
+[Private resources](docs/oci-private-resources.md) ·
+[Deployment lifecycle](docs/oci-deployment-lifecycle.md)
 
 </details>
 

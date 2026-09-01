@@ -386,7 +386,16 @@ func (handler *DomainLifecycleHandler) desiredRevision(
 	if err != nil {
 		return core.DesiredStateRevision{}, err
 	}
-	document, err := makeDomainDesiredStateDocument(identity, domains)
+	upstreams := []core.OCIApplicationUpstream{}
+	if provider, ok := handler.repository.(interface {
+		ListOCIApplicationUpstreams(context.Context, core.ID) ([]core.OCIApplicationUpstream, error)
+	}); ok {
+		upstreams, err = provider.ListOCIApplicationUpstreams(ctx, accountID)
+		if err != nil {
+			return core.DesiredStateRevision{}, err
+		}
+	}
+	document, err := makeDomainDesiredStateDocument(identity, domains, upstreams)
 	if err != nil {
 		return core.DesiredStateRevision{}, fmt.Errorf("%w: unsupported domain state", core.ErrConflict)
 	}
@@ -403,8 +412,10 @@ func (handler *DomainLifecycleHandler) desiredRevision(
 func makeDomainDesiredStateDocument(
 	identity hostingidentity.Spec,
 	domains []core.Domain,
+	upstreams []core.OCIApplicationUpstream,
 ) (domainDesiredStateDocument, error) {
 	options := nginxconfig.DefaultOptions()
+	options.OCIUpstreams = append([]core.OCIApplicationUpstream(nil), upstreams...)
 	specs, err := nginxconfig.SpecsFromDomains(identity, domains, options)
 	if err != nil {
 		return domainDesiredStateDocument{}, err

@@ -574,8 +574,17 @@ func TestRenderAccountRejectsRouteConflictsAndUnsupportedTargets(t *testing.T) {
 	unsupported.Target.DocumentRoot = nil
 	applicationID := core.ID("019c1234-5678-7abc-8def-0123456789aa")
 	unsupported.Target.ApplicationID = &applicationID
-	if _, err := RenderAccount(identity, []core.Domain{unsupported}, DefaultOptions()); !errors.Is(err, ErrUnsupportedTarget) {
-		t.Errorf("unsupported target error = %v", err)
+	options := DefaultOptions()
+	options.OCIUpstreams = []core.OCIApplicationUpstream{{ApplicationID: applicationID, LoopbackPort: 20042}}
+	rendered, err := RenderAccount(identity, []core.Domain{unsupported}, options)
+	if err != nil || !strings.Contains(string(rendered.Content), "server 127.0.0.1:20042;") ||
+		!strings.Contains(string(rendered.Content), "proxy_pass http://sf_app_019c123456787abc8def0123456789aa;") {
+		t.Errorf("OCI target render = %v\n%s", err, rendered.Content)
+	}
+	unsupported.Target.Type = core.DomainTargetType("unknown")
+	unsupported.Target.ApplicationID = nil
+	if _, err := RenderAccount(identity, []core.Domain{unsupported}, options); !errors.Is(err, ErrInvalidSpec) {
+		t.Errorf("unknown target error = %v", err)
 	}
 }
 

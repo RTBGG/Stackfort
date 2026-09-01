@@ -273,6 +273,16 @@ endpoint, registry option, network, mount, secret, or workload setting crosses
 the protocol. See [Bounded OCI image preparation](oci-image-preparation.md) and
 [ADR 0055](adr/0055-digest-pinned-bounded-oci-image-preparation.md).
 
+L-005 adds mutation `oci.deployment.reconcile` and read-only `oci.logs.read`.
+The lifecycle request is a closed rootless deployment spec plus transient,
+generation-bound values only for deploy/rollback; no command, option list,
+public port, host path, or unit name is accepted. The server clears decoded
+values after dispatch and its replay cache stores only the semantic request
+digest and plaintext-free response. Logs are derived from the account identity
+and application UUID, limited to 500 entries/256 KiB, and sanitized before the
+response. See [Rootless OCI deployment lifecycle](oci-deployment-lifecycle.md)
+and [ADR 0058](adr/0058-health-gated-rootless-quadlet-lifecycle.md).
+
 See [Host capability inspection](host-capability-inspection.md) for D-002's
 allowlists, result semantics, and probe bounds. See
 [Safe external process runner](safe-external-process-runner.md) for the internal
