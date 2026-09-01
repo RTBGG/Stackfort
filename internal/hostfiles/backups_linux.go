@@ -1812,7 +1812,8 @@ func visibleBackupRootNames(descriptor int) ([]string, error) {
 
 func reservedBackupTopLevel(name string) bool {
 	return name == agentprotocol.ReservedFileUploadDirectory ||
-		name == agentprotocol.ReservedFileOperationDirectory || name == agentprotocol.ReservedFileTrashDirectory
+		name == agentprotocol.ReservedFileOperationDirectory || name == agentprotocol.ReservedFileTrashDirectory ||
+		name == agentprotocol.ReservedOCIVolumeDirectory
 }
 
 func reservedBackupArchivePath(components []string) bool {

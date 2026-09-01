@@ -48,7 +48,7 @@ func TestDisposableHostDomainLogPrivacyAndRetention(t *testing.T) {
 			deactivateDisposableDomainLogs(t, identity)
 		}
 	})
-	if _, err := hostidentity.NewReconciler().Reconcile(t.Context(), identity); err != nil {
+	if _, err := hostidentity.NewReconciler().ReconcileBase(t.Context(), identity); err != nil {
 		t.Fatalf("reconcile identity: %v", err)
 	}
 	filesystem := hostfilesystem.NewReconciler()

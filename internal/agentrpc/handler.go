@@ -39,11 +39,13 @@ import (
 	"github.com/RTBGG/stackfort/internal/hostlogs"
 	"github.com/RTBGG/stackfort/internal/hostnginx"
 	"github.com/RTBGG/stackfort/internal/hostociimage"
+	"github.com/RTBGG/stackfort/internal/hostociresources"
 	"github.com/RTBGG/stackfort/internal/hostphp"
 	"github.com/RTBGG/stackfort/internal/hostresources"
 	"github.com/RTBGG/stackfort/internal/hosttls"
 	"github.com/RTBGG/stackfort/internal/nginxbaseline"
 	"github.com/RTBGG/stackfort/internal/ociimage"
+	"github.com/RTBGG/stackfort/internal/ociresources"
 	"github.com/RTBGG/stackfort/internal/phpruntime"
 	"github.com/RTBGG/stackfort/internal/scheduledjobs"
 	"github.com/RTBGG/stackfort/internal/tlsartifact"
@@ -78,6 +80,7 @@ type Handler struct {
 	databases       databaseReconciler
 	jobs            scheduledJobReconciler
 	images          ociImagePreparer
+	ociResources    ociResourceReconciler
 }
 
 type capabilityInspector interface {
@@ -85,7 +88,8 @@ type capabilityInspector interface {
 }
 
 type identityReconciler interface {
-	Reconcile(context.Context, hostingidentity.Spec) (hostidentity.ReconcileResult, error)
+	ReconcileBase(context.Context, hostingidentity.Spec) (hostidentity.ReconcileResult, error)
+	ReconcileRuntime(context.Context, hostingidentity.Spec) (hostidentity.ReconcileResult, error)
 	Delete(context.Context, hostingidentity.Spec) (hostidentity.DeleteResult, error)
 }
 
@@ -166,6 +170,10 @@ type scheduledJobReconciler interface {
 
 type ociImagePreparer interface {
 	Prepare(context.Context, string, ociimage.PrepareSpec) (ociimage.Result, error)
+}
+
+type ociResourceReconciler interface {
+	Reconcile(context.Context, string, ociresources.Spec) (ociresources.Result, error)
 }
 
 type cachedResponse struct {
@@ -286,6 +294,7 @@ func newHandlerWithNGINXActivationServices(
 		databases:       hostdatabase.NewReconciler(),
 		jobs:            hostjobs.NewReconciler(),
 		images:          hostociimage.NewManager(),
+		ociResources:    hostociresources.NewManager(),
 	}
 }
 
@@ -746,6 +755,10 @@ func (handler *Handler) handleRPC(w http.ResponseWriter, request *http.Request) 
 		_ = http.NewResponseController(w).SetWriteDeadline(
 			handler.now().UTC().Add(time.Duration(ociimage.PreparationTimeoutSeconds+60) * time.Second),
 		)
+	} else if decoded.Operation == agentprotocol.OperationReconcileOCIResources {
+		_ = http.NewResponseController(w).SetWriteDeadline(
+			handler.now().UTC().Add(time.Duration(ociresources.ReconciliationTimeoutSeconds+60) * time.Second),
+		)
 	}
 	digest, err := agentprotocol.SemanticDigest(decoded)
 	if err != nil {
@@ -809,7 +822,16 @@ func (handler *Handler) dispatch(ctx context.Context, request agentprotocol.Requ
 		response.Capabilities = &report
 		return http.StatusOK, response
 	case agentprotocol.OperationReconcileIdentity:
-		result, err := handler.identities.Reconcile(ctx, request.ReconcileIdentity.Identity)
+		var result hostidentity.ReconcileResult
+		var err error
+		switch request.ReconcileIdentity.Stage {
+		case agentprotocol.HostingIdentityStageBase:
+			result, err = handler.identities.ReconcileBase(ctx, request.ReconcileIdentity.Identity)
+		case agentprotocol.HostingIdentityStageRuntime:
+			result, err = handler.identities.ReconcileRuntime(ctx, request.ReconcileIdentity.Identity)
+		default:
+			result, err = hostidentity.ReconcileResult{}, hostidentity.ErrMutationFailed
+		}
 		if err != nil {
 			return handler.identityError(response, request, err)
 		}
@@ -1049,6 +1071,15 @@ func (handler *Handler) dispatch(ctx context.Context, request agentprotocol.Requ
 		}
 		response.OCIImage = &agentprotocol.OCIImagePrepareResponse{Result: result}
 		return http.StatusOK, response
+	case agentprotocol.OperationReconcileOCIResources:
+		result, err := handler.ociResources.Reconcile(
+			ctx, request.Correlation.OperationID, request.ReconcileOCIResources.Spec,
+		)
+		if err != nil {
+			return handler.ociResourceError(response, request, err)
+		}
+		response.OCIResources = &agentprotocol.OCIResourceReconcileResponse{Result: result}
+		return http.StatusOK, response
 	default:
 		response.Error = &agentprotocol.ResponseError{
 			Code:    agentprotocol.ErrorUnsupportedOperation,
@@ -1056,6 +1087,36 @@ func (handler *Handler) dispatch(ctx context.Context, request agentprotocol.Requ
 		}
 		return http.StatusBadRequest, response
 	}
+}
+
+func (handler *Handler) ociResourceError(
+	response agentprotocol.Response, request agentprotocol.Request, err error,
+) (int, agentprotocol.Response) {
+	status, code, message := http.StatusServiceUnavailable, agentprotocol.ErrorOCIResourceUnavailable,
+		"OCI private resources could not be reconciled."
+	var capabilityError *hostociresources.CapabilityError
+	switch {
+	case errors.As(err, &capabilityError):
+		status, code, message = http.StatusUnprocessableEntity, agentprotocol.ErrorOCIResourceUnavailable,
+			"OCI private resources are unavailable on this host."
+		response.Error = &agentprotocol.ResponseError{
+			Code: code, Message: message, Capability: &capabilityError.Capability,
+		}
+	case errors.Is(err, hostociresources.ErrInvalid):
+		status, code, message = http.StatusBadRequest, agentprotocol.ErrorOCIResourceInvalid,
+			"The OCI private-resource intent is invalid."
+	case errors.Is(err, hostociresources.ErrConflict):
+		status, code, message = http.StatusConflict, agentprotocol.ErrorOCIResourceConflict,
+			"OCI private resources conflict with unmanaged host state."
+	}
+	handler.logger.Error("OCI private-resource reconciliation failed",
+		"request_id", request.RequestID, "operation_id", request.Correlation.OperationID,
+		"account_id", request.Correlation.AccountID,
+	)
+	if response.Error == nil {
+		response.Error = &agentprotocol.ResponseError{Code: code, Message: message}
+	}
+	return status, response
 }
 
 func (handler *Handler) ociImageError(

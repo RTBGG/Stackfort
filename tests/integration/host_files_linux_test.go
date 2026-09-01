@@ -36,7 +36,7 @@ func TestDisposableHostFileManagerNavigation(t *testing.T) {
 	}
 	identity := disposableIdentity(t, availableManagedID(t, 589_000))
 	t.Cleanup(func() { cleanupIdentity(t, identity) })
-	if _, err := hostidentity.NewReconciler().Reconcile(t.Context(), identity); err != nil {
+	if _, err := hostidentity.NewReconciler().ReconcileBase(t.Context(), identity); err != nil {
 		t.Fatalf("reconcile identity: %v", err)
 	}
 	if _, err := hostfilesystem.NewReconciler().Reconcile(t.Context(), hostingstorage.Spec{
@@ -161,7 +161,7 @@ func TestDisposableHostFileArchiveOperations(t *testing.T) {
 	}
 	identity := disposableIdentity(t, availableManagedID(t, 585_000))
 	t.Cleanup(func() { cleanupIdentity(t, identity) })
-	if _, err := hostidentity.NewReconciler().Reconcile(t.Context(), identity); err != nil {
+	if _, err := hostidentity.NewReconciler().ReconcileBase(t.Context(), identity); err != nil {
 		t.Fatalf("reconcile identity: %v", err)
 	}
 	if _, err := hostfilesystem.NewReconciler().Reconcile(t.Context(), hostingstorage.Spec{
@@ -406,7 +406,7 @@ func TestDisposableHostFileManagerDownload(t *testing.T) {
 	}
 	identity := disposableIdentity(t, availableManagedID(t, 588_000))
 	t.Cleanup(func() { cleanupIdentity(t, identity) })
-	if _, err := hostidentity.NewReconciler().Reconcile(t.Context(), identity); err != nil {
+	if _, err := hostidentity.NewReconciler().ReconcileBase(t.Context(), identity); err != nil {
 		t.Fatalf("reconcile identity: %v", err)
 	}
 	if _, err := hostfilesystem.NewReconciler().Reconcile(t.Context(), hostingstorage.Spec{
@@ -518,7 +518,7 @@ func TestDisposableHostFileManagerWrite(t *testing.T) {
 	}
 	identity := disposableIdentity(t, availableManagedID(t, 587_000))
 	t.Cleanup(func() { cleanupIdentity(t, identity) })
-	if _, err := hostidentity.NewReconciler().Reconcile(t.Context(), identity); err != nil {
+	if _, err := hostidentity.NewReconciler().ReconcileBase(t.Context(), identity); err != nil {
 		t.Fatalf("reconcile identity: %v", err)
 	}
 	if _, err := hostfilesystem.NewReconciler().Reconcile(t.Context(), hostingstorage.Spec{
@@ -656,7 +656,7 @@ func TestDisposableHostFileManagerOperations(t *testing.T) {
 	}
 	identity := disposableIdentity(t, availableManagedID(t, 586_000))
 	t.Cleanup(func() { cleanupIdentity(t, identity) })
-	if _, err := hostidentity.NewReconciler().Reconcile(t.Context(), identity); err != nil {
+	if _, err := hostidentity.NewReconciler().ReconcileBase(t.Context(), identity); err != nil {
 		t.Fatalf("reconcile identity: %v", err)
 	}
 	filesystem := hostfilesystem.NewReconciler()

@@ -110,12 +110,15 @@ personalized applications bypass it by default.
   CPU, memory, storage-output, process, network, time, and log bounds.
 - Checksum-pinned Trivy scans the OCI archive before an immutable deployed
   digest can be recorded; HIGH/CRITICAL findings fail closed.
-- Networks, volumes, secrets, and workload execution remain later Phase 5
-  steps.
+- Account-private rootless bridge networks, envelope-encrypted environment
+  references, and descriptor-verified quota-bound volumes are implemented.
+- Quadlet workload execution, health, logs, and domain routing remain the next
+  Phase 5 step.
 
 [Application schema](docs/oci-application-foundation.md) ·
 [Rootless runtime](docs/rootless-oci-runtime.md) ·
-[Image preparation](docs/oci-image-preparation.md)
+[Image preparation](docs/oci-image-preparation.md) ·
+[Private resources](docs/oci-private-resources.md)
 
 </details>
 

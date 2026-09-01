@@ -29,12 +29,14 @@ import (
 	"github.com/RTBGG/stackfort/internal/hostingstorage"
 	"github.com/RTBGG/stackfort/internal/hostnginx"
 	"github.com/RTBGG/stackfort/internal/hostociimage"
+	"github.com/RTBGG/stackfort/internal/hostociresources"
 	"github.com/RTBGG/stackfort/internal/hostphp"
 	"github.com/RTBGG/stackfort/internal/hostresources"
 	"github.com/RTBGG/stackfort/internal/nginxbaseline"
 	"github.com/RTBGG/stackfort/internal/nginxconfig"
 	"github.com/RTBGG/stackfort/internal/ociapps"
 	"github.com/RTBGG/stackfort/internal/ociimage"
+	"github.com/RTBGG/stackfort/internal/ociresources"
 	"github.com/RTBGG/stackfort/internal/phpruntime"
 )
 
@@ -110,6 +112,49 @@ func TestOCIImageDispatchAndTypedScanRejection(t *testing.T) {
 	if recorder.Code != http.StatusUnprocessableEntity || response.Error == nil ||
 		response.Error.Code != agentprotocol.ErrorOCIImageRejected {
 		t.Fatalf("rejected status=%d response=%#v", recorder.Code, response)
+	}
+}
+
+func TestOCIResourceDispatchAndTypedHostConflict(t *testing.T) {
+	t.Parallel()
+	identity := handlerIdentitySpec(t)
+	spec := ociresources.Spec{
+		Identity: identity, ApplicationID: "019d2eaa-52d0-7f52-8ac7-0aeb932455db", Revision: 1,
+	}
+	correlation := agentprotocol.AuditCorrelation{
+		OperationID: "019d2eaa-62d0-7f52-8ac7-0aeb932455db", ActorKind: agentprotocol.ActorSystem,
+		AccountID: identity.AccountID,
+	}
+	request := agentprotocol.Request{
+		ProtocolVersion: agentprotocol.WireVersion, RequestID: "oci-resource-request",
+		IdempotencyKey: "oci-resource-key", Operation: agentprotocol.OperationReconcileOCIResources,
+		Correlation:           &correlation,
+		ReconcileOCIResources: &agentprotocol.OCIResourceReconcileRequest{Spec: spec},
+	}
+	result, err := ociresources.ResultFor(spec, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := NewHandler(nil)
+	reconciler := &fakeOCIResourceReconciler{result: result}
+	handler.ociResources = reconciler
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, rpcRequest(t, request))
+	response := decodeTestResponseFor(t, recorder.Body, request.RequestID, agentprotocol.OperationReconcileOCIResources)
+	if recorder.Code != http.StatusOK || response.OCIResources == nil ||
+		response.OCIResources.Result.ResourceDigest != result.ResourceDigest || reconciler.calls.Load() != 1 {
+		t.Fatalf("status=%d response=%#v calls=%d", recorder.Code, response, reconciler.calls.Load())
+	}
+
+	conflict := NewHandler(nil)
+	conflict.ociResources = &fakeOCIResourceReconciler{err: hostociresources.ErrConflict}
+	request.RequestID, request.IdempotencyKey = "oci-resource-conflict", "oci-resource-conflict-key"
+	recorder = httptest.NewRecorder()
+	conflict.ServeHTTP(recorder, rpcRequest(t, request))
+	response = decodeTestResponseFor(t, recorder.Body, request.RequestID, agentprotocol.OperationReconcileOCIResources)
+	if recorder.Code != http.StatusConflict || response.Error == nil ||
+		response.Error.Code != agentprotocol.ErrorOCIResourceConflict {
+		t.Fatalf("conflict status=%d response=%#v", recorder.Code, response)
 	}
 }
 
@@ -210,8 +255,25 @@ func TestHostingIdentityMutationDispatchIsCorrelatedAndIdempotent(t *testing.T) 
 	second := httptest.NewRecorder()
 	handler.ServeHTTP(second, rpcRequest(t, replay))
 	decodeTestResponseFor(t, second.Body, replay.RequestID, replay.Operation)
-	if mutator.reconcileCalls.Load() != 1 {
-		t.Fatalf("reconcile calls = %d", mutator.reconcileCalls.Load())
+	if mutator.baseCalls.Load() != 1 {
+		t.Fatalf("base reconcile calls = %d", mutator.baseCalls.Load())
+	}
+}
+
+func TestHostingIdentityStageDispatchesWithoutPreparingRuntimeEarly(t *testing.T) {
+	t.Parallel()
+	identity := handlerIdentitySpec(t)
+	mutator := &fakeIdentityReconciler{reconcile: hostidentity.ReconcileResult{DirectoryCreated: true}}
+	handler := newHandlerWithServices(nil, &fakeCapabilityInspector{report: handlerCapabilityReport()}, mutator)
+	request := identityRequest("identity-base-request", "identity-base-key", agentprotocol.OperationReconcileIdentity, identity)
+	request.ReconcileIdentity.Stage = agentprotocol.HostingIdentityStageBase
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, rpcRequest(t, request))
+	response := decodeTestResponseFor(t, recorder.Body, request.RequestID, request.Operation)
+	if recorder.Code != http.StatusOK || response.HostingIdentity == nil || mutator.baseCalls.Load() != 1 ||
+		mutator.reconcileCalls.Load() != 0 || mutator.runtimeCalls.Load() != 0 {
+		t.Fatalf("base stage status=%d response=%#v calls=%d/%d/%d", recorder.Code, response,
+			mutator.baseCalls.Load(), mutator.reconcileCalls.Load(), mutator.runtimeCalls.Load())
 	}
 }
 
@@ -790,6 +852,7 @@ func identityRequest(
 	}
 	payload := &agentprotocol.HostingIdentityRequest{Identity: identity}
 	if operation == agentprotocol.OperationReconcileIdentity {
+		payload.Stage = agentprotocol.HostingIdentityStageBase
 		request.ReconcileIdentity = payload
 	} else {
 		request.DeleteIdentity = payload
@@ -854,6 +917,8 @@ type fakeIdentityReconciler struct {
 	deleted        hostidentity.DeleteResult
 	err            error
 	reconcileCalls atomic.Int64
+	baseCalls      atomic.Int64
+	runtimeCalls   atomic.Int64
 	deleteCalls    atomic.Int64
 }
 
@@ -919,6 +984,19 @@ type fakeOCIImagePreparer struct {
 	result ociimage.Result
 	err    error
 	calls  atomic.Int64
+}
+
+type fakeOCIResourceReconciler struct {
+	result ociresources.Result
+	err    error
+	calls  atomic.Int64
+}
+
+func (reconciler *fakeOCIResourceReconciler) Reconcile(
+	_ context.Context, _ string, _ ociresources.Spec,
+) (ociresources.Result, error) {
+	reconciler.calls.Add(1)
+	return reconciler.result, reconciler.err
 }
 
 func (preparer *fakeOCIImagePreparer) Prepare(
@@ -1057,6 +1135,22 @@ func (reconciler *fakeIdentityReconciler) Reconcile(
 	hostingidentity.Spec,
 ) (hostidentity.ReconcileResult, error) {
 	reconciler.reconcileCalls.Add(1)
+	return reconciler.reconcile, reconciler.err
+}
+
+func (reconciler *fakeIdentityReconciler) ReconcileBase(
+	context.Context,
+	hostingidentity.Spec,
+) (hostidentity.ReconcileResult, error) {
+	reconciler.baseCalls.Add(1)
+	return reconciler.reconcile, reconciler.err
+}
+
+func (reconciler *fakeIdentityReconciler) ReconcileRuntime(
+	context.Context,
+	hostingidentity.Spec,
+) (hostidentity.ReconcileResult, error) {
+	reconciler.runtimeCalls.Add(1)
 	return reconciler.reconcile, reconciler.err
 }
 

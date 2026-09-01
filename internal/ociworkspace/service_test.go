@@ -12,6 +12,7 @@ import (
 	"github.com/RTBGG/stackfort/internal/hostingidentity"
 	"github.com/RTBGG/stackfort/internal/ociapps"
 	"github.com/RTBGG/stackfort/internal/ociimage"
+	"github.com/RTBGG/stackfort/internal/ociresources"
 	"github.com/RTBGG/stackfort/internal/operations"
 )
 
@@ -64,11 +65,48 @@ func TestQueueImagePreparationRejectsStaleRevisionAndUnboundedInput(t *testing.T
 	}
 }
 
+func TestQueueResourcePreparationRequiresApprovedRevisionAndUsesBoundedJob(t *testing.T) {
+	t.Parallel()
+	accountID := core.ID("019d2eaa-62d0-7f52-8ac7-0aeb932455db")
+	applicationID := core.ID("019d2eaa-62d0-7f52-8ac7-0aeb932455dc")
+	imageSpec := workspaceSpec(t, accountID, applicationID)
+	resourceSpec := ociresources.Spec{
+		Identity: imageSpec.Identity, ApplicationID: string(applicationID), Revision: 1,
+	}
+	repository := &workspaceRepository{spec: imageSpec, resourceSpec: resourceSpec, operation: core.Operation{
+		ID: "019d2eaa-62d0-7f52-8ac7-0aeb932455dd",
+	}}
+	service, _ := New(repository)
+	operation, err := service.QueueResourcePreparation(context.Background(), PrepareResourcesCommand{
+		AccountID: accountID, ApplicationID: applicationID, ExpectedRevision: 1,
+		RequestID: "prepare-resources", IdempotencyKey: "prepare-resources-1",
+	})
+	if err != nil || operation.ID != repository.operation.ID {
+		t.Fatalf("QueueResourcePreparation = %#v / %v", operation, err)
+	}
+	if repository.created.Kind != operations.OCIResourceReconcileKind ||
+		repository.created.RetryClass != core.RetrySafe || repository.created.MaxAttempts != 3 ||
+		repository.created.Payload["schemaVersion"] != json.Number("1") {
+		t.Fatalf("resource operation = %#v", repository.created)
+	}
+	key, err := DeterministicResourceIdempotencyKey(applicationID, 1)
+	if err != nil || key != "oci-resources-"+string(applicationID)+"-r1" {
+		t.Fatalf("resource idempotency key = %q / %v", key, err)
+	}
+}
+
 type workspaceRepository struct {
 	spec          ociimage.PrepareSpec
+	resourceSpec  ociresources.Spec
 	operation     core.Operation
 	authorization core.AuthorizeParams
 	created       core.CreateOperationParams
+}
+
+func (repository *workspaceRepository) OCIResourcePrepareSpec(
+	context.Context, core.ID, core.ID,
+) (ociresources.Spec, error) {
+	return repository.resourceSpec, nil
 }
 
 func (repository *workspaceRepository) Authorize(

@@ -10,8 +10,12 @@ import (
 	"net"
 	"path"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
+
+	"github.com/google/uuid"
 )
 
 const (
@@ -19,6 +23,10 @@ const (
 	MaximumImageReferenceBytes    = 255
 	MaximumRelativePathBytes      = 255
 	MaximumHealthPathBytes        = 200
+	MaximumSecretsPerApplication  = 32
+	MaximumVolumesPerApplication  = 16
+	MaximumEnvironmentNameBytes   = 64
+	MaximumContainerPathBytes     = 255
 )
 
 type SourceKind string
@@ -50,13 +58,32 @@ type HealthCheck struct {
 	Retries         int64      `json:"retries"`
 }
 
+// EnvironmentSecretReference binds encrypted account-owned secret metadata to
+// one fixed environment variable. Plaintext is never part of application
+// intent, operation payloads, or agent protocol requests.
+type EnvironmentSecretReference struct {
+	SecretID    string `json:"secretId"`
+	Environment string `json:"environment"`
+}
+
+// VolumeMount refers only to a managed account volume. There is deliberately
+// no host-path, volume driver, device, propagation, or arbitrary mount-option
+// field.
+type VolumeMount struct {
+	VolumeID      string `json:"volumeId"`
+	ContainerPath string `json:"containerPath"`
+	ReadOnly      bool   `json:"readOnly"`
+}
+
 // Spec intentionally has no host-port, namespace, capability, device, engine
 // socket, command override, or host-mount fields. Those inputs are outside the
 // Stackfort application boundary rather than booleans a caller can enable.
 type Spec struct {
-	Source       Source      `json:"source"`
-	InternalPort int64       `json:"internalPort"`
-	Health       HealthCheck `json:"health"`
+	Source           Source                       `json:"source"`
+	InternalPort     int64                        `json:"internalPort"`
+	Health           HealthCheck                  `json:"health"`
+	SecretReferences []EnvironmentSecretReference `json:"secretReferences,omitempty"`
+	VolumeMounts     []VolumeMount                `json:"volumeMounts,omitempty"`
 }
 
 var (
@@ -64,12 +91,14 @@ var (
 	registryHostPattern      = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?$`)
 	relativePathPattern      = regexp.MustCompile(`^[A-Za-z0-9._/-]+$`)
 	healthPathPattern        = regexp.MustCompile(`^/[A-Za-z0-9._~/-]*$`)
+	environmentNamePattern   = regexp.MustCompile(`^[A-Z_][A-Z0-9_]{0,63}$`)
 )
 
 // Normalize validates the deliberately small initial OCI application schema.
 // It returns a stable representation suitable for persistence and hashing.
 func Normalize(spec Spec) (Spec, error) {
-	if _, err := NormalizeSource(spec.Source); err != nil {
+	source, err := NormalizeSource(spec.Source)
+	if err != nil {
 		return Spec{}, err
 	}
 
@@ -79,7 +108,96 @@ func Normalize(spec Spec) (Spec, error) {
 	if err := validateHealthCheck(spec.Health); err != nil {
 		return Spec{}, err
 	}
+	secrets, err := NormalizeSecretReferences(spec.SecretReferences)
+	if err != nil {
+		return Spec{}, err
+	}
+	volumes, err := NormalizeVolumeMounts(spec.VolumeMounts)
+	if err != nil {
+		return Spec{}, err
+	}
+	spec.Source, spec.SecretReferences, spec.VolumeMounts = source, secrets, volumes
 	return spec, nil
+}
+
+func NormalizeSecretReferences(values []EnvironmentSecretReference) ([]EnvironmentSecretReference, error) {
+	if len(values) > MaximumSecretsPerApplication {
+		return nil, errors.New("OCI application has too many environment secrets")
+	}
+	result := append([]EnvironmentSecretReference(nil), values...)
+	seenIDs, seenTargets := map[string]struct{}{}, map[string]struct{}{}
+	for _, reference := range result {
+		if !canonicalUUIDv7(reference.SecretID) {
+			return nil, errors.New("environment secret reference must use a canonical UUIDv7")
+		}
+		if len(reference.Environment) < 1 || len(reference.Environment) > MaximumEnvironmentNameBytes ||
+			!environmentNamePattern.MatchString(reference.Environment) {
+			return nil, errors.New("environment secret target is invalid")
+		}
+		if _, duplicate := seenIDs[reference.SecretID]; duplicate {
+			return nil, errors.New("environment secret is referenced more than once")
+		}
+		if _, duplicate := seenTargets[reference.Environment]; duplicate {
+			return nil, errors.New("environment secret target is duplicated")
+		}
+		seenIDs[reference.SecretID], seenTargets[reference.Environment] = struct{}{}, struct{}{}
+	}
+	sort.Slice(result, func(left, right int) bool {
+		if result[left].Environment == result[right].Environment {
+			return result[left].SecretID < result[right].SecretID
+		}
+		return result[left].Environment < result[right].Environment
+	})
+	return result, nil
+}
+
+func NormalizeVolumeMounts(values []VolumeMount) ([]VolumeMount, error) {
+	if len(values) > MaximumVolumesPerApplication {
+		return nil, errors.New("OCI application has too many volume mounts")
+	}
+	result := append([]VolumeMount(nil), values...)
+	seenIDs, seenTargets := map[string]struct{}{}, map[string]struct{}{}
+	for _, mount := range result {
+		if !canonicalUUIDv7(mount.VolumeID) {
+			return nil, errors.New("volume reference must use a canonical UUIDv7")
+		}
+		if err := validateContainerPath(mount.ContainerPath); err != nil {
+			return nil, err
+		}
+		if _, duplicate := seenIDs[mount.VolumeID]; duplicate {
+			return nil, errors.New("volume is mounted more than once")
+		}
+		if _, duplicate := seenTargets[mount.ContainerPath]; duplicate {
+			return nil, errors.New("volume mount target is duplicated")
+		}
+		seenIDs[mount.VolumeID], seenTargets[mount.ContainerPath] = struct{}{}, struct{}{}
+	}
+	sort.Slice(result, func(left, right int) bool {
+		if result[left].ContainerPath == result[right].ContainerPath {
+			return result[left].VolumeID < result[right].VolumeID
+		}
+		return result[left].ContainerPath < result[right].ContainerPath
+	})
+	return result, nil
+}
+
+func canonicalUUIDv7(value string) bool {
+	parsed, err := uuid.Parse(value)
+	return err == nil && parsed.String() == value && parsed.Version() == uuid.Version(7)
+}
+
+func validateContainerPath(value string) error {
+	if len(value) < 2 || len(value) > MaximumContainerPathBytes || !utf8.ValidString(value) ||
+		strings.TrimSpace(value) != value || strings.ContainsAny(value, "\\\x00\r\n\t") ||
+		!strings.HasPrefix(value, "/") || strings.Contains(value, "//") || path.Clean(value) != value {
+		return errors.New("volume target must be a normalized absolute container path")
+	}
+	for _, reserved := range []string{"/proc", "/sys", "/dev", "/run", "/boot"} {
+		if value == reserved || strings.HasPrefix(value, reserved+"/") {
+			return errors.New("volume target overlaps a reserved container runtime path")
+		}
+	}
+	return nil
 }
 
 // NormalizeSource validates the closed image/build union independently for the

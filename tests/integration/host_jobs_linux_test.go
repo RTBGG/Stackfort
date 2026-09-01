@@ -37,7 +37,7 @@ func TestDisposableHostScheduledJobs(t *testing.T) {
 	}
 
 	identity := disposableIdentity(t, availableManagedID(t, 598_000))
-	if _, err := hostidentity.NewReconciler().Reconcile(t.Context(), identity); err != nil {
+	if _, err := hostidentity.NewReconciler().ReconcileBase(t.Context(), identity); err != nil {
 		t.Fatalf("reconcile identity: %v", err)
 	}
 	t.Cleanup(func() { cleanupIdentity(t, identity) })

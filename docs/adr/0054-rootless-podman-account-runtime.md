@@ -41,7 +41,9 @@ nor account-user API socket belongs in Stackfort's control path.
    `/etc/containers/systemd/users/<uid>`. The latter is root-owned `0755` so
    the account's systemd generator can read but never modify it.
    Descriptor-relative, no-symlink traversal and exact ownership/mode checks
-   protect every created directory.
+   protect every created directory. Fresh reconciliation creates only the base
+   identity first, assigns the project quota/layout second, and prepares this
+   runtime third so all Podman storage inherits the account project.
 6. Linger is enabled for the no-login account and its user manager is started
    only through fixed `loginctl` and `systemctl` profiles. Every subordinate-ID
    mutation is re-read and verified.

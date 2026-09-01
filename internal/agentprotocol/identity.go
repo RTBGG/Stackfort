@@ -10,6 +10,19 @@ import (
 
 type HostingIdentityRequest struct {
 	Identity hostingidentity.Spec `json:"identity"`
+	Stage    HostingIdentityStage `json:"stage,omitempty"`
+}
+
+type HostingIdentityStage string
+
+const (
+	HostingIdentityStageFull    HostingIdentityStage = ""
+	HostingIdentityStageBase    HostingIdentityStage = "base"
+	HostingIdentityStageRuntime HostingIdentityStage = "runtime"
+)
+
+func validHostingIdentityStage(stage HostingIdentityStage) bool {
+	return stage == HostingIdentityStageBase || stage == HostingIdentityStageRuntime
 }
 
 type HostingIdentityResponse struct {

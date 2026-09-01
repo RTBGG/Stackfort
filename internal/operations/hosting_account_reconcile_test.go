@@ -60,8 +60,8 @@ func TestHostingAccountReconcileHandlerAppliesAndConfirmsWholeBoundary(t *testin
 	if result["accountId"] != string(account.ID) || result["unixIdentityReconciled"] != true {
 		t.Fatalf("result = %#v", result)
 	}
-	if !reflect.DeepEqual(reporter.stages, []string{"identity", "filesystem", "resources", "confirming"}) ||
-		!reflect.DeepEqual(client.calls, []string{"identity", "filesystem", "resources"}) {
+	if !reflect.DeepEqual(reporter.stages, []string{"identity", "filesystem", "oci_runtime", "resources", "confirming"}) ||
+		!reflect.DeepEqual(client.calls, []string{"identity", "filesystem", "oci_runtime", "resources"}) {
 		t.Fatalf("stages/calls = %#v / %#v", reporter.stages, client.calls)
 	}
 	ready, err := repository.HostingAccountHostReady(ctx, account.ID)
@@ -81,13 +81,23 @@ func TestHostingAccountReconcileHandlerAppliesAndConfirmsWholeBoundary(t *testin
 
 type fakeHostingAccountReconcileClient struct{ calls []string }
 
-func (client *fakeHostingAccountReconcileClient) ReconcileHostingIdentity(
+func (client *fakeHostingAccountReconcileClient) ReconcileHostingIdentityBase(
 	_ context.Context,
 	_ string,
 	_ agentprotocol.AuditCorrelation,
 	_ hostingidentity.Spec,
 ) (agentprotocol.HostingIdentityResponse, error) {
 	client.calls = append(client.calls, "identity")
+	return agentprotocol.HostingIdentityResponse{}, nil
+}
+
+func (client *fakeHostingAccountReconcileClient) ReconcileHostingOCIRuntime(
+	_ context.Context,
+	_ string,
+	_ agentprotocol.AuditCorrelation,
+	_ hostingidentity.Spec,
+) (agentprotocol.HostingIdentityResponse, error) {
+	client.calls = append(client.calls, "oci_runtime")
 	return agentprotocol.HostingIdentityResponse{}, nil
 }
 

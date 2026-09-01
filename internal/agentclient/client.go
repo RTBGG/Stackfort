@@ -28,6 +28,7 @@ import (
 	"github.com/RTBGG/stackfort/internal/hostingstorage"
 	"github.com/RTBGG/stackfort/internal/nginxconfig"
 	"github.com/RTBGG/stackfort/internal/ociimage"
+	"github.com/RTBGG/stackfort/internal/ociresources"
 	"github.com/RTBGG/stackfort/internal/phpruntime"
 	"github.com/RTBGG/stackfort/internal/scheduledjobs"
 	"github.com/RTBGG/stackfort/internal/tlsartifact"
@@ -287,7 +288,27 @@ func (client *Client) ReconcileHostingIdentity(
 	identity hostingidentity.Spec,
 ) (agentprotocol.HostingIdentityResponse, error) {
 	return client.changeHostingIdentity(ctx, idempotencyKey, correlation, identity,
-		agentprotocol.OperationReconcileIdentity)
+		agentprotocol.OperationReconcileIdentity, agentprotocol.HostingIdentityStageBase)
+}
+
+func (client *Client) ReconcileHostingIdentityBase(
+	ctx context.Context,
+	idempotencyKey string,
+	correlation agentprotocol.AuditCorrelation,
+	identity hostingidentity.Spec,
+) (agentprotocol.HostingIdentityResponse, error) {
+	return client.changeHostingIdentity(ctx, idempotencyKey, correlation, identity,
+		agentprotocol.OperationReconcileIdentity, agentprotocol.HostingIdentityStageBase)
+}
+
+func (client *Client) ReconcileHostingOCIRuntime(
+	ctx context.Context,
+	idempotencyKey string,
+	correlation agentprotocol.AuditCorrelation,
+	identity hostingidentity.Spec,
+) (agentprotocol.HostingIdentityResponse, error) {
+	return client.changeHostingIdentity(ctx, idempotencyKey, correlation, identity,
+		agentprotocol.OperationReconcileIdentity, agentprotocol.HostingIdentityStageRuntime)
 }
 
 func (client *Client) DeleteHostingIdentity(
@@ -297,7 +318,7 @@ func (client *Client) DeleteHostingIdentity(
 	identity hostingidentity.Spec,
 ) (agentprotocol.HostingIdentityResponse, error) {
 	return client.changeHostingIdentity(ctx, idempotencyKey, correlation, identity,
-		agentprotocol.OperationDeleteIdentity)
+		agentprotocol.OperationDeleteIdentity, agentprotocol.HostingIdentityStageFull)
 }
 
 func (client *Client) ReconcileHostingFilesystem(
@@ -1068,6 +1089,35 @@ func (client *Client) PrepareOCIImage(
 	return *response.OCIImage, nil
 }
 
+func (client *Client) ReconcileOCIResources(
+	ctx context.Context,
+	idempotencyKey string,
+	correlation agentprotocol.AuditCorrelation,
+	spec ociresources.Spec,
+) (agentprotocol.OCIResourceReconcileResponse, error) {
+	requestID, err := newRequestID()
+	if err != nil {
+		return agentprotocol.OCIResourceReconcileResponse{}, err
+	}
+	request := agentprotocol.Request{
+		ProtocolVersion: agentprotocol.WireVersion, RequestID: requestID,
+		IdempotencyKey: idempotencyKey, Operation: agentprotocol.OperationReconcileOCIResources,
+		Correlation:           &correlation,
+		ReconcileOCIResources: &agentprotocol.OCIResourceReconcileRequest{Spec: spec},
+	}
+	response, status, err := client.callValidated(ctx, request)
+	if err != nil {
+		return agentprotocol.OCIResourceReconcileResponse{}, err
+	}
+	if response.Error != nil {
+		return agentprotocol.OCIResourceReconcileResponse{}, remoteError(status, response.Error)
+	}
+	if status != http.StatusOK || response.OCIResources == nil {
+		return agentprotocol.OCIResourceReconcileResponse{}, errors.New("agent returned an invalid OCI private-resource status")
+	}
+	return *response.OCIResources, nil
+}
+
 // InspectPHPPools reads only bounded aggregate health/accounting for derived
 // account pool units. Unit names, cgroup paths, and process details are not
 // returned by the protocol.
@@ -1114,12 +1164,13 @@ func (client *Client) changeHostingIdentity(
 	correlation agentprotocol.AuditCorrelation,
 	identity hostingidentity.Spec,
 	operation agentprotocol.Operation,
+	stage agentprotocol.HostingIdentityStage,
 ) (agentprotocol.HostingIdentityResponse, error) {
 	requestID, err := newRequestID()
 	if err != nil {
 		return agentprotocol.HostingIdentityResponse{}, err
 	}
-	payload := &agentprotocol.HostingIdentityRequest{Identity: identity}
+	payload := &agentprotocol.HostingIdentityRequest{Identity: identity, Stage: stage}
 	request := agentprotocol.Request{
 		ProtocolVersion: agentprotocol.WireVersion, RequestID: requestID,
 		IdempotencyKey: idempotencyKey, Operation: operation, Correlation: &correlation,
@@ -1168,6 +1219,8 @@ func (client *Client) call(
 	timeout := requestTimeout
 	if request.Operation == agentprotocol.OperationPrepareOCIImage {
 		timeout = time.Duration(ociimage.PreparationTimeoutSeconds+60) * time.Second
+	} else if request.Operation == agentprotocol.OperationReconcileOCIResources {
+		timeout = time.Duration(ociresources.ReconciliationTimeoutSeconds+60) * time.Second
 	}
 	requestContext, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()

@@ -349,6 +349,9 @@ func validateCapabilityUnion(response Response, expected Operation) error {
 	if response.OCIImage != nil {
 		resultCount++
 	}
+	if response.OCIResources != nil {
+		resultCount++
+	}
 	if response.Error != nil {
 		resultCount++
 	}
@@ -445,6 +448,10 @@ func validateCapabilityUnion(response Response, expected Operation) error {
 		}
 	case OperationPrepareOCIImage:
 		if response.OCIImage == nil {
+			return fmt.Errorf("agent protocol response does not match %s", expected)
+		}
+	case OperationReconcileOCIResources:
+		if response.OCIResources == nil {
 			return fmt.Errorf("agent protocol response does not match %s", expected)
 		}
 	default:

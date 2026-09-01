@@ -589,13 +589,13 @@ type localHostingAccountReconcileClient struct {
 	resources  *hostresources.Reconciler
 }
 
-func (client *localHostingAccountReconcileClient) ReconcileHostingIdentity(
+func (client *localHostingAccountReconcileClient) ReconcileHostingIdentityBase(
 	ctx context.Context,
 	_ string,
 	_ agentprotocol.AuditCorrelation,
 	spec hostingidentity.Spec,
 ) (agentprotocol.HostingIdentityResponse, error) {
-	result, err := client.identity.Reconcile(ctx, spec)
+	result, err := client.identity.ReconcileBase(ctx, spec)
 	if err != nil && client.test != nil {
 		client.test.Logf("host account identity reconciliation error: %v", err)
 	}
@@ -603,6 +603,23 @@ func (client *localHostingAccountReconcileClient) ReconcileHostingIdentity(
 		Changed: result.Changed(), GroupCreated: result.GroupCreated, UserCreated: result.UserCreated,
 		UserRepaired: result.UserRepaired, DirectoryCreated: result.DirectoryCreated,
 		OwnershipRepaired: result.OwnershipRepaired,
+	}, err
+}
+
+func (client *localHostingAccountReconcileClient) ReconcileHostingOCIRuntime(
+	ctx context.Context,
+	_ string,
+	_ agentprotocol.AuditCorrelation,
+	spec hostingidentity.Spec,
+) (agentprotocol.HostingIdentityResponse, error) {
+	result, err := client.identity.ReconcileRuntime(ctx, spec)
+	if err != nil && client.test != nil {
+		client.test.Logf("host account OCI runtime reconciliation error: %v", err)
+	}
+	return agentprotocol.HostingIdentityResponse{
+		Changed: result.Changed(), SubUIDsConfigured: result.SubUIDsConfigured,
+		SubGIDsConfigured: result.SubGIDsConfigured, LingerEnabled: result.LingerEnabled,
+		RuntimePrepared: result.RuntimePrepared,
 	}, err
 }
 

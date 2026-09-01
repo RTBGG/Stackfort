@@ -39,6 +39,7 @@ const (
 	ReservedFileUploadDirectory    = ".stackfort-uploads"
 	ReservedFileOperationDirectory = ".stackfort-operations"
 	ReservedFileTrashDirectory     = ".stackfort-trash"
+	ReservedOCIVolumeDirectory     = ".stackfort-oci-volumes"
 )
 
 type FileWriteAction string
@@ -594,7 +595,10 @@ func validFileWriteErrorCode(code ErrorCode) bool {
 }
 
 func reservedFileManagerPath(directory, name string) bool {
-	for _, reserved := range []string{ReservedFileUploadDirectory, ReservedFileOperationDirectory, ReservedFileTrashDirectory} {
+	for _, reserved := range []string{
+		ReservedFileUploadDirectory, ReservedFileOperationDirectory,
+		ReservedFileTrashDirectory, ReservedOCIVolumeDirectory,
+	} {
 		if directory == reserved || strings.HasPrefix(directory, reserved+"/") || (directory == "" && name == reserved) {
 			return true
 		}

@@ -258,6 +258,11 @@ func run(logger *slog.Logger) (returnErr error) {
 			return fmt.Errorf("initialize OCI image operation handler: %w", handlerErr)
 		}
 		handlers[operations.OCIImagePrepareKind] = ociImageHandler
+		ociResourceHandler, handlerErr := operations.NewOCIResourceReconcileHandler(repository, hostCapabilityClient)
+		if handlerErr != nil {
+			return fmt.Errorf("initialize OCI private-resource operation handler: %w", handlerErr)
+		}
+		handlers[operations.OCIResourceReconcileKind] = ociResourceHandler
 	}
 	runner, err := operations.NewRunner(repository, handlers, operations.RunnerOptions{})
 	if err != nil {

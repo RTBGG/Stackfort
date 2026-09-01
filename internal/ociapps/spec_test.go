@@ -3,6 +3,7 @@
 package ociapps
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -28,9 +29,35 @@ func TestNormalizeAcceptsClosedDigestAndContainerfileSources(t *testing.T) {
 		},
 	}
 	for _, spec := range tests {
-		if normalized, err := Normalize(spec); err != nil || normalized != spec {
+		if normalized, err := Normalize(spec); err != nil || !reflect.DeepEqual(normalized, spec) {
 			t.Fatalf("Normalize(%#v) = %#v, %v", spec, normalized, err)
 		}
+	}
+}
+
+func TestNormalizeCanonicalizesBoundedSecretAndVolumeReferences(t *testing.T) {
+	t.Parallel()
+	spec := Spec{
+		Source: Source{Kind: SourceImageDigest,
+			ImageReference: "registry.example/app@sha256:" + strings.Repeat("c", 64)},
+		InternalPort: 8080,
+		Health:       HealthCheck{Kind: HealthHTTP, Path: "/health", IntervalSeconds: 30, TimeoutSeconds: 5, Retries: 3},
+		SecretReferences: []EnvironmentSecretReference{
+			{SecretID: "019d2eaa-52d0-7f52-8ac7-0aeb932455dc", Environment: "REDIS_URL"},
+			{SecretID: "019d2eaa-52d0-7f52-8ac7-0aeb932455db", Environment: "DATABASE_URL"},
+		},
+		VolumeMounts: []VolumeMount{
+			{VolumeID: "019d2eaa-52d0-7f52-8ac7-0aeb932455de", ContainerPath: "/var/lib/app", ReadOnly: false},
+			{VolumeID: "019d2eaa-52d0-7f52-8ac7-0aeb932455dd", ContainerPath: "/config", ReadOnly: true},
+		},
+	}
+	normalized, err := Normalize(spec)
+	if err != nil {
+		t.Fatalf("Normalize: %v", err)
+	}
+	if normalized.SecretReferences[0].Environment != "DATABASE_URL" ||
+		normalized.VolumeMounts[0].ContainerPath != "/config" {
+		t.Fatalf("normalized resource order = %#v / %#v", normalized.SecretReferences, normalized.VolumeMounts)
 	}
 }
 
@@ -60,6 +87,21 @@ func TestNormalizeRejectsAmbiguousOrPrivilegedIntent(t *testing.T) {
 			spec.Health.Kind, spec.Health.Path = HealthTCP, "/health"
 		},
 		"unbounded timeout": func(spec *Spec) { spec.Health.TimeoutSeconds = 30 },
+		"non uuid secret": func(spec *Spec) {
+			spec.SecretReferences = []EnvironmentSecretReference{{SecretID: "secret", Environment: "TOKEN"}}
+		},
+		"duplicate environment": func(spec *Spec) {
+			spec.SecretReferences = []EnvironmentSecretReference{
+				{SecretID: "019d2eaa-52d0-7f52-8ac7-0aeb932455db", Environment: "TOKEN"},
+				{SecretID: "019d2eaa-52d0-7f52-8ac7-0aeb932455dc", Environment: "TOKEN"},
+			}
+		},
+		"relative volume target": func(spec *Spec) {
+			spec.VolumeMounts = []VolumeMount{{VolumeID: "019d2eaa-52d0-7f52-8ac7-0aeb932455dd", ContainerPath: "data"}}
+		},
+		"runtime volume target": func(spec *Spec) {
+			spec.VolumeMounts = []VolumeMount{{VolumeID: "019d2eaa-52d0-7f52-8ac7-0aeb932455dd", ContainerPath: "/proc/sys"}}
+		},
 	}
 	for name, mutate := range tests {
 		name, mutate := name, mutate

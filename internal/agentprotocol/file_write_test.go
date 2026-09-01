@@ -40,6 +40,7 @@ func TestFileWriteContractRejectsTraversalReservedPathsAndOversizedChunks(t *tes
 		func(value *FileWriteRequest) { value.Directory, value.Name = "", ReservedFileUploadDirectory },
 		func(value *FileWriteRequest) { value.ChunkLength = MaximumFileUploadChunkBytes + 1 },
 		func(value *FileWriteRequest) { value.Directory, value.Name = "", ReservedFileTrashDirectory },
+		func(value *FileWriteRequest) { value.Directory, value.Name = "", ReservedOCIVolumeDirectory },
 	} {
 		request := validFileWriteRequest(FileWriteInitiate)
 		if strings.Contains(request.Directory, "etc") || request.ChunkLength != 0 {

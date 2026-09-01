@@ -108,7 +108,8 @@ func pageNames(ctx context.Context, descriptor int, cursor string, limit int) ([
 			// never become actionable through normal file-manager navigation.
 			if name == agentprotocol.ReservedFileUploadDirectory ||
 				name == agentprotocol.ReservedFileOperationDirectory ||
-				name == agentprotocol.ReservedFileTrashDirectory {
+				name == agentprotocol.ReservedFileTrashDirectory ||
+				name == agentprotocol.ReservedOCIVolumeDirectory {
 				continue
 			}
 			scanned++

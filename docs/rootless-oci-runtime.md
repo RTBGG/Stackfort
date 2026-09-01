@@ -64,14 +64,17 @@ configuration, or future application schema.
 
 ## Reconcile and removal
 
-Runtime preparation occurs as part of the existing replay-safe Unix identity
-operation:
+Runtime preparation occurs through staged, replay-safe Unix identity calls.
+The base call creates the group, user, and empty account root. Stackfort then
+assigns the project and creates the quota-controlled layout before the runtime
+call performs these steps:
 
 1. inspect all OCI prerequisites without mutation;
 2. add and re-read the exact subordinate UID/GID ranges;
 3. enable linger and verify its root-owned marker;
 4. start and verify the account user manager when necessary;
-5. create and verify the fixed storage and Quadlet directories; and
+5. create and verify the fixed storage and Quadlet directories below the
+   already project-inheriting account root; and
 6. reject any per-user Podman API socket before returning success.
 
 The control database records an immutable `oci_runtime_reconciled_at` marker.

@@ -5,6 +5,7 @@ package core
 import (
 	"context"
 	"errors"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -53,7 +54,7 @@ func TestOCIApplicationDraftLifecycleIsRevisionFencedAndTenantScoped(t *testing.
 	if err != nil {
 		t.Fatalf("UpdateOCIApplicationDraft: %v", err)
 	}
-	if updated.Revision != 2 || updated.Name != "Worker application" || updated.Slug != "worker" || updated.Spec != updatedSpec {
+	if updated.Revision != 2 || updated.Name != "Worker application" || updated.Slug != "worker" || !reflect.DeepEqual(updated.Spec, updatedSpec) {
 		t.Fatalf("updated application = %#v", updated)
 	}
 	if _, err := repository.UpdateOCIApplicationDraft(ctx, UpdateOCIApplicationDraftParams{

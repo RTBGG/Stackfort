@@ -82,6 +82,23 @@ func TestReconcileAndDeletePropagateRootlessRuntimeChanges(t *testing.T) {
 	}
 }
 
+func TestStagedReconcileLeavesAccountRootEmptyUntilQuotaAssignment(t *testing.T) {
+	t.Parallel()
+	spec := testSpec(t)
+	host := newFakeHost(spec)
+	host.directoryCreated = true
+	host.runtimeResult = RuntimeResult{RuntimePrepared: true}
+	reconciler := &Reconciler{commands: host, lookup: host, directories: host, runtimes: host}
+	base, err := reconciler.ReconcileBase(t.Context(), spec)
+	if err != nil || !base.DirectoryCreated || host.runtimeEnsureCalls != 0 {
+		t.Fatalf("base stage = %#v, runtime calls=%d, err=%v", base, host.runtimeEnsureCalls, err)
+	}
+	runtime, err := reconciler.ReconcileRuntime(t.Context(), spec)
+	if err != nil || !runtime.RuntimePrepared || host.runtimeEnsureCalls != 1 {
+		t.Fatalf("runtime stage = %#v, runtime calls=%d, err=%v", runtime, host.runtimeEnsureCalls, err)
+	}
+}
+
 func TestReconcileCanCreateMissingGroupBeforeRepairingExactUser(t *testing.T) {
 	t.Parallel()
 	spec := testSpec(t)

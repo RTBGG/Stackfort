@@ -27,6 +27,7 @@ import (
 	"github.com/RTBGG/stackfort/internal/nginxbaseline"
 	"github.com/RTBGG/stackfort/internal/ociapps"
 	"github.com/RTBGG/stackfort/internal/ociimage"
+	"github.com/RTBGG/stackfort/internal/ociresources"
 	"github.com/RTBGG/stackfort/internal/phpruntime"
 	"github.com/RTBGG/stackfort/internal/scheduledjobs"
 	"github.com/google/uuid"
@@ -96,6 +97,9 @@ const (
 	ProfilePodmanInspect              ProfileID = "oci.podman-inspect"
 	ProfilePodmanSave                 ProfileID = "oci.podman-save"
 	ProfilePodmanRemove               ProfileID = "oci.podman-remove"
+	ProfilePodmanNetworkExists        ProfileID = "oci.podman-network-exists"
+	ProfilePodmanNetworkCreate        ProfileID = "oci.podman-network-create"
+	ProfilePodmanNetworkInspect       ProfileID = "oci.podman-network-inspect"
 	ProfileTrivyScan                  ProfileID = "oci.trivy-scan"
 )
 
@@ -355,6 +359,20 @@ func NewRunner() *Runner {
 			}
 			return []string{"image", "rm", "--ignore", "--no-prune", target}, nil
 		}, time.Minute, defaultOutputLimit),
+		ProfilePodmanNetworkExists: accountOCIResourceProfile(func(identity hostingidentity.Spec) []string {
+			return []string{"network", "exists", ociresources.NetworkName}
+		}, time.Minute, defaultOutputLimit),
+		ProfilePodmanNetworkCreate: accountOCIResourceProfile(func(identity hostingidentity.Spec) []string {
+			return []string{
+				"network", "create", "--driver=bridge", "--opt=isolate=strict",
+				"--label=" + ociresources.NetworkLabelManaged + "=true",
+				"--label=" + ociresources.NetworkLabelAccount + "=" + identity.AccountID,
+				ociresources.NetworkName,
+			}
+		}, time.Minute, defaultOutputLimit),
+		ProfilePodmanNetworkInspect: accountOCIResourceProfile(func(identity hostingidentity.Spec) []string {
+			return []string{"network", "inspect", "--format=json", ociresources.NetworkName}
+		}, time.Minute, 1<<20),
 		ProfileTrivyScan: func() executionProfile {
 			profile := mutationProfile(ociimage.ScannerExecutable, func(values []string) ([]string, error) {
 				if len(values) != 1 {
@@ -381,6 +399,22 @@ func accountOCIProfile(
 	resolve func(ociimage.PrepareSpec, string) ([]string, error), timeout time.Duration, outputLimit int,
 ) executionProfile {
 	return accountOCIProfileWithExecutable("/usr/bin/podman", resolve, timeout, outputLimit)
+}
+
+func accountOCIResourceProfile(
+	resolve func(hostingidentity.Spec) []string, timeout time.Duration, outputLimit int,
+) executionProfile {
+	profile := newProfile("/usr/bin/podman", func(values []string) ([]string, error) {
+		identity, err := ociresources.IdentityFromInvocationValues(values)
+		if err != nil {
+			return nil, ErrInvalidInvocation
+		}
+		return resolve(identity), nil
+	})
+	profile.timeout = timeout
+	profile.stdoutLimit, profile.stderrLimit = outputLimit, outputLimit
+	profile.accountProcess = true
+	return profile
 }
 
 func accountOCIProfileWithExecutable(

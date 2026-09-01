@@ -61,6 +61,7 @@ const (
 	OperationDropDatabase           Operation = "database.drop"
 	OperationReconcileScheduledJob  Operation = "hosting.jobs.reconcile"
 	OperationPrepareOCIImage        Operation = "oci.image.prepare"
+	OperationReconcileOCIResources  Operation = "oci.resources.reconcile"
 )
 
 type ActorKind string
@@ -117,6 +118,7 @@ var operationPolicies = [...]operationPolicy{
 	{operation: OperationDropDatabase, access: operationPrivilegedMutation},
 	{operation: OperationReconcileScheduledJob, access: operationPrivilegedMutation},
 	{operation: OperationPrepareOCIImage, access: operationPrivilegedMutation},
+	{operation: OperationReconcileOCIResources, access: operationPrivilegedMutation},
 }
 
 type ErrorCode string
@@ -180,6 +182,9 @@ const (
 	ErrorOCIImageInvalid            ErrorCode = "oci_image_invalid"
 	ErrorOCIImageUnavailable        ErrorCode = "oci_image_unavailable"
 	ErrorOCIImageRejected           ErrorCode = "oci_image_rejected"
+	ErrorOCIResourceInvalid         ErrorCode = "oci_resource_invalid"
+	ErrorOCIResourceConflict        ErrorCode = "oci_resource_conflict"
+	ErrorOCIResourceUnavailable     ErrorCode = "oci_resource_unavailable"
 	ErrorMutationFailed             ErrorCode = "mutation_failed"
 	ErrorInternal                   ErrorCode = "internal_error"
 )
@@ -221,6 +226,7 @@ type Request struct {
 	DropDatabase           *DatabaseDropRequest           `json:"dropDatabase,omitempty"`
 	ReconcileScheduledJob  *ScheduledJobReconcileRequest  `json:"reconcileScheduledJob,omitempty"`
 	PrepareOCIImage        *OCIImagePrepareRequest        `json:"prepareOciImage,omitempty"`
+	ReconcileOCIResources  *OCIResourceReconcileRequest   `json:"reconcileOciResources,omitempty"`
 }
 
 type HandshakeRequest struct {
@@ -254,6 +260,7 @@ type Response struct {
 	DatabaseDrop             *DatabaseDropResponse           `json:"databaseDrop,omitempty"`
 	ScheduledJob             *ScheduledJobReconcileResponse  `json:"scheduledJob,omitempty"`
 	OCIImage                 *OCIImagePrepareResponse        `json:"ociImage,omitempty"`
+	OCIResources             *OCIResourceReconcileResponse   `json:"ociResources,omitempty"`
 	Error                    *ResponseError                  `json:"error,omitempty"`
 }
 
@@ -314,12 +321,18 @@ func ValidateRequest(request Request) error {
 		if err := validateHostingIdentityMutation(request.Correlation, request.ReconcileIdentity.Identity); err != nil {
 			return err
 		}
+		if !validHostingIdentityStage(request.ReconcileIdentity.Stage) {
+			return fmt.Errorf("%w: hosting identity stage is invalid", ErrInvalidRequest)
+		}
 	case OperationDeleteIdentity:
 		if request.DeleteIdentity == nil || requestPayloadCount(request) != 1 {
 			return fmt.Errorf("%w: deleteIdentity payload is required", ErrInvalidRequest)
 		}
 		if err := validateHostingIdentityMutation(request.Correlation, request.DeleteIdentity.Identity); err != nil {
 			return err
+		}
+		if request.DeleteIdentity.Stage != HostingIdentityStageFull {
+			return fmt.Errorf("%w: deletion cannot select an identity stage", ErrInvalidRequest)
 		}
 	case OperationReconcileFilesystem:
 		if request.ReconcileFilesystem == nil || requestPayloadCount(request) != 1 {
@@ -445,6 +458,11 @@ func ValidateRequest(request Request) error {
 			validateOCIImagePrepareRequest(request.Correlation, *request.PrepareOCIImage) != nil {
 			return fmt.Errorf("%w: OCI image preparation intent is malformed", ErrInvalidRequest)
 		}
+	case OperationReconcileOCIResources:
+		if request.ReconcileOCIResources == nil || requestPayloadCount(request) != 1 ||
+			validateOCIResourceReconcileRequest(request.Correlation, *request.ReconcileOCIResources) != nil {
+			return fmt.Errorf("%w: OCI private-resource intent is malformed", ErrInvalidRequest)
+		}
 	default:
 		return fmt.Errorf("%w: operation payload policy is missing", ErrInvalidRequest)
 	}
@@ -467,6 +485,7 @@ func ValidateResponse(response Response, requestID string, expectedOperation Ope
 		if response.Error.Code == ErrorQuotaUnavailable || response.Error.Code == ErrorResourceControlUnavailable ||
 			response.Error.Code == ErrorOCIRuntimeUnavailable ||
 			response.Error.Code == ErrorOCIImageUnavailable ||
+			response.Error.Code == ErrorOCIResourceUnavailable ||
 			response.Error.Code == ErrorNGINXUnavailable || response.Error.Code == ErrorPHPUnavailable ||
 			response.Error.Code == ErrorScheduledJobUnavailable || response.Error.Code == ErrorCacheUnavailable {
 			if response.Error.Capability == nil || validateCapability(*response.Error.Capability) != nil ||
@@ -540,6 +559,9 @@ func ValidateResponse(response Response, requestID string, expectedOperation Ope
 	}
 	if response.OCIImage != nil {
 		return validateOCIImagePrepareResponse(*response.OCIImage, expectedOperation)
+	}
+	if response.OCIResources != nil {
+		return validateOCIResourceReconcileResponse(*response.OCIResources, expectedOperation)
 	}
 	if response.Handshake.AgentMinimumVersion < 1 ||
 		response.Handshake.AgentMaximumVersion < response.Handshake.AgentMinimumVersion ||
@@ -710,6 +732,7 @@ func validErrorCode(code ErrorCode) bool {
 		ErrorScheduledJobInvalid, ErrorScheduledJobNotFound, ErrorScheduledJobConflict, ErrorScheduledJobUnavailable,
 		ErrorCacheConflict, ErrorCacheUnavailable,
 		ErrorOCIImageInvalid, ErrorOCIImageUnavailable, ErrorOCIImageRejected,
+		ErrorOCIResourceInvalid, ErrorOCIResourceConflict, ErrorOCIResourceUnavailable,
 		ErrorMutationFailed, ErrorInternal:
 		return true
 	default:
@@ -738,6 +761,7 @@ func requestPayloadCount(request Request) int {
 		request.DropDatabase != nil,
 		request.ReconcileScheduledJob != nil,
 		request.PrepareOCIImage != nil,
+		request.ReconcileOCIResources != nil,
 	} {
 		if present {
 			count++

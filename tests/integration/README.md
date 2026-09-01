@@ -42,6 +42,17 @@ go test -tags=integration -c -o /tmp/stackfort-host-integration.test ./tests/int
 sudo STACKFORT_DISPOSABLE_HOST_TEST=1 /tmp/stackfort-host-integration.test -test.v
 ```
 
+L-004 adds `TestDisposableHostOCIPrivateResources`. It stages the base identity
+before project assignment, then prepares the rootless runtime and production
+private-resource manager. It verifies the exact DNS/bridge/isolation/label
+network policy, account namespace separation, descriptor-derived volume modes,
+cross-account traversal denial, and replay:
+
+```sh
+sudo STACKFORT_DISPOSABLE_HOST_TEST=1 /tmp/stackfort-host-integration.test \
+  -test.v -test.run '^TestDisposableHostOCIPrivateResources$'
+```
+
 It creates temporary reserved-range Unix identities below `/srv/hosting`,
 proves hard byte and inode enforcement, checks that a second account cannot
 traverse the first account root, and verifies that document-root creation does

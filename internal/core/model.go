@@ -10,6 +10,7 @@ import (
 	"github.com/RTBGG/stackfort/internal/cacheconfig"
 	"github.com/RTBGG/stackfort/internal/ociapps"
 	"github.com/RTBGG/stackfort/internal/ociimage"
+	"github.com/RTBGG/stackfort/internal/ociresources"
 	"github.com/RTBGG/stackfort/internal/scheduledjobs"
 	"github.com/RTBGG/stackfort/internal/wafconfig"
 )
@@ -627,6 +628,86 @@ type RecordOCIImageArtifactParams struct {
 	Result           ociimage.Result
 	ActorID          ID
 	RequestID        string
+}
+
+type OCIResourceArtifact struct {
+	ApplicationID        ID                  `json:"applicationId"`
+	AccountID            ID                  `json:"accountId"`
+	ApplicationRevision  int64               `json:"applicationRevision"`
+	Result               ociresources.Result `json:"result"`
+	PreparedAt           time.Time           `json:"preparedAt"`
+	PreparedByIdentityID ID                  `json:"preparedByIdentityId"`
+}
+
+type RecordOCIResourceArtifactParams struct {
+	AccountID        ID
+	ApplicationID    ID
+	ExpectedRevision int64
+	Result           ociresources.Result
+	ActorID          ID
+	RequestID        string
+}
+
+type OCIEnvironmentSecret struct {
+	ID         ID         `json:"id"`
+	AccountID  ID         `json:"accountId"`
+	Name       string     `json:"name"`
+	Slug       string     `json:"slug"`
+	Generation int64      `json:"generation"`
+	CreatedAt  time.Time  `json:"createdAt"`
+	UpdatedAt  time.Time  `json:"updatedAt"`
+	RemovedAt  *time.Time `json:"removedAt,omitempty"`
+}
+
+type CreateOCIEnvironmentSecretParams struct {
+	AccountID ID
+	Name      string
+	Slug      string
+	Value     []byte
+	ActorID   ID
+	RequestID string
+}
+
+type RotateOCIEnvironmentSecretParams struct {
+	AccountID          ID
+	SecretID           ID
+	ExpectedGeneration int64
+	Value              []byte
+	ActorID            ID
+	RequestID          string
+}
+
+type RemoveOCIEnvironmentSecretParams struct {
+	AccountID          ID
+	SecretID           ID
+	ExpectedGeneration int64
+	ActorID            ID
+	RequestID          string
+}
+
+type OCIVolume struct {
+	ID        ID         `json:"id"`
+	AccountID ID         `json:"accountId"`
+	Name      string     `json:"name"`
+	Slug      string     `json:"slug"`
+	CreatedAt time.Time  `json:"createdAt"`
+	UpdatedAt time.Time  `json:"updatedAt"`
+	RemovedAt *time.Time `json:"removedAt,omitempty"`
+}
+
+type CreateOCIVolumeParams struct {
+	AccountID ID
+	Name      string
+	Slug      string
+	ActorID   ID
+	RequestID string
+}
+
+type RemoveOCIVolumeParams struct {
+	AccountID ID
+	VolumeID  ID
+	ActorID   ID
+	RequestID string
 }
 
 type Package struct {

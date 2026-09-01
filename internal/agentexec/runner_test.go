@@ -16,6 +16,7 @@ import (
 	"github.com/RTBGG/stackfort/internal/hostingresources"
 	"github.com/RTBGG/stackfort/internal/ociapps"
 	"github.com/RTBGG/stackfort/internal/ociimage"
+	"github.com/RTBGG/stackfort/internal/ociresources"
 )
 
 func TestProductionProfilesUseFixedPathsAndTemplates(t *testing.T) {
@@ -467,7 +468,7 @@ func TestProductionProfilesUseFixedPathsAndTemplates(t *testing.T) {
 			`req.http.host == "example.test" && req.url ~ "^/news\\.php(?:/|\\?|$)"`,
 		}, accountMutationTimeout},
 	)
-	if len(runner.profiles) != len(tests)+6 {
+	if len(runner.profiles) != len(tests)+9 {
 		t.Fatalf("production profile count = %d", len(runner.profiles))
 	}
 	for _, test := range tests {
@@ -515,6 +516,22 @@ func TestOCIProfilesDeriveAccountExecutionAndFixedLimits(t *testing.T) {
 	for _, id := range []ProfileID{ProfilePodmanPull, ProfilePodmanBuild, ProfilePodmanInspect, ProfilePodmanSave, ProfilePodmanRemove} {
 		if !runner.profiles[id].accountProcess {
 			t.Fatalf("profile %s does not drop to the hosting account", id)
+		}
+	}
+	identityValues, err := ociresources.IdentityInvocationValues(spec.Identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	networkProfiles := map[ProfileID][]string{
+		ProfilePodmanNetworkExists:  {"network", "exists", ociresources.NetworkName},
+		ProfilePodmanNetworkCreate:  {"network", "create", "--driver=bridge", "--opt=isolate=strict", "--label=" + ociresources.NetworkLabelManaged + "=true", "--label=" + ociresources.NetworkLabelAccount + "=" + accountID, ociresources.NetworkName},
+		ProfilePodmanNetworkInspect: {"network", "inspect", "--format=json", ociresources.NetworkName},
+	}
+	for id, expected := range networkProfiles {
+		profile := runner.profiles[id]
+		arguments, resolveErr := profile.resolve(identityValues)
+		if resolveErr != nil || !profile.accountProcess || !reflect.DeepEqual(arguments, expected) {
+			t.Fatalf("network profile %s = %#v/%#v, %v", id, profile, arguments, resolveErr)
 		}
 	}
 	save := runner.profiles[ProfilePodmanSave]

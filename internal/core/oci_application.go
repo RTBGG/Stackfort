@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"unicode"
 
@@ -64,6 +65,9 @@ func (r *Repository) CreateOCIApplication(
 		}
 		if count >= limits.MaxOCIApplications || count >= ociapps.MaximumApplicationsPerAccount {
 			return fmt.Errorf("%w: package OCI application limit reached", ErrConflict)
+		}
+		if err := validateOCIApplicationResourceReferencesTx(ctx, executor, params.AccountID, spec); err != nil {
+			return err
 		}
 		if err := insertOCIApplicationTx(ctx, executor, application); err != nil {
 			return err
@@ -126,6 +130,9 @@ func (r *Repository) UpdateOCIApplicationDraft(
 		if current.Status != OCIApplicationDraft || current.Revision != params.ExpectedRevision {
 			return fmt.Errorf("%w: OCI application draft revision or state changed", ErrConflict)
 		}
+		if err := validateOCIApplicationResourceReferencesTx(ctx, executor, params.AccountID, spec); err != nil {
+			return err
+		}
 		nextRevision := current.Revision + 1
 		result, updateErr := executor.ExecContext(ctx, `
 			UPDATE oci_applications
@@ -144,6 +151,11 @@ func (r *Repository) UpdateOCIApplicationDraft(
 		}
 		if err := expectAffected(result); err != nil {
 			return fmt.Errorf("%w: OCI application changed concurrently", ErrConflict)
+		}
+		if err := replaceOCIApplicationResourceReferencesTx(
+			ctx, executor, params.AccountID, params.ApplicationID, spec,
+		); err != nil {
+			return err
 		}
 		application, findErr = findOCIApplicationTx(ctx, executor, params.AccountID, params.ApplicationID, false)
 		if findErr != nil {
@@ -189,6 +201,9 @@ func (r *Repository) RemoveOCIApplicationDraft(
 		if current.Status != OCIApplicationDraft || current.Revision != params.ExpectedRevision {
 			return fmt.Errorf("%w: only the current OCI application draft may be removed", ErrConflict)
 		}
+		if err := deleteOCIApplicationResourceReferencesTx(ctx, executor, params.ApplicationID); err != nil {
+			return err
+		}
 		nextRevision := current.Revision + 1
 		result, updateErr := executor.ExecContext(ctx, `
 			UPDATE oci_applications
@@ -230,7 +245,18 @@ func (r *Repository) ListOCIApplications(ctx context.Context, accountID ID) ([]O
 			}
 			applications = append(applications, application)
 		}
-		return rows.Err()
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		if err := rows.Close(); err != nil {
+			return err
+		}
+		for index := range applications {
+			if err := loadOCIApplicationResourceReferencesTx(ctx, reader, &applications[index]); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, classifyDatabaseError(err)
@@ -270,7 +296,14 @@ func findOCIApplicationTx(
 	if !includeRemoved {
 		query += ` AND removed_at IS NULL`
 	}
-	return scanOCIApplication(reader.QueryRowContext(ctx, query, string(accountID), string(applicationID)))
+	application, err := scanOCIApplication(reader.QueryRowContext(ctx, query, string(accountID), string(applicationID)))
+	if err != nil {
+		return OCIApplication{}, err
+	}
+	if err := loadOCIApplicationResourceReferencesTx(ctx, reader, &application); err != nil {
+		return OCIApplication{}, err
+	}
+	return application, nil
 }
 
 func scanOCIApplication(scanner rowScanner) (OCIApplication, error) {
@@ -295,7 +328,7 @@ func scanOCIApplication(scanner rowScanner) (OCIApplication, error) {
 	}
 	application.Spec.Health.Kind, application.Spec.Health.Path = ociapps.HealthKind(healthKind), healthPath.String
 	application.Status = OCIApplicationStatus(status)
-	if normalized, err := ociapps.Normalize(application.Spec); err != nil || normalized != application.Spec ||
+	if normalized, err := ociapps.Normalize(application.Spec); err != nil || !reflect.DeepEqual(normalized, application.Spec) ||
 		!validOCIApplicationStatus(application.Status) || application.Revision < 1 {
 		return OCIApplication{}, errors.New("stored OCI application is invalid")
 	}
@@ -328,7 +361,128 @@ func insertOCIApplicationTx(ctx context.Context, executor store.Executor, applic
 		application.Spec.InternalPort, string(application.Spec.Health.Kind), nullableString(application.Spec.Health.Path),
 		application.Spec.Health.IntervalSeconds, application.Spec.Health.TimeoutSeconds, application.Spec.Health.Retries,
 		formatTime(application.CreatedAt), formatTime(application.UpdatedAt))
+	if err != nil {
+		return err
+	}
+	return insertOCIApplicationResourceReferencesTx(ctx, executor, application.AccountID, application.ID, application.Spec)
+}
+
+func validateOCIApplicationResourceReferencesTx(
+	ctx context.Context, reader store.Reader, accountID ID, spec ociapps.Spec,
+) error {
+	for _, reference := range spec.SecretReferences {
+		secretID, err := ParseID(reference.SecretID)
+		if err != nil {
+			return fmt.Errorf("%w: OCI environment reference is invalid", ErrInvalidInput)
+		}
+		if _, err := findOCIEnvironmentSecretTx(ctx, reader, accountID, secretID, false); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return fmt.Errorf("%w: OCI environment value is unavailable for this account", ErrConflict)
+			}
+			return err
+		}
+	}
+	for _, mount := range spec.VolumeMounts {
+		volumeID, err := ParseID(mount.VolumeID)
+		if err != nil {
+			return fmt.Errorf("%w: OCI volume reference is invalid", ErrInvalidInput)
+		}
+		if _, err := findOCIVolumeTx(ctx, reader, accountID, volumeID, false); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return fmt.Errorf("%w: OCI volume is unavailable for this account", ErrConflict)
+			}
+			return err
+		}
+	}
+	return nil
+}
+
+func replaceOCIApplicationResourceReferencesTx(
+	ctx context.Context, executor store.Executor, accountID, applicationID ID, spec ociapps.Spec,
+) error {
+	if err := deleteOCIApplicationResourceReferencesTx(ctx, executor, applicationID); err != nil {
+		return err
+	}
+	return insertOCIApplicationResourceReferencesTx(ctx, executor, accountID, applicationID, spec)
+}
+
+func deleteOCIApplicationResourceReferencesTx(
+	ctx context.Context, executor store.Executor, applicationID ID,
+) error {
+	if _, err := executor.ExecContext(ctx, `DELETE FROM oci_application_secret_references WHERE application_id = ?`,
+		string(applicationID)); err != nil {
+		return err
+	}
+	_, err := executor.ExecContext(ctx, `DELETE FROM oci_application_volume_mounts WHERE application_id = ?`,
+		string(applicationID))
 	return err
+}
+
+func insertOCIApplicationResourceReferencesTx(
+	ctx context.Context, executor store.Executor, accountID, applicationID ID, spec ociapps.Spec,
+) error {
+	for _, reference := range spec.SecretReferences {
+		if _, err := executor.ExecContext(ctx, `
+			INSERT INTO oci_application_secret_references (
+				application_id, account_id, environment_name, secret_id
+			) VALUES (?, ?, ?, ?)`, string(applicationID), string(accountID),
+			reference.Environment, reference.SecretID); err != nil {
+			return err
+		}
+	}
+	for _, mount := range spec.VolumeMounts {
+		if _, err := executor.ExecContext(ctx, `
+			INSERT INTO oci_application_volume_mounts (
+				application_id, account_id, container_path, volume_id, read_only
+			) VALUES (?, ?, ?, ?, ?)`, string(applicationID), string(accountID),
+			mount.ContainerPath, mount.VolumeID, mount.ReadOnly); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func loadOCIApplicationResourceReferencesTx(
+	ctx context.Context, reader store.Reader, application *OCIApplication,
+) error {
+	secretRows, err := reader.QueryContext(ctx, `
+		SELECT secret_id, environment_name FROM oci_application_secret_references
+		WHERE account_id = ? AND application_id = ? ORDER BY environment_name, secret_id`,
+		string(application.AccountID), string(application.ID))
+	if err != nil {
+		return err
+	}
+	for secretRows.Next() {
+		var reference ociapps.EnvironmentSecretReference
+		if err := secretRows.Scan(&reference.SecretID, &reference.Environment); err != nil {
+			_ = secretRows.Close()
+			return err
+		}
+		application.Spec.SecretReferences = append(application.Spec.SecretReferences, reference)
+	}
+	if err := secretRows.Err(); err != nil {
+		_ = secretRows.Close()
+		return err
+	}
+	if err := secretRows.Close(); err != nil {
+		return err
+	}
+	volumeRows, err := reader.QueryContext(ctx, `
+		SELECT volume_id, container_path, read_only FROM oci_application_volume_mounts
+		WHERE account_id = ? AND application_id = ? ORDER BY container_path, volume_id`,
+		string(application.AccountID), string(application.ID))
+	if err != nil {
+		return err
+	}
+	defer volumeRows.Close()
+	for volumeRows.Next() {
+		var mount ociapps.VolumeMount
+		if err := volumeRows.Scan(&mount.VolumeID, &mount.ContainerPath, &mount.ReadOnly); err != nil {
+			return err
+		}
+		application.Spec.VolumeMounts = append(application.Spec.VolumeMounts, mount)
+	}
+	return volumeRows.Err()
 }
 
 func validateOCIApplicationMutationIDs(accountID, applicationID, actorID ID) error {

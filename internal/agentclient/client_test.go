@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -24,6 +25,7 @@ import (
 	"github.com/RTBGG/stackfort/internal/nginxconfig"
 	"github.com/RTBGG/stackfort/internal/ociapps"
 	"github.com/RTBGG/stackfort/internal/ociimage"
+	"github.com/RTBGG/stackfort/internal/ociresources"
 	"github.com/RTBGG/stackfort/internal/phpruntime"
 )
 
@@ -75,6 +77,46 @@ func TestClientPrepareOCIImageCarriesOnlyTypedIntent(t *testing.T) {
 	})}}
 	response, err := client.PrepareOCIImage(t.Context(), "oci-image-key", correlation, spec)
 	if err != nil || response.Result.ImageDigest != result.ImageDigest {
+		t.Fatalf("response=%#v err=%v", response, err)
+	}
+}
+
+func TestClientReconcilesOnlyMetadataOCIResources(t *testing.T) {
+	t.Parallel()
+	identity := handlerClientIdentity(t)
+	spec := ociresources.Spec{
+		Identity: identity, ApplicationID: "019d2eaa-52d0-7f52-8ac7-0aeb932455db", Revision: 1,
+		EnvironmentReferences: []ociresources.EnvironmentReference{{
+			SecretID: "019d2eaa-52d0-7f52-8ac7-0aeb932455dc", Environment: "TOKEN", Generation: 3,
+		}},
+	}
+	correlation := agentprotocol.AuditCorrelation{
+		OperationID: "019d2eaa-62d0-7f52-8ac7-0aeb932455db", ActorKind: agentprotocol.ActorSystem,
+		AccountID: identity.AccountID,
+	}
+	result, err := ociresources.ResultFor(spec, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := &Client{httpClient: &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		decoded, decodeErr := agentprotocol.DecodeRequest(request.Body)
+		if decodeErr != nil || decoded.ReconcileOCIResources == nil ||
+			!reflect.DeepEqual(decoded.ReconcileOCIResources.Spec, spec) {
+			t.Fatalf("request=%#v err=%v", decoded, decodeErr)
+		}
+		body, marshalErr := json.Marshal(agentprotocol.Response{
+			ProtocolVersion: agentprotocol.WireVersion, RequestID: decoded.RequestID,
+			OCIResources: &agentprotocol.OCIResourceReconcileResponse{Result: result},
+		})
+		if marshalErr != nil {
+			t.Fatal(marshalErr)
+		}
+		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{
+			"Content-Type": []string{agentprotocol.MediaType}, "X-Stackfort-Protocol": []string{"1"},
+		}, Body: io.NopCloser(bytes.NewReader(body))}, nil
+	})}}
+	response, err := client.ReconcileOCIResources(t.Context(), "oci-resource-key", correlation, spec)
+	if err != nil || response.Result.ResourceDigest != result.ResourceDigest {
 		t.Fatalf("response=%#v err=%v", response, err)
 	}
 }
@@ -357,6 +399,7 @@ func TestClientHostingIdentityMutationUsesTypedCorrelatedOperation(t *testing.T)
 		OperationID: "019c1234-5678-7abc-8def-0123456789ab", ActorKind: agentprotocol.ActorSystem,
 		AccountID: accountID,
 	}
+	expectedStage := agentprotocol.HostingIdentityStageBase
 	client := &Client{httpClient: &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
 		var protocolRequest agentprotocol.Request
 		if err := json.NewDecoder(request.Body).Decode(&protocolRequest); err != nil {
@@ -365,7 +408,8 @@ func TestClientHostingIdentityMutationUsesTypedCorrelatedOperation(t *testing.T)
 		if protocolRequest.Operation != agentprotocol.OperationReconcileIdentity ||
 			protocolRequest.ReconcileIdentity == nil || protocolRequest.Correlation == nil ||
 			protocolRequest.Correlation.OperationID != correlation.OperationID ||
-			protocolRequest.ReconcileIdentity.Identity != identity {
+			protocolRequest.ReconcileIdentity.Identity != identity ||
+			protocolRequest.ReconcileIdentity.Stage != expectedStage {
 			t.Fatalf("request = %#v", protocolRequest)
 		}
 		body, err := json.Marshal(agentprotocol.Response{
@@ -386,6 +430,12 @@ func TestClientHostingIdentityMutationUsesTypedCorrelatedOperation(t *testing.T)
 	result, err := client.ReconcileHostingIdentity(t.Context(), "identity-client-key", correlation, identity)
 	if err != nil || !result.Changed || !result.UserCreated {
 		t.Fatalf("result=%#v err=%v", result, err)
+	}
+	expectedStage = agentprotocol.HostingIdentityStageRuntime
+	if _, err := client.ReconcileHostingOCIRuntime(
+		t.Context(), "identity-client-runtime", correlation, identity,
+	); err != nil {
+		t.Fatalf("runtime identity stage: %v", err)
 	}
 	invalid := correlation
 	invalid.AccountID = invalid.OperationID

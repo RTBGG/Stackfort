@@ -1296,11 +1296,28 @@ Acceptance:
 See [Bounded OCI image preparation](oci-image-preparation.md) and
 [ADR 0055](adr/0055-digest-pinned-bounded-oci-image-preparation.md).
 
-### L-004 — Private network, secrets, and bounded volumes (`P0`)
+### L-004 — Private network, secrets, and bounded volumes (`P0`, complete)
 
 Create account-private networking, encrypted environment-secret references,
 and descriptor-verified account-owned volumes. Reject public host ports,
 arbitrary mounts, devices, namespaces, and capabilities.
+
+Acceptance:
+
+- Envelope-encrypt tenant values and keep plaintext out of public records,
+  jobs, audit events, agent payloads, and replay artifacts.
+- Reconcile a deterministic per-account rootless bridge with DNS, strict
+  Netavark isolation, exact labels, and no public host-port field.
+- Derive all account-owned volume paths below a hidden reserved root, verify
+  them descriptor-relatively, and inherit the account project quota.
+- Fence durable work to image-approved revisions and secret generations while
+  retaining append-only evidence across rotations.
+- Provision project inheritance before rootless Podman storage, reject foreign
+  network state and links, and prove replay and cross-account denial on a
+  disposable Debian 13 host.
+
+See [Private OCI resources](oci-private-resources.md) and
+[ADR 0057](adr/0057-account-private-oci-resources.md).
 
 ### L-005 — Quadlet lifecycle, health, logs, and domain routing (`P0`)
 

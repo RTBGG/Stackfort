@@ -37,7 +37,7 @@ func TestDisposableHostLocalBackupRestore(t *testing.T) {
 		cleanupBackupRepository(t, identity)
 		cleanupIdentity(t, identity)
 	})
-	if _, err := hostidentity.NewReconciler().Reconcile(t.Context(), identity); err != nil {
+	if _, err := hostidentity.NewReconciler().ReconcileBase(t.Context(), identity); err != nil {
 		t.Fatalf("reconcile identity: %v", err)
 	}
 	if _, err := hostfilesystem.NewReconciler().Reconcile(t.Context(), hostingstorage.Spec{

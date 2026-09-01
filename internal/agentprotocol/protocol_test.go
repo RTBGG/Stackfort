@@ -17,6 +17,7 @@ import (
 	"github.com/RTBGG/stackfort/internal/hostingstorage"
 	"github.com/RTBGG/stackfort/internal/ociapps"
 	"github.com/RTBGG/stackfort/internal/ociimage"
+	"github.com/RTBGG/stackfort/internal/ociresources"
 	"github.com/RTBGG/stackfort/internal/phpruntime"
 )
 
@@ -150,11 +151,35 @@ func TestPrivilegedMutationAuditCorrelationIsStrict(t *testing.T) {
 	}
 }
 
+func TestHostingIdentityStagesAreClosedAndDeletionCannotSelectOne(t *testing.T) {
+	t.Parallel()
+	identity := validHostingIdentitySpec()
+	correlation := validIdentityAuditCorrelation()
+	request := Request{
+		ProtocolVersion: WireVersion, RequestID: "identity-stage-request", IdempotencyKey: "identity-stage-key",
+		Operation: OperationReconcileIdentity, Correlation: &correlation,
+		ReconcileIdentity: &HostingIdentityRequest{Identity: identity, Stage: HostingIdentityStageBase},
+	}
+	if err := ValidateRequest(request); err != nil {
+		t.Fatal(err)
+	}
+	request.ReconcileIdentity.Stage = "arbitrary"
+	if err := ValidateRequest(request); err == nil {
+		t.Fatal("arbitrary hosting identity stage was accepted")
+	}
+	request.Operation = OperationDeleteIdentity
+	request.DeleteIdentity = &HostingIdentityRequest{Identity: identity, Stage: HostingIdentityStageRuntime}
+	request.ReconcileIdentity = nil
+	if err := ValidateRequest(request); err == nil {
+		t.Fatal("staged identity deletion was accepted")
+	}
+}
+
 func TestSupportedOperationsAreCopiedAndHaveExplicitPolicies(t *testing.T) {
 	t.Parallel()
 
 	operations := SupportedOperations()
-	if len(operations) != 23 || operations[0] != OperationHandshake ||
+	if len(operations) != 24 || operations[0] != OperationHandshake ||
 		operations[1] != OperationInspectCapabilities ||
 		operations[2] != OperationReconcileIdentity || operations[3] != OperationDeleteIdentity ||
 		operations[4] != OperationReconcileFilesystem || operations[5] != OperationListFiles ||
@@ -166,7 +191,7 @@ func TestSupportedOperationsAreCopiedAndHaveExplicitPolicies(t *testing.T) {
 		operations[16] != OperationInspectPHPPools || operations[17] != OperationReconcilePHPPools ||
 		operations[18] != OperationProvisionDatabase || operations[19] != OperationRotateDatabasePassword ||
 		operations[20] != OperationDropDatabase || operations[21] != OperationReconcileScheduledJob ||
-		operations[22] != OperationPrepareOCIImage {
+		operations[22] != OperationPrepareOCIImage || operations[23] != OperationReconcileOCIResources {
 		t.Fatalf("supported operations = %#v", operations)
 	}
 	operations[0] = "mutated.by.caller"
@@ -210,6 +235,46 @@ func TestOCIImagePreparationContractRejectsCallerControlledRuntimeFields(t *test
 	request.Correlation.AccountID = "019d2eaa-72d0-7f52-8ac7-0aeb932455db"
 	if err := ValidateRequest(request); err == nil {
 		t.Fatal("cross-account OCI image request was accepted")
+	}
+}
+
+func TestOCIPrivateResourceContractIsMetadataOnlyAndAccountBound(t *testing.T) {
+	t.Parallel()
+	identity := validHostingIdentitySpec()
+	spec := ociresources.Spec{
+		Identity: identity, ApplicationID: "019d2eaa-52d0-7f52-8ac7-0aeb932455db", Revision: 1,
+		EnvironmentReferences: []ociresources.EnvironmentReference{{
+			SecretID: "019d2eaa-52d0-7f52-8ac7-0aeb932455dc", Environment: "DATABASE_URL", Generation: 2,
+		}},
+		Volumes: []ociapps.VolumeMount{{
+			VolumeID: "019d2eaa-52d0-7f52-8ac7-0aeb932455dd", ContainerPath: "/var/lib/app",
+		}},
+	}
+	request := Request{
+		ProtocolVersion: WireVersion, RequestID: "oci-resource-request", IdempotencyKey: "oci-resource-key",
+		Operation: OperationReconcileOCIResources,
+		Correlation: &AuditCorrelation{
+			OperationID: "019d2eaa-62d0-7f52-8ac7-0aeb932455db", ActorKind: ActorSystem, AccountID: identity.AccountID,
+		},
+		ReconcileOCIResources: &OCIResourceReconcileRequest{Spec: spec},
+	}
+	if err := ValidateRequest(request); err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := json.Marshal(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, forbidden := range []string{
+		"secretValue", "plaintext", "hostPath", "hostPort", "privileged", "capAdd", "device", "namespace", "podmanArgs",
+	} {
+		if strings.Contains(string(encoded), forbidden) {
+			t.Fatalf("OCI resource contract exposes %q: %s", forbidden, encoded)
+		}
+	}
+	request.Correlation.AccountID = "019d2eaa-72d0-7f52-8ac7-0aeb932455db"
+	if err := ValidateRequest(request); err == nil {
+		t.Fatal("cross-account OCI resource request was accepted")
 	}
 }
 
@@ -480,7 +545,7 @@ func TestHostingIdentityMutationsRequireMatchingCorrelationAndTypedPayload(t *te
 	valid := Request{
 		ProtocolVersion: WireVersion, RequestID: "identity-req-1", IdempotencyKey: "identity-key-1",
 		Operation: OperationReconcileIdentity, Correlation: &correlation,
-		ReconcileIdentity: &HostingIdentityRequest{Identity: spec},
+		ReconcileIdentity: &HostingIdentityRequest{Identity: spec, Stage: HostingIdentityStageBase},
 	}
 	if err := ValidateRequest(valid); err != nil {
 		t.Fatalf("valid mutation: %v", err)

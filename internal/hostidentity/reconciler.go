@@ -111,6 +111,28 @@ func (reconciler *Reconciler) Reconcile(
 	ctx context.Context,
 	spec hostingidentity.Spec,
 ) (ReconcileResult, error) {
+	result, err := reconciler.ReconcileBase(ctx, spec)
+	if err != nil {
+		return ReconcileResult{}, err
+	}
+	runtime, err := reconciler.ReconcileRuntime(ctx, spec)
+	if err != nil {
+		return ReconcileResult{}, err
+	}
+	result.SubUIDsConfigured = runtime.SubUIDsConfigured
+	result.SubGIDsConfigured = runtime.SubGIDsConfigured
+	result.LingerEnabled = runtime.LingerEnabled
+	result.RuntimePrepared = runtime.RuntimePrepared
+	return result, nil
+}
+
+// ReconcileBase creates only the Unix identity and empty account root. The
+// filesystem reconciler must assign the project before ReconcileRuntime can
+// create rootless container storage below it.
+func (reconciler *Reconciler) ReconcileBase(
+	ctx context.Context,
+	spec hostingidentity.Spec,
+) (ReconcileResult, error) {
 	if reconciler == nil || reconciler.commands == nil || reconciler.lookup == nil || reconciler.directories == nil || reconciler.runtimes == nil {
 		return ReconcileResult{}, ErrMutationFailed
 	}
@@ -154,15 +176,41 @@ func (reconciler *Reconciler) Reconcile(
 	if err != nil {
 		return ReconcileResult{}, fmt.Errorf("%w: account directory", ErrMutationFailed)
 	}
+	return result, nil
+}
+
+// ReconcileRuntime requires an existing exact base identity. It is deliberately
+// separate so project inheritance is active before Podman storage is created.
+func (reconciler *Reconciler) ReconcileRuntime(
+	ctx context.Context, spec hostingidentity.Spec,
+) (ReconcileResult, error) {
+	if reconciler == nil || reconciler.lookup == nil || reconciler.runtimes == nil {
+		return ReconcileResult{}, ErrMutationFailed
+	}
+	if err := hostingidentity.Validate(spec); err != nil {
+		return ReconcileResult{}, fmt.Errorf("%w: %v", ErrMutationFailed, err)
+	}
+	snapshot, err := reconciler.lookup.Load(ctx)
+	if err != nil {
+		return ReconcileResult{}, err
+	}
+	groupExists, userExists, needsRepair, err := inspectExpectedIdentity(snapshot, spec, true)
+	if err != nil {
+		return ReconcileResult{}, err
+	}
+	if !groupExists || !userExists || needsRepair {
+		return ReconcileResult{}, ErrIdentityConflict
+	}
 	runtimeResult, err := reconciler.runtimes.EnsureRuntime(ctx, spec)
 	if err != nil {
 		return ReconcileResult{}, err
 	}
-	result.SubUIDsConfigured = runtimeResult.SubUIDsConfigured
-	result.SubGIDsConfigured = runtimeResult.SubGIDsConfigured
-	result.LingerEnabled = runtimeResult.LingerEnabled
-	result.RuntimePrepared = runtimeResult.RuntimePrepared
-	return result, nil
+	return ReconcileResult{
+		SubUIDsConfigured: runtimeResult.SubUIDsConfigured,
+		SubGIDsConfigured: runtimeResult.SubGIDsConfigured,
+		LingerEnabled:     runtimeResult.LingerEnabled,
+		RuntimePrepared:   runtimeResult.RuntimePrepared,
+	}, nil
 }
 
 func (reconciler *Reconciler) Delete(
