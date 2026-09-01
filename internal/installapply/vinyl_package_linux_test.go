@@ -50,6 +50,23 @@ func TestVinylRockyInstallEnablesEPELAndUsesDNFDependencyResolution(t *testing.T
 	}
 }
 
+func TestVinylVCLValidationUsesFixedCompilerInvocation(t *testing.T) {
+	t.Parallel()
+	var observed string
+	runner := &LinuxRunner{output: io.Discard}
+	runner.runOverride = func(_ context.Context, _ []string, executable string, arguments ...string) error {
+		observed = executable + " " + strings.Join(arguments, " ")
+		return nil
+	}
+	if err := runner.validateVinylVCL(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	want := "/usr/sbin/vinyld -C -f " + cacheconfig.VCLPath
+	if observed != want {
+		t.Fatalf("Vinyl compiler invocation = %q, want %q", observed, want)
+	}
+}
+
 func testVinylReleaseSource(t *testing.T, distribution string) (Source, releaseartifacts.Artifact) {
 	t.Helper()
 	root := t.TempDir()

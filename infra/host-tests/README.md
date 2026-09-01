@@ -29,6 +29,7 @@ powershell -ExecutionPolicy Bypass -File infra/host-tests/New-StackfortHyperVVm.
 powershell -ExecutionPolicy Bypass -File infra/host-tests/Test-StackfortHyperVVm.ps1 debian-13
 powershell -ExecutionPolicy Bypass -File infra/host-tests/Test-StackfortInstallerHyperVVm.ps1 debian-13
 powershell -ExecutionPolicy Bypass -File infra/host-tests/Test-StackfortInstallerHyperVVm.ps1 debian-13 -RunPhase1Suite
+powershell -ExecutionPolicy Bypass -File infra/host-tests/Test-StackfortCleanInstallersHyperV.ps1 -SkipBuild
 powershell -ExecutionPolicy Bypass -File infra/host-tests/Remove-StackfortHyperVVm.ps1 stackfort-debian-13 -Force
 ```
 
@@ -64,17 +65,30 @@ removes that disposable directory; shared verified images, immutable bases,
 and the SSH key are retained.
 
 The separate installer harness builds a release-shaped archive, transfers it
-to a clean guest, runs the production installer twice, requires an unchanged
-journal and `alreadyInstalled=true` on the second run, and independently checks
+to a clean guest, and exercises the manual archive, exact production bootstrap,
+or passive native-package route. It runs the production installer twice,
+requires an unchanged journal and `alreadyInstalled=true` on the second run,
+and independently checks
 file metadata, service health, systemd sandbox properties, firewall
 persistence, enforcing AppArmor/SELinux state, and the native WAF package's
 database verification, module/loader metadata, private runtime ownership, and
 live `nginx -t`. A local build uses
-`infra/host-tests/work/waf-packages` by default; pass `-WafPackageDirectory`
-to select another complete three-target record directory. Use `-SkipBuild` to
-reuse an existing matching archive in `dist`. A guest already mutated by the integration
-or installer suite is not a clean input; restore a known clean checkpoint
-first.
+`infra/host-tests/work/waf-packages-coraza` and
+`infra/host-tests/work/vinyl-packages` by default; pass
+`-WafPackageDirectory` or `-VinylPackageDirectory` to select other complete
+three-target record directories. Select `-InstallMethod archive`, `bootstrap`,
+or `native`; the native route also requires `-NativePackagePath`. Use
+`-SkipBuild` to reuse an existing matching archive in `dist`. A guest already
+mutated by the integration or installer suite is not a clean input; restore a
+known clean checkpoint first.
+
+`Test-StackfortCleanInstallersHyperV.ps1` automates the complete three-guest by
+three-method matrix. It restores the named immutable clean checkpoint before
+every cell and stops each guest in a `finally` block. The bootstrap cell uses
+the exact production script through its explicit root-owned local-fixture
+qualification seam; normal bootstrap execution remains GitHub-Releases-only.
+The recorded matrix is
+[2026-09-01-clean-installer-matrix-hyper-v.md](results/2026-09-01-clean-installer-matrix-hyper-v.md).
 
 Add `-RunPhase1Suite` to cross-build and run the complete destructive Phase 1
 suite after installation. It covers account and filesystem isolation, byte and

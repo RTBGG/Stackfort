@@ -26,3 +26,14 @@ selects a versioned GitHub Release, checks the archive against that release's
 `SHA256SUMS`, constrains archive paths, and invokes the installer embedded in
 the verified archive. The release workflow also generates GitHub build
 attestations and refuses to replace an existing version's assets.
+
+`test-bootstrap.sh` qualifies that boundary as root without network access. It
+proves the production repository/HTTPS policy, fixed installer invocation,
+checksum uniqueness, archive member restrictions, and fail-closed local test
+fixture permissions. The fixture requires both
+`STACKFORT_BOOTSTRAP_TESTING=1` and an explicit canonical root-owned path; it is
+only for unreleased clean-host qualification and is disabled in normal use.
+
+The archive, bootstrap, and native-package routes passed the same nine-cell
+clean-host matrix on Debian 13, Ubuntu 26.04, and Rocky Linux 10. See the
+[qualification record](../../infra/host-tests/results/2026-09-01-clean-installer-matrix-hyper-v.md).

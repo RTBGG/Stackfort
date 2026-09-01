@@ -13,6 +13,7 @@ commit="${COMMIT:-$(git rev-parse --verify HEAD 2>/dev/null || printf 'unknown')
 source_date_epoch="${SOURCE_DATE_EPOCH:-$(git log -1 --format=%ct 2>/dev/null || printf '0')}"
 waf_package_directory="${STACKFORT_WAF_PACKAGE_DIR:-}"
 vinyl_package_directory="${STACKFORT_VINYL_PACKAGE_DIR:-}"
+native_package_formats="${STACKFORT_NATIVE_PACKAGE_FORMATS:-deb,rpm}"
 
 if [[ ! "$version" =~ ^[0-9]+.[0-9]+.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]; then
   printf 'VERSION is not a supported semantic version: %s\n' "$version" >&2
@@ -30,6 +31,19 @@ if [[ -z "$vinyl_package_directory" && "$version" != '0.0.0-dev' ]]; then
   printf 'STACKFORT_VINYL_PACKAGE_DIR is required for a release build.\n' >&2
   exit 1
 fi
+case "$native_package_formats" in
+  deb,rpm) ;;
+  none)
+    if [[ "$version" != '0.0.0-dev' ]]; then
+      printf 'Production releases may not omit native release packages.\n' >&2
+      exit 1
+    fi
+    ;;
+  *)
+    printf 'STACKFORT_NATIVE_PACKAGE_FORMATS must be deb,rpm or development-only none.\n' >&2
+    exit 1
+    ;;
+esac
 
 build_date="$(date --utc --date="@$source_date_epoch" '+%Y-%m-%dT%H:%M:%SZ')"
 linker_flags="-s -w -buildid= -X github.com/RTBGG/stackfort/internal/buildinfo.Version=$version -X github.com/RTBGG/stackfort/internal/buildinfo.Commit=$commit -X github.com/RTBGG/stackfort/internal/buildinfo.BuildDate=$build_date"
@@ -157,9 +171,17 @@ for architecture in "${architectures[@]}"; do
   find "$stage_root" -type d -exec chmod 0755 {} +
   find "$stage_root" -exec touch --date="@$source_date_epoch" {} +
 
+  archive_tar="$output_root/$bundle_name.tar"
   tar --sort=name --mtime="@$source_date_epoch" --owner=0 --group=0 --numeric-owner \
-    -C "$output_root" -cf - "$bundle_name" | gzip -n >"$output_root/$bundle_name.tar.gz"
-  if [[ "$architecture" == amd64 ]]; then
+    --mode='u+rwX,go+rX,go-w' --exclude="$bundle_name/bin/*" \
+    -C "$output_root" -cf "$archive_tar" "$bundle_name"
+  tar --sort=name --mtime="@$source_date_epoch" --owner=0 --group=0 --numeric-owner \
+    --mode=0755 -C "$output_root" -rf "$archive_tar" \
+    "$bundle_name/bin/stackfort-api" "$bundle_name/bin/stackfort-agent" \
+    "$bundle_name/bin/stackfort-installer" "$bundle_name/bin/stackfort-trivy"
+  gzip -n -c "$archive_tar" >"$output_root/$bundle_name.tar.gz"
+  rm -f -- "$archive_tar"
+  if [[ "$architecture" == amd64 && "$native_package_formats" == deb,rpm ]]; then
     SOURCE_DATE_EPOCH="$source_date_epoch" \
       bash packaging/core/build-native-package.sh "$stage_root" deb "$output_root"
     SOURCE_DATE_EPOCH="$source_date_epoch" \
@@ -170,7 +192,11 @@ done
 
 (
   cd "$output_root"
-  sha256sum ./*.tar.gz ./*.deb ./*.rpm ./stackfort-installer-* ./*.release.json | sort -k2 >SHA256SUMS
+  artifacts=(./*.tar.gz ./stackfort-installer-*)
+  if [[ "$native_package_formats" == deb,rpm ]]; then
+    artifacts+=(./*.deb ./*.rpm ./*.release.json)
+  fi
+  sha256sum --text "${artifacts[@]}" | sort -k2 >SHA256SUMS
 )
 
 printf 'Release artifacts created in %s\n' "$output_root"

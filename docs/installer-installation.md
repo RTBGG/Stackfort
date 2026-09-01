@@ -44,6 +44,12 @@ trust boundary.
 If a journal already exists, the bootstrap resumes or verifies that journal's
 version instead of silently switching to the newest release.
 
+The production bootstrap has no alternate repository or transport setting.
+Its explicit root-owned local-fixture mode is reserved for the project's
+unreleased clean-host qualification and remains disabled unless the test flag
+is deliberately set. The complete nine-cell evidence is recorded in the
+[clean-host installer matrix](../infra/host-tests/results/2026-09-01-clean-installer-matrix-hyper-v.md).
+
 ## Manual release installation
 
 ### Native release package

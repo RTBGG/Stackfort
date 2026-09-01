@@ -32,11 +32,27 @@ case "$(uname -m)" in
   x86_64 | amd64) architecture='amd64' ;;
   *) fail 'the initial installer supports amd64 only' ;;
 esac
-for command in awk curl mktemp sed sha256sum stat tar; do
+for command in awk curl install mktemp realpath sed sha256sum stat tar; do
   command -v "$command" >/dev/null 2>&1 || fail "required command is unavailable: $command"
 done
 
 version="${STACKFORT_VERSION:-}"
+test_fixture="${STACKFORT_BOOTSTRAP_TEST_FIXTURE:-}"
+if [[ -n "$test_fixture" ]]; then
+  [[ "${STACKFORT_BOOTSTRAP_TESTING:-}" == '1' ]] ||
+    fail 'the local release fixture is restricted to explicit bootstrap qualification'
+  [[ "$test_fixture" == /* && -d "$test_fixture" && ! -L "$test_fixture" ]] ||
+    fail 'the local release fixture must be an absolute real directory'
+  resolved_fixture="$(realpath -e -- "$test_fixture")"
+  [[ "$resolved_fixture" == "$test_fixture" ]] ||
+    fail 'the local release fixture path must be canonical'
+  read -r fixture_uid fixture_gid fixture_mode < <(stat -Lc '%u %g %a' -- "$test_fixture")
+  if [[ "$fixture_uid" != '0' || "$fixture_gid" != '0' ||
+        $((8#$fixture_mode & 8#022)) -ne 0 ]]; then
+    fail 'the local release fixture has unsafe metadata'
+  fi
+  readonly test_fixture
+fi
 if [[ -z "$version" && -e "$journal" ]]; then
   [[ -f "$journal" && ! -L "$journal" ]] || fail 'the existing installation journal is not a regular file'
   read -r journal_uid journal_gid journal_mode journal_size < <(stat -Lc '%u %g %a %s' -- "$journal")
@@ -50,6 +66,7 @@ if [[ -z "$version" && -e "$journal" ]]; then
   printf 'Resuming the release pinned by the existing installation journal.\n'
 fi
 if [[ -z "$version" ]]; then
+  [[ -z "$test_fixture" ]] || fail 'bootstrap qualification requires an explicit release version or existing journal'
   latest_url="$(curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
     --output /dev/null --write-out '%{url_effective}' \
     "https://github.com/$repository/releases/latest")"
@@ -71,8 +88,25 @@ umask 077
 working_directory="$(mktemp -d /var/tmp/stackfort-install.XXXXXXXX)"
 readonly working_directory
 curl_options=(--fail --silent --show-error --location --proto '=https' --tlsv1.2)
-curl "${curl_options[@]}" --output "$working_directory/SHA256SUMS" "$release_base/SHA256SUMS"
-curl "${curl_options[@]}" --output "$working_directory/$archive" "$release_base/$archive"
+fetch_release_asset() {
+  local name="$1"
+  local destination="$working_directory/$name"
+  if [[ -z "$test_fixture" ]]; then
+    curl "${curl_options[@]}" --output "$destination" "$release_base/$name"
+    return
+  fi
+
+  local source="$test_fixture/$name"
+  [[ -f "$source" && ! -L "$source" ]] || fail "local release fixture asset is invalid: $name"
+  read -r asset_uid asset_gid asset_mode < <(stat -Lc '%u %g %a' -- "$source")
+  if [[ "$asset_uid" != '0' || "$asset_gid" != '0' ||
+        $((8#$asset_mode & 8#022)) -ne 0 ]]; then
+    fail "local release fixture asset has unsafe metadata: $name"
+  fi
+  install -m 0600 -- "$source" "$destination"
+}
+fetch_release_asset SHA256SUMS
+fetch_release_asset "$archive"
 
 checksum="$(awk -v plain="$archive" -v dotted="./$archive" '
   $2 == plain || $2 == dotted { if (found) exit 2; print $1; found = 1 }
@@ -93,9 +127,15 @@ while IFS= read -r entry; do
     */../*) fail "release archive contains parent traversal: $entry" ;;
   esac
 done < <(tar -tzf "$working_directory/$archive")
+while IFS= read -r member; do
+  case "${member:0:1}" in
+    - | d) ;;
+    *) fail 'release archive contains a link or special file' ;;
+  esac
+done < <(tar -tvzf "$working_directory/$archive")
 
 tar --extract --gzip --file "$working_directory/$archive" --directory "$working_directory" \
-  --same-owner --same-permissions
+  --no-same-owner --no-same-permissions
 source_directory="$working_directory/$bundle"
 [[ -x "$source_directory/bin/stackfort-installer" ]] || fail 'release installer is unavailable'
 

@@ -49,7 +49,11 @@ IFS= read -r version <"$version_file" || fail 'release VERSION is empty'
 
 json_string_field() {
   local field="$1"
-  sed -nE 's/^[[:space:]]*"'"$field"'"[[:space:]]*:[[:space:]]*"([^"]+)",?[[:space:]]*$/\1/p' "$manifest_file"
+  # Artifact records deliberately reuse keys such as architecture. The first
+  # exact top-level occurrence is the release header emitted by the manifest
+  # assembler; consume the full stream and retain only that value.
+  sed -nE 's/^[[:space:]]*"'"$field"'"[[:space:]]*:[[:space:]]*"([^"]+)",?[[:space:]]*$/\1/p' \
+    "$manifest_file" | sed -n '1p'
 }
 
 mapfile -t manifest_versions < <(json_string_field version)

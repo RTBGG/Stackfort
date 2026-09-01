@@ -213,6 +213,11 @@ STACKFORT_VINYL_PACKAGE_DIR=/path/to/three-native-vinyl-records \
 bash scripts/build-release.sh
 ```
 
+Windows host-test development may set
+`STACKFORT_NATIVE_PACKAGE_FORMATS=none` for `0.0.0-dev` only and supply already
+qualified DEB/RPM carriers to the Hyper-V harness. Non-development builds may
+not omit native carriers, and the default remains `deb,rpm`.
+
 Release builds also require `dpkg-deb`, `rpmbuild`, `rpm`, `rpm2cpio`, and
 `cpio` to create and byte-verify the passive `stackfort-release` DEB/RPM. The
 shared contract and standalone commands are documented in

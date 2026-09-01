@@ -101,10 +101,18 @@ func (runner *LinuxRunner) verifyVinylPackage(ctx context.Context, source Source
 	if err != nil || !secret.Mode().IsRegular() || secret.Mode().Perm() != 0o600 || secret.Mode()&os.ModeSymlink != 0 {
 		return errors.New("Vinyl management secret has unsafe metadata")
 	}
-	if _, err := runner.capture(ctx, "/usr/sbin/vinyld", "-C", "-f", cacheconfig.VCLPath); err != nil {
+	if err := runner.validateVinylVCL(ctx); err != nil {
 		return errors.New("installed Vinyl could not compile the managed VCL")
 	}
 	return nil
+}
+
+func (runner *LinuxRunner) validateVinylVCL(ctx context.Context) error {
+	// Vinyl prints the complete generated C translation in compile mode. The
+	// selected stream varies by build and is potentially large. Discard both
+	// streams for this fixed validation command and retain its authoritative
+	// exit code.
+	return runner.runDiscardingOutput(ctx, nil, "/usr/sbin/vinyld", "-C", "-f", cacheconfig.VCLPath)
 }
 
 func (runner *LinuxRunner) installedVinylPackageVersion(ctx context.Context) (string, bool, error) {

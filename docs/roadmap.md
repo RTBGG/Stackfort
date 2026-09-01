@@ -180,7 +180,7 @@ and reboot recovery pass on Debian 13, Ubuntu 26.04, and Rocky Linux 10. See the
 ## Phase 6: Installer, updater, and public beta
 
 - [x] Versioned DEB/RPM packages where appropriate.
-- Verified one-line and manual installers for clean hosts.
+- [x] Verified one-line and manual installers for clean hosts.
 - Stable/beta GitHub Release channels and update checks.
 - Staged update, migration, health check, and rollback.
 - Upgrade matrices from every supported prior release.
@@ -195,6 +195,14 @@ existing journaled installer. Build reproducibility plus install, prerelease
 upgrade, removal, path ownership, and active-payload non-interference passed on
 all three supported guests. See [ADR 0059](adr/0059-passive-native-release-carrier.md)
 and the [qualification record](../infra/host-tests/results/2026-09-01-native-core-packages-hyper-v.md).
+
+The second item is complete: the manual archive, GitHub bootstrap, and native
+DEB/RPM routes each passed read-only preflight, initial installation,
+idempotent rerun, native component drift, security-policy, service, and live
+endpoint gates from the same clean checkpoint on Debian 13, Ubuntu 26.04, and
+Rocky Linux 10. The bootstrap remains GitHub-HTTPS-only in production; its
+explicit root-only local fixture exists solely to qualify unreleased artifacts.
+See the [clean-host installer matrix](../infra/host-tests/results/2026-09-01-clean-installer-matrix-hyper-v.md).
 
 Exit gate: the success criteria in `product-spec.md` pass, followed by a limited
 public beta with an explicit support window.

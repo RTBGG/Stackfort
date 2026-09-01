@@ -17,6 +17,10 @@ param(
 
     [string] $VmRoot = 'C:\ProgramData\Stackfort\Hyper-V',
     [string] $WafPackageDirectory,
+    [string] $VinylPackageDirectory,
+    [ValidateSet('archive', 'bootstrap', 'native')]
+    [string] $InstallMethod = 'archive',
+    [string] $NativePackagePath,
     [TimeSpan] $StartupTimeout = [TimeSpan]::FromMinutes(5),
     [switch] $SkipBuild,
     [switch] $RunPhase1Suite
@@ -87,12 +91,22 @@ if (-not $SkipBuild) {
     }
     $previousVersion = $env:VERSION
     $previousWafPackageDirectory = $env:STACKFORT_WAF_PACKAGE_DIR
+    $previousVinylPackageDirectory = $env:STACKFORT_VINYL_PACKAGE_DIR
+    $previousNativePackageFormats = $env:STACKFORT_NATIVE_PACKAGE_FORMATS
     try {
         $env:VERSION = $Version
         if ([string]::IsNullOrWhiteSpace($WafPackageDirectory)) {
-            $WafPackageDirectory = Join-Path $repositoryRoot 'infra\host-tests\work\waf-packages'
+            $WafPackageDirectory = Join-Path $repositoryRoot 'infra\host-tests\work\waf-packages-coraza'
         }
         $env:STACKFORT_WAF_PACKAGE_DIR = (Resolve-Path -LiteralPath $WafPackageDirectory).Path
+        if ([string]::IsNullOrWhiteSpace($VinylPackageDirectory)) {
+            $VinylPackageDirectory = Join-Path $repositoryRoot 'infra\host-tests\work\vinyl-packages'
+        }
+        $env:STACKFORT_VINYL_PACKAGE_DIR = (Resolve-Path -LiteralPath $VinylPackageDirectory).Path
+        # Windows Git Bash does not provide dpkg-deb/rpmbuild. The clean-host
+        # matrix supplies a separately built carrier package for the native
+        # route; production and CI release builds still require both formats.
+        $env:STACKFORT_NATIVE_PACKAGE_FORMATS = 'none'
         Push-Location $repositoryRoot
         try {
             & $gitBash 'scripts/build-release.sh'
@@ -112,6 +126,16 @@ if (-not $SkipBuild) {
             Remove-Item Env:STACKFORT_WAF_PACKAGE_DIR -ErrorAction SilentlyContinue
         } else {
             $env:STACKFORT_WAF_PACKAGE_DIR = $previousWafPackageDirectory
+        }
+        if ($null -eq $previousVinylPackageDirectory) {
+            Remove-Item Env:STACKFORT_VINYL_PACKAGE_DIR -ErrorAction SilentlyContinue
+        } else {
+            $env:STACKFORT_VINYL_PACKAGE_DIR = $previousVinylPackageDirectory
+        }
+        if ($null -eq $previousNativePackageFormats) {
+            Remove-Item Env:STACKFORT_NATIVE_PACKAGE_FORMATS -ErrorAction SilentlyContinue
+        } else {
+            $env:STACKFORT_NATIVE_PACKAGE_FORMATS = $previousNativePackageFormats
         }
     }
 }
@@ -158,8 +182,29 @@ if (-not (Test-Path -LiteralPath $archivePath -PathType Leaf)) {
 }
 $archiveHash = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash.ToLowerInvariant()
 $remoteArchive = "/tmp/$archiveName"
+$checksumPath = Join-Path (Join-Path $repositoryRoot 'dist') 'SHA256SUMS'
+$bootstrapPath = Join-Path $repositoryRoot 'packaging\installer\install.sh'
+$remoteChecksums = '/tmp/stackfort-SHA256SUMS'
+$remoteBootstrap = '/tmp/stackfort-install.sh'
 $remoteRoot = "/var/tmp/stackfort-installer-$Version"
 $remoteSource = "$remoteRoot/$bundle"
+$remoteFixture = "/var/tmp/stackfort-bootstrap-fixture-$Version"
+
+$resolvedNativePackage = $null
+$nativePackageHash = ''
+$remoteNativePackage = '/tmp/stackfort-release-package'
+if ($InstallMethod -eq 'native') {
+    if ([string]::IsNullOrWhiteSpace($NativePackagePath)) {
+        throw 'NativePackagePath is required for the native installer method.'
+    }
+    $resolvedNativePackage = (Resolve-Path -LiteralPath $NativePackagePath).Path
+    $expectedExtension = if ($ImageId -eq 'rocky-10') { '.rpm' } else { '.deb' }
+    if ([IO.Path]::GetExtension($resolvedNativePackage) -ne $expectedExtension) {
+        throw "The native package for $ImageId must use $expectedExtension."
+    }
+    $nativePackageHash = (Get-FileHash -LiteralPath $resolvedNativePackage -Algorithm SHA256).Hash.ToLowerInvariant()
+    $remoteNativePackage += $expectedExtension
+}
 
 $phpUnit = switch ($ImageId) {
     'debian-13' { 'php8.4-fpm.service' }
@@ -187,10 +232,29 @@ $wafPackageCheck = if ($ImageId -eq 'rocky-10') {
 $wafWorker = if ($ImageId -eq 'rocky-10') { 'nginx' } else { 'www-data' }
 $wafModule = if ($ImageId -eq 'rocky-10') { '/usr/lib64/nginx/modules/ngx_http_coraza_module.so' } else { '/usr/lib/nginx/modules/ngx_http_coraza_module.so' }
 $wafLoader = if ($ImageId -eq 'rocky-10') { '/usr/share/nginx/modules/50-stackfort-coraza.conf' } else { '/etc/nginx/modules-enabled/50-stackfort-coraza.conf' }
+$vinylPackageCheck = if ($ImageId -eq 'rocky-10') {
+    'sudo rpm -q vinyl-cache >/dev/null; sudo rpm -V vinyl-cache >/tmp/stackfort-vinyl-drift; test ! -s /tmp/stackfort-vinyl-drift'
+} else {
+    'dpkg-query -W -f=''${db:Status-Abbrev}'' vinyl-cache | grep -q ''^ii''; sudo dpkg --verify vinyl-cache >/tmp/stackfort-vinyl-drift; test ! -s /tmp/stackfort-vinyl-drift'
+}
 
 & scp.exe @sshOptions $archivePath "${GuestUser}@${address}:${remoteArchive}"
 if ($LASTEXITCODE -ne 0) {
     throw "Copying the release archive failed with exit code $LASTEXITCODE."
+}
+& scp.exe @sshOptions $checksumPath "${GuestUser}@${address}:${remoteChecksums}"
+if ($LASTEXITCODE -ne 0) {
+    throw "Copying the release checksums failed with exit code $LASTEXITCODE."
+}
+& scp.exe @sshOptions $bootstrapPath "${GuestUser}@${address}:${remoteBootstrap}"
+if ($LASTEXITCODE -ne 0) {
+    throw "Copying the release bootstrap failed with exit code $LASTEXITCODE."
+}
+if ($InstallMethod -eq 'native') {
+    & scp.exe @sshOptions $resolvedNativePackage "${GuestUser}@${address}:${remoteNativePackage}"
+    if ($LASTEXITCODE -ne 0) {
+        throw "Copying the native release package failed with exit code $LASTEXITCODE."
+    }
 }
 
 $securityChecks = if ($ImageId -eq 'rocky-10') {
@@ -213,28 +277,72 @@ $securityChecks = if ($ImageId -eq 'rocky-10') {
     'xargs -I{} sudo grep -q "^stackfort-api" /proc/{}/attr/current; '
 }
 
+$nativeCarrierSetup = if ($ImageId -eq 'rocky-10') {
+    "printf '$nativePackageHash  $remoteNativePackage\n' | sha256sum --check --strict -`nsudo rpm -Uvh '$remoteNativePackage'"
+} else {
+    "printf '$nativePackageHash  $remoteNativePackage\n' | sha256sum --check --strict -`nsudo dpkg -i '$remoteNativePackage'"
+}
+$preflightSetup = if ($InstallMethod -eq 'native') {
+    "$nativeCarrierSetup`nif ! sudo /usr/sbin/stackfort-install preflight --format=json >/tmp/stackfort-preflight.json 2>/tmp/stackfort-preflight.err; then`n  cat /tmp/stackfort-preflight.err /tmp/stackfort-preflight.json`n  exit 1`nfi"
+} else {
+    "if ! sudo '$remoteSource/bin/stackfort-installer' preflight --format=json >/tmp/stackfort-preflight.json 2>/tmp/stackfort-preflight.err; then`n  cat /tmp/stackfort-preflight.err /tmp/stackfort-preflight.json`n  exit 1`nfi"
+}
+$firstInstallCommand = switch ($InstallMethod) {
+    'archive' { "sudo '$remoteSource/bin/stackfort-installer' install --source-dir='$remoteSource' --yes --format=json" }
+    'native' { 'sudo /usr/sbin/stackfort-install --yes --format=json' }
+    'bootstrap' { "sudo env STACKFORT_VERSION='$Version' STACKFORT_BOOTSTRAP_TESTING=1 STACKFORT_BOOTSTRAP_TEST_FIXTURE='$remoteFixture' bash '$remoteBootstrap'" }
+}
+$secondInstallCommand = if ($InstallMethod -eq 'bootstrap') {
+    "sudo env STACKFORT_BOOTSTRAP_TESTING=1 STACKFORT_BOOTSTRAP_TEST_FIXTURE='$remoteFixture' bash '$remoteBootstrap'"
+} else {
+    $firstInstallCommand
+}
+
 $remoteCommand = @"
 set -eu
 sudo cloud-init status --wait --long
 printf '$archiveHash  $remoteArchive\n' | sha256sum --check --strict -
+test "`$(awk -v plain='$archiveName' -v dotted='./$archiveName' '`$2 == plain || `$2 == dotted { if (found) exit 2; print `$1; found = 1 } END { if (!found) exit 1 }' '$remoteChecksums')" = '$archiveHash'
 sudo rm -rf -- '$remoteRoot'
 sudo install -d -m 0755 '$remoteRoot'
 sudo tar -xzf '$remoteArchive' -C '$remoteRoot' --same-owner --same-permissions
 sudo chmod 0755 '$remoteSource/bin/stackfort-api' '$remoteSource/bin/stackfort-agent' '$remoteSource/bin/stackfort-installer'
-if ! sudo '$remoteSource/bin/stackfort-installer' install --source-dir='$remoteSource' --yes --format=json >/tmp/stackfort-install-first.json 2>/tmp/stackfort-install-first.err; then
-  cat /tmp/stackfort-install-first.err /tmp/stackfort-install-first.json
+if [ '$InstallMethod' = bootstrap ]; then
+  sudo rm -rf -- '$remoteFixture'
+  sudo install -d -m 0755 '$remoteFixture'
+  sudo install -m 0644 '$remoteChecksums' '$remoteFixture/SHA256SUMS'
+  sudo install -m 0644 '$remoteArchive' '$remoteFixture/$archiveName'
+fi
+$preflightSetup
+grep -q '"readOnly": true' /tmp/stackfort-preflight.json
+grep -q '"ready": true' /tmp/stackfort-preflight.json
+if ! $firstInstallCommand >/tmp/stackfort-install-first.out 2>/tmp/stackfort-install-first.err; then
+  cat /tmp/stackfort-install-first.err /tmp/stackfort-install-first.out
   exit 1
 fi
-grep -q '"status": "complete"' /tmp/stackfort-install-first.json
+if [ '$InstallMethod' = bootstrap ]; then
+  grep -q '^Stackfort installation: complete`$' /tmp/stackfort-install-first.out
+  grep -q '^Already installed: false`$' /tmp/stackfort-install-first.out
+else
+  grep -q '"status": "complete"' /tmp/stackfort-install-first.out
+  grep -q '"alreadyInstalled": false' /tmp/stackfort-install-first.out
+fi
 sudo cp /var/lib/stackfort-installer/install-state.json /tmp/stackfort-install-journal-before
-if ! sudo '$remoteSource/bin/stackfort-installer' install --source-dir='$remoteSource' --yes --format=json >/tmp/stackfort-install-second.json 2>/tmp/stackfort-install-second.err; then
-  cat /tmp/stackfort-install-second.err /tmp/stackfort-install-second.json
+if ! $secondInstallCommand >/tmp/stackfort-install-second.out 2>/tmp/stackfort-install-second.err; then
+  cat /tmp/stackfort-install-second.err /tmp/stackfort-install-second.out
   exit 1
 fi
 sudo cmp -s /tmp/stackfort-install-journal-before /var/lib/stackfort-installer/install-state.json
-grep -q '"status": "complete"' /tmp/stackfort-install-second.json
-grep -q '"alreadyInstalled": true' /tmp/stackfort-install-second.json
-grep -q '"changed": false' /tmp/stackfort-install-second.json
+if [ '$InstallMethod' = bootstrap ]; then
+  grep -q '^Stackfort installation: complete`$' /tmp/stackfort-install-second.out
+  grep -q '^Already installed: true`$' /tmp/stackfort-install-second.out
+  grep -q '^Changed: false`$' /tmp/stackfort-install-second.out
+  grep -q '^Resuming the release pinned by the existing installation journal.`$' /tmp/stackfort-install-second.out
+else
+  grep -q '"status": "complete"' /tmp/stackfort-install-second.out
+  grep -q '"alreadyInstalled": true' /tmp/stackfort-install-second.out
+  grep -q '"changed": false' /tmp/stackfort-install-second.out
+fi
 sudo stat -Lc '%a %u:%g' /var/lib/stackfort-installer/install-state.json | grep -qx '600 0:0'
 sudo stat -Lc '%a %U:%G' /usr/local/bin/stackfort-api | grep -qx '755 root:root'
 sudo stat -Lc '%a %U:%G' /usr/local/sbin/stackfort-agent | grep -qx '755 root:root'
@@ -252,10 +360,11 @@ sudo stat -Lc '%a %U:%G' /etc/stackfort/panel-tls/bootstrap.pem | grep -qx '600 
 sudo stat -Lc '%a %U:%G' /run/stackfort-php | grep -qx '755 root:root'
 sudo stat -Lc '%a %U:%G' /etc/nginx/stackfort/panel-enabled/00-panel.conf | grep -qx '640 root:root'
 sudo stat -Lc '%a %U:%G' /usr/share/stackfort/web/index.html | grep -qx '644 root:root'
-sudo systemctl is-active --quiet stackfort-agent.service stackfort-api.service stackfort-phpmyadmin.service nginx.service mariadb.service
-sudo systemctl is-enabled --quiet stackfort-agent.service stackfort-api.service stackfort-phpmyadmin.service nginx.service mariadb.service
+sudo systemctl is-active --quiet stackfort-agent.service stackfort-api.service stackfort-phpmyadmin.service nginx.service mariadb.service vinyl.service
+sudo systemctl is-enabled --quiet stackfort-agent.service stackfort-api.service stackfort-phpmyadmin.service nginx.service mariadb.service vinyl.service
 sudo test -x /usr/bin/mariadb
 $wafPackageCheck
+$vinylPackageCheck
 sudo stat -Lc '%a %U:%G' '$wafModule' | grep -qx '755 root:root'
 sudo stat -Lc '%a %U:%G' '$wafLoader' | grep -qx '644 root:root'
 sudo stat -Lc '%a %U:%G' /usr/share/doc/stackfort-waf/qualification/manifest.json | grep -qx '644 root:root'
@@ -275,6 +384,9 @@ sudo systemctl show --property=PrivateDevices --value stackfort-api.service | gr
 sudo systemctl show --property=NoNewPrivileges --value stackfort-phpmyadmin.service | grep -qx yes
 sudo systemctl show --property=PrivateDevices --value stackfort-phpmyadmin.service | grep -qx yes
 sudo systemctl show --property=ProtectSystem --value stackfort-phpmyadmin.service | grep -qx strict
+sudo systemctl show --property=NoNewPrivileges --value vinyl.service | grep -qx yes
+sudo systemctl show --property=PrivateDevices --value vinyl.service | grep -qx yes
+sudo systemctl show --property=ProtectSystem --value vinyl.service | grep -qx strict
 sudo systemctl show --property=User --value stackfort-phpmyadmin.service | grep -qx stackfort-pma
 sudo systemctl show --property=Group --value stackfort-phpmyadmin.service | grep -qx '${phpMyAdminWorker}'
 sudo stat -Lc '%a %U:%G' /run/stackfort-phpmyadmin/phpmyadmin.sock | grep -qx '660 stackfort-pma:${phpMyAdminWorker}'
@@ -290,8 +402,9 @@ grep -Eq '^HTTP/[0-9.]+ 303' /tmp/stackfort-phpmyadmin.headers
 grep -Eiq '^Location: /[[:space:]]*$' /tmp/stackfort-phpmyadmin.headers
 grep -Eiq '^Cache-Control: no-store' /tmp/stackfort-phpmyadmin.headers
 $securityChecks
-cat /tmp/stackfort-install-first.json
-cat /tmp/stackfort-install-second.json
+cat /tmp/stackfort-preflight.json
+cat /tmp/stackfort-install-first.out
+cat /tmp/stackfort-install-second.out
 "@
 
 $validationScript = $remoteCommand.Replace("`r", '')
@@ -343,6 +456,8 @@ if ($RunPhase1Suite) {
     ImageId = $ImageId
     IPv4 = $address
     ReleaseVersion = $Version
+    InstallMethod = $InstallMethod
+    ReadOnlyPreflight = 'passed'
     FirstInstall = 'passed'
     JournalResumeContract = 'passed'
     NoOpRerun = 'passed'
@@ -352,6 +467,7 @@ if ($RunPhase1Suite) {
     MandatoryAccessControl = 'passed'
     ServiceHealth = 'passed'
     WAFNativePackage = 'passed'
+    VinylNativePackage = 'passed'
     Phase1DomainLifecycle = $phase1Status
     Phase1AccountIsolation = $phase1Status
     Phase2PHPAccountPools = $phase1Status

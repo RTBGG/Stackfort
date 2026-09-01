@@ -1342,6 +1342,29 @@ func (runner *LinuxRunner) run(ctx context.Context, extraEnvironment []string, e
 	return nil
 }
 
+func (runner *LinuxRunner) runDiscardingOutput(
+	ctx context.Context, extraEnvironment []string, executable string, arguments ...string,
+) error {
+	if !allowedInstallerExecutable(executable) {
+		return errors.New("installer executable is not allowlisted")
+	}
+	if runner.runOverride != nil {
+		return runner.runOverride(ctx, extraEnvironment, executable, arguments...)
+	}
+	// #nosec G204 -- executable is an absolute path accepted by allowedInstallerExecutable; arguments are passed without a shell.
+	command := exec.CommandContext(ctx, executable, arguments...)
+	command.Env = append([]string{
+		"HOME=/root", "LANG=C.UTF-8", "LC_ALL=C.UTF-8",
+		"PATH=/usr/sbin:/usr/bin:/sbin:/bin",
+	}, extraEnvironment...)
+	command.Stdout = io.Discard
+	command.Stderr = io.Discard
+	if err := command.Run(); err != nil {
+		return fmt.Errorf("command %s failed: %w", filepath.Base(executable), err)
+	}
+	return nil
+}
+
 func (runner *LinuxRunner) capture(ctx context.Context, executable string, arguments ...string) (string, error) {
 	if !allowedInstallerExecutable(executable) {
 		return "", errors.New("installer executable is not allowlisted")
@@ -1377,7 +1400,7 @@ func allowedInstallerExecutable(executable string) bool {
 		"/usr/bin/systemd-analyze", "/usr/sbin/apparmor_parser", "/usr/sbin/getenforce",
 		"/usr/sbin/groupadd", "/usr/sbin/matchpathcon", "/usr/sbin/nft", "/usr/sbin/nginx",
 		"/usr/sbin/restorecon", "/usr/sbin/runuser", "/usr/sbin/semanage", "/usr/sbin/semodule",
-		"/usr/sbin/useradd":
+		"/usr/sbin/useradd", "/usr/sbin/vinyld":
 		return true
 	default:
 		return false
