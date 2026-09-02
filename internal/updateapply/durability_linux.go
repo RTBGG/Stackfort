@@ -9,20 +9,32 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+
+	"golang.org/x/sys/unix"
 )
 
 func syncDirectoryEntry(path string) error {
-	directory, err := os.Open(path)
+	fileDescriptor, err := unix.Open(path, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
 	if err != nil {
 		return err
+	}
+	directory := os.NewFile(uintptr(fileDescriptor), path)
+	if directory == nil {
+		_ = unix.Close(fileDescriptor)
+		return os.ErrInvalid
 	}
 	defer directory.Close()
 	return directory.Sync()
 }
 
 func persistReleaseTree(root string) error {
+	releaseRoot, err := os.OpenRoot(root)
+	if err != nil {
+		return err
+	}
+	defer releaseRoot.Close()
 	directories := make([]string, 0, 64)
-	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
+	err = filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
@@ -33,9 +45,18 @@ func persistReleaseTree(root string) error {
 		if !entry.Type().IsRegular() {
 			return errors.New("verified release tree contains an unsupported file type")
 		}
-		file, err := os.Open(path)
+		relative, err := filepath.Rel(root, path)
 		if err != nil {
 			return err
+		}
+		file, err := releaseRoot.Open(relative)
+		if err != nil {
+			return err
+		}
+		info, statErr := file.Stat()
+		if statErr != nil || !info.Mode().IsRegular() {
+			_ = file.Close()
+			return errors.Join(statErr, errors.New("verified release tree changed during persistence"))
 		}
 		syncErr := file.Sync()
 		return errors.Join(syncErr, file.Close())

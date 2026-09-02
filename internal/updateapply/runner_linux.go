@@ -324,12 +324,7 @@ func (runner *LinuxRunner) restoreState() error {
 		return err
 	}
 	cleanup = false
-	directoryHandle, err := os.Open(directory)
-	if err != nil {
-		return err
-	}
-	defer directoryHandle.Close()
-	return directoryHandle.Sync()
+	return syncDirectoryEntry(directory)
 }
 
 func (runner *LinuxRunner) databaseCommand(ctx context.Context, command string) error {
@@ -343,6 +338,7 @@ func (runner *LinuxRunner) run(ctx context.Context, executable string, arguments
 	if runner.runOverride != nil {
 		return runner.runOverride(ctx, executable, arguments...)
 	}
+	// #nosec G204 -- every production caller supplies a fixed absolute executable constant; no shell is involved.
 	command := exec.CommandContext(ctx, executable, arguments...)
 	command.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LANG=C", "LC_ALL=C"}
 	output, err := command.CombinedOutput()
@@ -385,7 +381,15 @@ func ensureFreeSpace(path string, minimum uint64) error {
 	if err := unix.Statfs(path, &stat); err != nil {
 		return err
 	}
-	available := stat.Bavail * uint64(stat.Bsize)
+	if stat.Bsize <= 0 {
+		return errors.New("updater state filesystem reported an invalid block size")
+	}
+	// #nosec G115 -- Statfs block size is explicitly checked as positive before conversion.
+	blockSize := uint64(stat.Bsize)
+	if stat.Bavail > ^uint64(0)/blockSize {
+		return errors.New("updater state filesystem capacity overflow")
+	}
+	available := stat.Bavail * blockSize
 	if available < minimum {
 		return errors.New("updater state filesystem has less than 512 MiB free")
 	}
