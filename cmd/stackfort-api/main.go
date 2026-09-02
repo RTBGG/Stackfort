@@ -37,6 +37,7 @@ import (
 	"github.com/RTBGG/stackfort/internal/secretstore"
 	"github.com/RTBGG/stackfort/internal/store"
 	"github.com/RTBGG/stackfort/internal/updatecheck"
+	"github.com/RTBGG/stackfort/internal/updateworkspace"
 )
 
 const (
@@ -47,7 +48,11 @@ const (
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 	if len(os.Args) > 1 {
-		commandCtx, cancelCommand := context.WithTimeout(context.Background(), 30*time.Second)
+		commandTimeout := 30 * time.Second
+		if os.Args[1] == "database" {
+			commandTimeout = 5 * time.Minute
+		}
+		commandCtx, cancelCommand := context.WithTimeout(context.Background(), commandTimeout)
 		err := runCommand(commandCtx, os.Args[1:], os.Stdout)
 		cancelCommand()
 		if err != nil {
@@ -94,6 +99,7 @@ func run(logger *slog.Logger) (returnErr error) {
 	if err != nil {
 		return fmt.Errorf("initialize update check service: %w", err)
 	}
+	var updateHTTPService httpapi.UpdateCheckService = updateCheckService
 	recoveryCtx, cancelRecovery := context.WithTimeout(context.Background(), 30*time.Second)
 	recoveredOperations, err := repository.RecoverExpiredOperations(recoveryCtx)
 	cancelRecovery()
@@ -141,6 +147,10 @@ func run(logger *slog.Logger) (returnErr error) {
 			return fmt.Errorf("initialize local agent client: %w", err)
 		}
 		defer hostCapabilityClient.Close()
+		updateHTTPService, err = updateworkspace.New(updateCheckService, repository, hostCapabilityClient)
+		if err != nil {
+			return fmt.Errorf("initialize functional update workspace: %w", err)
+		}
 		phpWorkspaceService, err = phpworkspace.New(repository, hostCapabilityClient)
 		if err != nil {
 			return fmt.Errorf("initialize PHP workspace service: %w", err)
@@ -203,7 +213,7 @@ func run(logger *slog.Logger) (returnErr error) {
 			LogWorkspace:      logWorkspaceService,
 			CacheWorkspace:    cacheWorkspaceService,
 			ScheduledJobs:     jobWorkspaceService,
-			UpdateChecks:      updateCheckService,
+			UpdateChecks:      updateHTTPService,
 		}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,

@@ -32,16 +32,19 @@ security log entry. Credentials are fixed by Linux when the peer connects.
 
 HTTP/1.1 is only the bounded local framing layer. The RPC endpoint is
 `POST /rpc/v1` with `application/json`; it is never bound to TCP. Version 1 has
-nineteen allowlisted operations: `protocol.handshake`, the empty-payload
-`host.capabilities.inspect`, `hosting.identity.reconcile`,
-`hosting.identity.delete`, `hosting.filesystem.reconcile`,
-`hosting.files.list`, `hosting.logs.read`, `hosting.resources.reconcile`,
-`hosting.document-root.ensure`, the empty-payload global mutation
-`web.nginx-baseline.reconcile`, `web.nginx-sites.activate`,
-`tls.acme-http01.reconcile`, `tls.certificate.stage`, `php.fpm-pools.inspect`,
-`php.fpm-pools.reconcile`, `database.provision`, `database.password.rotate`,
-`database.drop`, and `hosting.jobs.reconcile`, represented by a tagged Go
-request/response union.
+28 allowlisted operations represented by a tagged Go request/response union:
+
+- protocol/capability: `protocol.handshake`, `host.capabilities.inspect`;
+- hosting: identity reconcile/delete, filesystem reconcile, file listing,
+  log/WAF-event reads, cache metrics/purge, resource reconcile, document-root
+  ensure, and scheduled-job reconcile;
+- web/TLS/PHP/database: NGINX baseline/site activation, ACME HTTP-01,
+  certificate staging, PHP pool inspect/reconcile, and database
+  provision/password-rotate/drop;
+- OCI: image preparation, private-resource reconcile, deployment reconcile,
+  and application-log read; and
+- platform update: bounded journal inspection and canonical-version activation.
+
 There is no generic method name, command string, argument array, environment
 object, or caller-selected filesystem path.
 
@@ -81,8 +84,8 @@ request ID, tagged result, advertised operation set, and size before use.
 
 | Boundary | Limit |
 | --- | --- |
-| Request body | 64 KiB |
-| Response body | 64 KiB |
+| Request body | 2 MiB |
+| Response body | 512 KiB |
 | Request and idempotency IDs | 1–128 restricted ASCII characters |
 | Header bytes | 64 KiB |
 | Agent read/write timeout | 10 seconds |
@@ -282,6 +285,15 @@ digest and plaintext-free response. Logs are derived from the account identity
 and application UUID, limited to 500 entries/256 KiB, and sanitized before the
 response. See [Rootless OCI deployment lifecycle](oci-deployment-lifecycle.md)
 and [ADR 0058](adr/0058-health-gated-rootless-quadlet-lifecycle.md).
+
+Phase 6 adds read-only `platform.update.inspect` and global mutation
+`platform.update.start`. Inspection returns only the bounded journal summary.
+Start accepts one canonical semantic version and no account ID; the agent's
+fixed execution profile can only queue
+`stackfort-update@<version>.service --no-block`. The API must first persist a
+recent-authenticated audit event for the exact discovered immutable release.
+See [Staged platform updates](staged-platform-updates.md) and
+[ADR 0061](adr/0061-attested-health-gated-platform-updates.md).
 
 See [Host capability inspection](host-capability-inspection.md) for D-002's
 allowlists, result semantics, and probe bounds. See

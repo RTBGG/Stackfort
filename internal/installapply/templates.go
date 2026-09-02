@@ -113,6 +113,35 @@ SystemCallArchitectures=native
 [Install]
 WantedBy=multi-user.target
 `,
+		"stackfort-update@.service": managedHeader + `[Unit]
+Description=Stackfort staged update to %i
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStartPre=/usr/bin/sleep 2
+ExecStart=/usr/local/sbin/stackfort-updater apply --version=%i --yes --format=json
+TimeoutStartSec=30min
+Restart=no
+Slice=stackfort-core.slice
+UMask=0077
+PrivateTmp=yes
+ProtectClock=yes
+ProtectHome=yes
+ProtectKernelLogs=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+`,
 		phpMyAdminUnit: phpMyAdminServiceUnit(distribution),
 		"stackfort-firewall.service": managedHeader + `[Unit]
 Description=Stackfort dedicated nftables ingress rules

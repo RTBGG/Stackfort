@@ -30,24 +30,27 @@ func (runner *LinuxRunner) applyVinylPackage(ctx context.Context, source Source)
 	}
 	if installed {
 		if installedVersion != artifact.PackageVersion {
-			return false, fmt.Errorf("installed %s version %s conflicts with release version %s",
-				releaseartifacts.VinylPackageName, installedVersion, artifact.PackageVersion)
+			if !runner.allowPackageTransition {
+				return false, fmt.Errorf("installed %s version %s conflicts with release version %s",
+					releaseartifacts.VinylPackageName, installedVersion, artifact.PackageVersion)
+			}
+		} else {
+			return false, runner.verifyVinylPackage(ctx, source)
 		}
-		return false, runner.verifyVinylPackage(ctx, source)
 	}
 	packagePath := filepath.Join(source.Root, filepath.FromSlash(artifact.Path))
 	var installErr error
 	switch runner.distribution {
 	case "debian", "ubuntu":
 		installErr = runner.run(ctx, []string{"DEBIAN_FRONTEND=noninteractive"}, "/usr/bin/apt-get",
-			"-o", "DPkg::Lock::Timeout=120", "install", "-y", "--no-install-recommends", packagePath)
+			"-o", "DPkg::Lock::Timeout=120", "install", "-y", "--allow-downgrades", "--no-install-recommends", packagePath)
 	case "rocky":
 		// Vinyl links against jemalloc on EL10. The dependency is distributed
 		// through EPEL, whose signed repository definition is provided by Rocky
 		// Extras. DNF must resolve the local RPM so its generated shared-library
 		// requirements are installed as part of the same package transaction.
 		if installErr = runner.run(ctx, nil, "/usr/bin/dnf", "install", "-y", "epel-release"); installErr == nil {
-			installErr = runner.run(ctx, nil, "/usr/bin/dnf", "install", "-y", packagePath)
+			installErr = runner.run(ctx, nil, "/usr/bin/rpm", "--upgrade", "--oldpackage", "--replacepkgs", packagePath)
 		}
 	default:
 		return false, errors.New("unsupported native Vinyl package manager")
@@ -57,6 +60,9 @@ func (runner *LinuxRunner) applyVinylPackage(ctx context.Context, source Source)
 	}
 	if installErr == nil {
 		return true, nil
+	}
+	if runner.allowPackageTransition {
+		return true, installErr
 	}
 	rollbackErr := runner.rollbackVinylPackage(ctx)
 	if rollbackErr != nil {

@@ -191,6 +191,9 @@ a free cross-platform dependency under its current license/package matrix.
   deterministic archives, SBOMs, and build attestations.
 - Default-on, ETag-aware stable/beta GitHub Release discovery that advertises
   only complete immutable releases and never installs them automatically.
+- Explicit administrator-triggered updates with exact-tag GitHub provenance
+  verification, root-owned staging/journal, database snapshot, health gate, and
+  exact prior-release rollback; automatic installation remains disabled.
 - One identical release archive qualified on Debian 13, Ubuntu 26.04, and Rocky
   Linux 10 using disposable Hyper-V guests.
 
@@ -209,7 +212,7 @@ See the [Phase 1 qualification](docs/phase1-qualification.md),
 | Accounts and hosting | [Administrator flows](docs/administrator-phase1-flows.md), [account-owner flows](docs/account-owner-phase1-flows.md), [PHP controls](docs/account-php-controls.md) |
 | Databases | [MariaDB lifecycle](docs/account-database-lifecycle.md), [phpMyAdmin sign-on](docs/phpmyadmin-signon.md) |
 | Installation and qualification | [Installation](docs/installer-installation.md), [installer preflight](docs/installer-preflight.md), [panel ingress](docs/installed-panel-ingress.md), [qualification](docs/phase1-qualification.md) |
-| Releases and update checks | [Update channels and checks](docs/update-channels-and-checks.md), [ADR 0060](docs/adr/0060-immutable-stable-beta-release-discovery.md) |
+| Releases and updates | [Update channels and checks](docs/update-channels-and-checks.md), [staged platform updates](docs/staged-platform-updates.md), [ADR 0060](docs/adr/0060-immutable-stable-beta-release-discovery.md), [ADR 0061](docs/adr/0061-attested-health-gated-platform-updates.md) |
 | Research and performance | [Research notes](docs/research-notes.md), [performance baseline](docs/phase1-performance-baseline.md), [cache results](infra/host-tests/results/2026-08-31-vinyl-cache-hyper-v.md), [PageSpeed evaluation](infra/host-tests/results/2026-09-01-mod-pagespeed-nginx-evaluation.md) |
 
 <details>

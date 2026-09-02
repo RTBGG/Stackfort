@@ -44,6 +44,7 @@ import (
 	"github.com/RTBGG/stackfort/internal/hostphp"
 	"github.com/RTBGG/stackfort/internal/hostresources"
 	"github.com/RTBGG/stackfort/internal/hosttls"
+	"github.com/RTBGG/stackfort/internal/hostupdates"
 	"github.com/RTBGG/stackfort/internal/nginxbaseline"
 	"github.com/RTBGG/stackfort/internal/ocideployment"
 	"github.com/RTBGG/stackfort/internal/ociimage"
@@ -84,6 +85,7 @@ type Handler struct {
 	images          ociImagePreparer
 	ociResources    ociResourceReconciler
 	ociDeployments  ociDeploymentReconciler
+	platformUpdates platformUpdateManager
 }
 
 type capabilityInspector interface {
@@ -182,6 +184,11 @@ type ociResourceReconciler interface {
 type ociDeploymentReconciler interface {
 	Reconcile(context.Context, string, ocideployment.Request) (ocideployment.LifecycleResult, error)
 	ReadLogs(context.Context, ocideployment.LogSpec) (ocideployment.LogResult, error)
+}
+
+type platformUpdateManager interface {
+	Start(context.Context, string) error
+	Status(context.Context) (agentprotocol.PlatformUpdateStatusResponse, error)
 }
 
 type cachedResponse struct {
@@ -304,6 +311,7 @@ func newHandlerWithNGINXActivationServices(
 		images:          hostociimage.NewManager(),
 		ociResources:    hostociresources.NewManager(),
 		ociDeployments:  hostocideployment.NewManager(),
+		platformUpdates: hostupdates.NewManager(),
 	}
 }
 
@@ -1118,6 +1126,22 @@ func (handler *Handler) dispatch(ctx context.Context, request agentprotocol.Requ
 		}
 		response.OCIApplicationLogs = &agentprotocol.OCIApplicationLogReadResponse{Result: result}
 		return http.StatusOK, response
+	case agentprotocol.OperationInspectPlatformUpdate:
+		result, err := handler.platformUpdates.Status(ctx)
+		if err != nil {
+			return handler.platformUpdateError(response, request, err)
+		}
+		response.PlatformUpdateStatus = &result
+		return http.StatusOK, response
+	case agentprotocol.OperationStartPlatformUpdate:
+		version := request.StartPlatformUpdate.Version
+		if err := handler.platformUpdates.Start(ctx, version); err != nil {
+			return handler.platformUpdateError(response, request, err)
+		}
+		response.PlatformUpdateStart = &agentprotocol.PlatformUpdateStartResponse{
+			Version: version, Accepted: true,
+		}
+		return http.StatusAccepted, response
 	default:
 		response.Error = &agentprotocol.ResponseError{
 			Code:    agentprotocol.ErrorUnsupportedOperation,
@@ -1125,6 +1149,29 @@ func (handler *Handler) dispatch(ctx context.Context, request agentprotocol.Requ
 		}
 		return http.StatusBadRequest, response
 	}
+}
+
+func (handler *Handler) platformUpdateError(
+	response agentprotocol.Response, request agentprotocol.Request, err error,
+) (int, agentprotocol.Response) {
+	status, code, message := http.StatusServiceUnavailable, agentprotocol.ErrorPlatformUpdateUnavailable,
+		"The platform update service is unavailable."
+	switch {
+	case errors.Is(err, hostupdates.ErrInvalid):
+		status, code, message = http.StatusBadRequest, agentprotocol.ErrorPlatformUpdateInvalid,
+			"The platform update request is invalid."
+	case errors.Is(err, hostupdates.ErrConflict):
+		status, code, message = http.StatusConflict, agentprotocol.ErrorPlatformUpdateConflict,
+			"The platform update conflicts with active recovery state."
+	}
+	operationID := ""
+	if request.Correlation != nil {
+		operationID = request.Correlation.OperationID
+	}
+	handler.logger.Error("platform update operation failed", "request_id", request.RequestID,
+		"operation_id", operationID, "operation", request.Operation)
+	response.Error = &agentprotocol.ResponseError{Code: code, Message: message}
+	return status, response
 }
 
 func (handler *Handler) ociDeploymentError(response agentprotocol.Response,

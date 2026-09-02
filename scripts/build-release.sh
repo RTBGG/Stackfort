@@ -53,7 +53,9 @@ phpmyadmin_sha256="12ba1c425fa4071abbd4e7668c9ebdeac0b0755a467a6d6d5026122bb47c1
 phpmyadmin_workspace="$(mktemp -d)"
 trivy_version="0.74.0"
 trivy_workspace="$(mktemp -d)"
-trap 'rm -rf -- "$phpmyadmin_workspace" "$trivy_workspace"' EXIT
+github_cli_version="2.99.0"
+github_cli_workspace="$(mktemp -d)"
+trap 'rm -rf -- "$phpmyadmin_workspace" "$trivy_workspace" "$github_cli_workspace"' EXIT
 phpmyadmin_archive="$phpmyadmin_workspace/phpmyadmin.tar.gz"
 phpmyadmin_root="$phpmyadmin_workspace/root"
 
@@ -129,6 +131,43 @@ prepare_trivy() {
   cp "$extract_root/LICENSE" "$license_destination"
 }
 
+prepare_github_cli() {
+  local architecture="$1"
+  local destination="$2"
+  local license_destination="$3"
+  local checksum
+  case "$architecture" in
+    amd64) checksum="ed4960225d2833e04a61590d9fa2b5773d147f3aa375459e5466a40c102f3832" ;;
+    arm64) checksum="564eff56a61e8caf193efde16937fba879eb62a3a479c9dd6be2001e7647680b" ;;
+    *)
+      printf 'Unsupported GitHub CLI architecture: %s\n' "$architecture" >&2
+      return 1
+      ;;
+  esac
+  local archive_name="gh_${github_cli_version}_linux_${architecture}.tar.gz"
+  local archive="$github_cli_workspace/$archive_name"
+  local extract_root="$github_cli_workspace/$architecture"
+  local top="gh_${github_cli_version}_linux_${architecture}"
+  curl --fail --location --proto '=https' --tlsv1.2 \
+    --output "$archive" \
+    "https://github.com/cli/cli/releases/download/v$github_cli_version/$archive_name"
+  printf '%s  %s\n' "$checksum" "$archive" | sha256sum --check --status
+  if tar -tzf "$archive" | grep -Eq '(^/|(^|/)\.\.(/|$))'; then
+    printf 'GitHub CLI archive contains an unsafe path.\n' >&2
+    return 1
+  fi
+  rm -rf -- "$extract_root"
+  mkdir -p "$extract_root"
+  tar -xzf "$archive" --no-same-owner -C "$extract_root" "$top/bin/gh" "$top/LICENSE"
+  if [[ ! -f "$extract_root/$top/bin/gh" || -L "$extract_root/$top/bin/gh" ||
+        ! -f "$extract_root/$top/LICENSE" || -L "$extract_root/$top/LICENSE" ]]; then
+    printf 'GitHub CLI archive does not contain the expected regular executable and license.\n' >&2
+    return 1
+  fi
+  cp "$extract_root/$top/bin/gh" "$destination"
+  cp "$extract_root/$top/LICENSE" "$license_destination"
+}
+
 for architecture in "${architectures[@]}"; do
   bundle_name="stackfort-$version-linux-$architecture"
   stage_root="$output_root/$bundle_name"
@@ -140,11 +179,15 @@ for architecture in "${architectures[@]}"; do
   GOOS=linux GOARCH="$architecture" CGO_ENABLED=0 \
     go build -trimpath -ldflags "$linker_flags" -o "$stage_root/bin/stackfort-agent" ./cmd/stackfort-agent
   GOOS=linux GOARCH="$architecture" CGO_ENABLED=0 \
+    go build -trimpath -ldflags "$linker_flags" -o "$stage_root/bin/stackfort-updater" ./cmd/stackfort-updater
+  GOOS=linux GOARCH="$architecture" CGO_ENABLED=0 \
     go build -trimpath -ldflags "$linker_flags" -o "$stage_root/bin/stackfort-installer" ./cmd/stackfort-installer
   GOOS=linux GOARCH="$architecture" CGO_ENABLED=0 \
     go build -trimpath -ldflags "$linker_flags" -o "$output_root/stackfort-installer-$version-linux-$architecture" ./cmd/stackfort-installer
   prepare_trivy "$architecture" "$stage_root/bin/stackfort-trivy" \
     "$stage_root/third-party-licenses/trivy-LICENSE"
+  prepare_github_cli "$architecture" "$stage_root/bin/stackfort-gh" \
+    "$stage_root/third-party-licenses/github-cli-LICENSE"
 
   cp -R web/dist/. "$stage_root/web/"
   cp -R "$phpmyadmin_root"/. "$stage_root/phpmyadmin/"
@@ -165,6 +208,7 @@ for architecture in "${architectures[@]}"; do
   fi
   go run ./cmd/stackfort-release-manifest "${manifest_arguments[@]}"
   chmod 0755 "$stage_root/bin/stackfort-api" "$stage_root/bin/stackfort-agent" \
+    "$stage_root/bin/stackfort-updater" "$stage_root/bin/stackfort-gh" \
     "$stage_root/bin/stackfort-installer" "$stage_root/bin/stackfort-trivy" \
     "$output_root/stackfort-installer-$version-linux-$architecture"
   find "$stage_root" -type f ! -path '*/bin/*' -exec chmod 0644 {} +
@@ -178,6 +222,7 @@ for architecture in "${architectures[@]}"; do
   tar --sort=name --mtime="@$source_date_epoch" --owner=0 --group=0 --numeric-owner \
     --mode=0755 -C "$output_root" -rf "$archive_tar" \
     "$bundle_name/bin/stackfort-api" "$bundle_name/bin/stackfort-agent" \
+    "$bundle_name/bin/stackfort-updater" "$bundle_name/bin/stackfort-gh" \
     "$bundle_name/bin/stackfort-installer" "$bundle_name/bin/stackfort-trivy"
   gzip -n -c "$archive_tar" >"$output_root/$bundle_name.tar.gz"
   rm -f -- "$archive_tar"

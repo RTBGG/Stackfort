@@ -32,6 +32,7 @@ import (
 	"github.com/RTBGG/stackfort/internal/hostociresources"
 	"github.com/RTBGG/stackfort/internal/hostphp"
 	"github.com/RTBGG/stackfort/internal/hostresources"
+	"github.com/RTBGG/stackfort/internal/hostupdates"
 	"github.com/RTBGG/stackfort/internal/nginxbaseline"
 	"github.com/RTBGG/stackfort/internal/nginxconfig"
 	"github.com/RTBGG/stackfort/internal/ociapps"
@@ -70,6 +71,49 @@ func TestHandshakeNegotiationAndIdempotentReplay(t *testing.T) {
 	if conflictRecorder.Code != http.StatusConflict || conflictResponse.Error == nil ||
 		conflictResponse.Error.Code != agentprotocol.ErrorIdempotencyConflict {
 		t.Fatalf("conflict status=%d response=%#v", conflictRecorder.Code, conflictResponse)
+	}
+}
+
+func TestPlatformUpdateDispatchUsesTypedManagerAndMapsConflicts(t *testing.T) {
+	t.Parallel()
+	manager := &fakePlatformUpdateManager{status: agentprotocol.PlatformUpdateStatusResponse{State: "idle"}}
+	handler := NewHandler(nil)
+	handler.platformUpdates = manager
+
+	inspect := agentprotocol.Request{ProtocolVersion: agentprotocol.WireVersion,
+		RequestID: "update-inspect-request", IdempotencyKey: "update-inspect-key",
+		Operation:             agentprotocol.OperationInspectPlatformUpdate,
+		InspectPlatformUpdate: &agentprotocol.PlatformUpdateInspectRequest{}}
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, rpcRequest(t, inspect))
+	response := decodeTestResponseFor(t, recorder.Body, inspect.RequestID, inspect.Operation)
+	if recorder.Code != http.StatusOK || response.PlatformUpdateStatus == nil ||
+		response.PlatformUpdateStatus.State != "idle" || manager.statusCalls.Load() != 1 {
+		t.Fatalf("inspect status=%d response=%#v", recorder.Code, response)
+	}
+
+	correlation := agentprotocol.AuditCorrelation{OperationID: "019d2eaa-62d0-7f52-8ac7-0aeb932455db",
+		ActorKind: agentprotocol.ActorIdentity, ActorID: "019d2eaa-52d0-7f52-8ac7-0aeb932455db"}
+	start := agentprotocol.Request{ProtocolVersion: agentprotocol.WireVersion,
+		RequestID: "update-start-request", IdempotencyKey: "update-start-key",
+		Operation: agentprotocol.OperationStartPlatformUpdate, Correlation: &correlation,
+		StartPlatformUpdate: &agentprotocol.PlatformUpdateStartRequest{Version: "1.2.3"}}
+	recorder = httptest.NewRecorder()
+	handler.ServeHTTP(recorder, rpcRequest(t, start))
+	response = decodeTestResponseFor(t, recorder.Body, start.RequestID, start.Operation)
+	if recorder.Code != http.StatusAccepted || response.PlatformUpdateStart == nil ||
+		!response.PlatformUpdateStart.Accepted || manager.version != "1.2.3" || manager.startCalls.Load() != 1 {
+		t.Fatalf("start status=%d response=%#v version=%q", recorder.Code, response, manager.version)
+	}
+
+	manager.err = hostupdates.ErrConflict
+	start.RequestID, start.IdempotencyKey = "update-conflict-request", "update-conflict-key"
+	recorder = httptest.NewRecorder()
+	handler.ServeHTTP(recorder, rpcRequest(t, start))
+	response = decodeTestResponseFor(t, recorder.Body, start.RequestID, start.Operation)
+	if recorder.Code != http.StatusConflict || response.Error == nil ||
+		response.Error.Code != agentprotocol.ErrorPlatformUpdateConflict {
+		t.Fatalf("conflict status=%d response=%#v", recorder.Code, response)
 	}
 }
 
@@ -990,6 +1034,25 @@ type fakeOCIResourceReconciler struct {
 	result ociresources.Result
 	err    error
 	calls  atomic.Int64
+}
+
+type fakePlatformUpdateManager struct {
+	status      agentprotocol.PlatformUpdateStatusResponse
+	version     string
+	err         error
+	startCalls  atomic.Int64
+	statusCalls atomic.Int64
+}
+
+func (manager *fakePlatformUpdateManager) Start(_ context.Context, version string) error {
+	manager.startCalls.Add(1)
+	manager.version = version
+	return manager.err
+}
+
+func (manager *fakePlatformUpdateManager) Status(context.Context) (agentprotocol.PlatformUpdateStatusResponse, error) {
+	manager.statusCalls.Add(1)
+	return manager.status, manager.err
 }
 
 func (reconciler *fakeOCIResourceReconciler) Reconcile(

@@ -284,6 +284,7 @@ describe('browser API client', () => {
 
     await api.updatePolicy({ channel: 'beta', automaticChecks: false })
     await api.checkUpdates()
+		await api.applyUpdate('1.2.3')
 
     const [policyURL, policyRequest] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(policyURL).toBe('/api/v1/admin/updates/policy')
@@ -294,5 +295,11 @@ describe('browser API client', () => {
     expect(checkURL).toBe('/api/v1/admin/updates/check')
     expect(checkRequest.method).toBe('POST')
     expect((checkRequest.headers as Headers).get('X-CSRF-Token')).toBe('csrf-bound')
+		const [applyURL, applyRequest] = fetchMock.mock.calls[2] as [string, RequestInit]
+		expect(applyURL).toBe('/api/v1/admin/updates/apply')
+		expect(applyRequest.method).toBe('POST')
+		expect((applyRequest.headers as Headers).get('X-CSRF-Token')).toBe('csrf-bound')
+		expect((applyRequest.headers as Headers).get('Idempotency-Key')).not.toBe('')
+		expect(JSON.parse(String(applyRequest.body))).toEqual({ version: '1.2.3' })
   })
 })

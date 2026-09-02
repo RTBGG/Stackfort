@@ -292,6 +292,12 @@ td progress { width: 130px; max-width: 100%; accent-color: #2f9e68; }
 .update-policy { position: static; padding: 18px; background: #f6f9f7; border: 1px solid #dfe8e3; border-radius: 9px; }
 .update-policy .form-actions { display: flex; flex-wrap: wrap; gap: 9px; }
 .update-safety-note { margin: 0; padding: 13px 15px; color: #526a61; background: #f4f7f5; border-left: 3px solid #87aa99; border-radius: 5px; font-size: 12px; line-height: 1.55; }
+.update-transaction, .update-activation { display: grid; gap: 14px; padding: 18px; border: 1px solid #dfe8e3; border-radius: 9px; background: #fbfcfb; }
+.update-transaction { grid-template-columns: minmax(180px, .7fr) minmax(260px, 1.3fr); align-items: start; }
+.update-transaction > div > strong { color: #234b3a; font-size: 15px; }
+.update-activation h3 { margin: 0; color: #22352f; font-size: 18px; }
+.update-activation p:not(.eyebrow) { margin-bottom: 0; color: #586d65; font-size: 12px; line-height: 1.55; }
+.update-activation .danger-action { justify-self: start; }
 .settings-panel { grid-template-columns: 1fr 1fr; }
 .settings-panel .danger-action { justify-self: end; grid-column: 2; }
 
@@ -346,7 +352,7 @@ td progress { width: 130px; max-width: 100%; accent-color: #2f9e68; }
   .metric-grid { grid-template-columns: 1fr 1fr; }
   .management-grid { grid-template-columns: 1fr; }
   .management-form { position: static; }
-  .usage-grid, .settings-grid, .update-grid { grid-template-columns: 1fr; }
+  .usage-grid, .settings-grid, .update-grid, .update-transaction { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 680px) {

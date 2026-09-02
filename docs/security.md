@@ -364,7 +364,20 @@ than adopting them. See [Account systemd slices and cgroup-v2 limits](account-re
 - Discovery cannot download, stage, execute, migrate, restart, or activate a
   release. Policy changes require platform-manage authorization, recent
   authentication, CSRF protection, and an audit record.
-- Update artifacts are verified before any privileged process handles content.
+- Manual activation revalidates the exact stored candidate and persists audit
+  correlation before crossing the agent boundary. The agent exposes no update
+  command string: it can only start a canonical-version instance of the fixed
+  root oneshot or return a bounded journal summary.
+- The updater verifies both current and target release provenance locally from
+  repository-scoped, digest-selected public API bundles, with exact tag,
+  workflow, and hosted-runner policy. It also verifies GitHub asset digests,
+  `SHA256SUMS`, safe archive structure, and inspected source digests before host
+  mutation. The verification path needs no server-side GitHub token. Its private
+  journal and SQLite snapshot live
+  outside the database being migrated.
+- Stage or journal failure triggers exact package/payload/configuration/database
+  rollback under an independent timeout; interrupted state fails closed into
+  recovery rather than continuing forward.
 - Installer and updater pin a version; mutable branch content is never executed
   as an update payload.
 - Dependencies are locked and continuously scanned.

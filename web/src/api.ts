@@ -46,7 +46,18 @@ export type UpdateStatus = {
   updateAvailable: boolean
   lastErrorCode?: string
   rateLimitResetAt?: string
+	platformUpdate?: {
+		state: 'idle' | 'applying' | 'rolling_back' | 'rolled_back' | 'rollback_failed' | 'complete'
+		currentVersion?: string
+		targetVersion?: string
+		startedAt?: string
+		updatedAt?: string
+		completedAt?: string
+		errorCode?: string
+	}
 }
+
+export type UpdateAcceptance = { version: string; accepted: true }
 
 export type PackageLimits = {
   maxDomains: number
@@ -697,6 +708,9 @@ export const api = {
   checkUpdates: () => request<UpdateStatus>(
     '/api/v1/admin/updates/check', { method: 'POST', csrf: true },
   ),
+	applyUpdate: (version: string) => request<UpdateAcceptance>(
+		'/api/v1/admin/updates/apply', { method: 'POST', body: { version }, csrf: true, idempotent: true },
+	),
   accountPHP: (accountId: string) => request<AccountPHPStatus>(
     `/api/v1/accounts/${encodeURIComponent(accountId)}/php`,
   ),

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/RTBGG/stackfort/internal/agentprotocol"
 	"github.com/RTBGG/stackfort/internal/core"
 	"github.com/RTBGG/stackfort/internal/updatecheck"
 )
@@ -24,6 +25,9 @@ type updateCheckServiceStub struct {
 	statusCalls  int
 	policyCalls  int
 	checkCalls   int
+	applyCalls   int
+	applyParams  core.PrepareUpdateActivationParams
+	applyErr     error
 }
 
 func (stub *updateCheckServiceStub) Status(context.Context) (updatecheck.Status, error) {
@@ -42,6 +46,14 @@ func (stub *updateCheckServiceStub) UpdatePolicy(
 func (stub *updateCheckServiceStub) CheckNow(context.Context) (updatecheck.Status, error) {
 	stub.checkCalls++
 	return stub.status, stub.checkErr
+}
+
+func (stub *updateCheckServiceStub) StartUpdate(
+	_ context.Context, params core.PrepareUpdateActivationParams,
+) (agentprotocol.PlatformUpdateStartResponse, error) {
+	stub.applyCalls++
+	stub.applyParams = params
+	return agentprotocol.PlatformUpdateStartResponse{Version: params.Version, Accepted: stub.applyErr == nil}, stub.applyErr
 }
 
 func TestUpdateRoutesArePlatformAuthorizedAndCSRFSafe(t *testing.T) {
@@ -93,6 +105,25 @@ func TestUpdateRoutesArePlatformAuthorizedAndCSRFSafe(t *testing.T) {
 	if postRecorder.Code != http.StatusOK || service.checkCalls != 1 ||
 		authorization.params.Action != core.AuthorizationPlatformView || !authentication.authParams.RequireCSRF {
 		t.Fatalf("POST status/calls/auth = %d/%d/%#v", postRecorder.Code, service.checkCalls, authorization.params)
+	}
+
+	apply := httptest.NewRequest(http.MethodPost, "/api/v1/admin/updates/apply",
+		bytes.NewBufferString(`{"version":"1.2.3"}`))
+	apply.Header.Set("Content-Type", "application/json")
+	apply.Header.Set("X-Request-ID", "update-apply-http")
+	apply.Header.Set(csrfHeaderName, "csrf-bound")
+	apply.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "session-secret"})
+	apply.AddCookie(&http.Cookie{Name: csrfCookieName, Value: "csrf-bound"})
+	applyRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(applyRecorder, apply)
+	if applyRecorder.Code != http.StatusAccepted || service.applyCalls != 1 ||
+		authorization.params.Action != core.AuthorizationPlatformManage || !authentication.authParams.RequireCSRF ||
+		service.applyParams.Version != "1.2.3" || service.applyParams.RequestID != "update-apply-http" ||
+		service.applyParams.SourceAddress != "192.0.2.1" ||
+		service.applyParams.Subject.IdentityID() != authenticated.Identity.ID ||
+		!strings.Contains(applyRecorder.Body.String(), `"accepted":true`) {
+		t.Fatalf("apply status/auth/params/body = %d/%#v/%#v/%s", applyRecorder.Code,
+			authorization.params, service.applyParams, applyRecorder.Body.String())
 	}
 }
 

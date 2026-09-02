@@ -60,6 +60,7 @@ session and creates `platform.update_policy_changed` in the audit chain.
 | `GET` | `/api/v1/admin/updates` | Platform view |
 | `PATCH` | `/api/v1/admin/updates/policy` | Platform manage, recent authentication, CSRF |
 | `POST` | `/api/v1/admin/updates/check` | Platform view, CSRF |
+| `POST` | `/api/v1/admin/updates/apply` | Platform manage, recent authentication, CSRF |
 
 The policy body is exactly:
 
@@ -80,6 +81,8 @@ after enabling the setting. This avoids storing a separate administration token
 in Actions. Stable tags publish as the latest release; beta tags publish as
 prereleases and never replace the latest stable release.
 
-The discovery result is not proof that a release has been locally downloaded or
-verified. Local attestation/hash verification, staging, health checking,
-migration, activation, and rollback belong to the next Phase 6 milestone.
+The discovery result alone is not proof that a release has been locally
+downloaded or verified. Explicit manual activation performs local
+attestation/hash verification, staging, migration, health checking, and exact
+rollback independently; discovery never triggers it automatically. See
+[Staged platform updates](staged-platform-updates.md).

@@ -213,6 +213,14 @@ STACKFORT_VINYL_PACKAGE_DIR=/path/to/three-native-vinyl-records \
 bash scripts/build-release.sh
 ```
 
+Release archives also contain `stackfort-updater` and a checksum-pinned GitHub
+CLI verifier at `bin/stackfort-gh`. Functional update activation must continue
+to use the closed `platform.update.start` agent operation and the
+`stackfort-update@.service` template; do not add a generic privileged command
+or run the transaction inside the API process. See
+[`docs/staged-platform-updates.md`](docs/staged-platform-updates.md) and
+[ADR 0061](docs/adr/0061-attested-health-gated-platform-updates.md).
+
 Windows host-test development may set
 `STACKFORT_NATIVE_PACKAGE_FORMATS=none` for `0.0.0-dev` only and supply already
 qualified DEB/RPM carriers to the Hyper-V harness. Non-development builds may
@@ -238,6 +246,7 @@ For local update-check work, the API routes are:
 GET   /api/v1/admin/updates
 PATCH /api/v1/admin/updates/policy
 POST  /api/v1/admin/updates/check
+POST  /api/v1/admin/updates/apply
 ```
 
 The scheduler wakes every 15 minutes but makes a network request only when the

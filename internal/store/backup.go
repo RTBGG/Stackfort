@@ -56,11 +56,22 @@ func (s *Store) Backup(ctx context.Context, destination string) error {
 	if err := verifyBackup(ctx, temporaryPath, embeddedMigrations); err != nil {
 		return err
 	}
+	// #nosec G304 -- temporaryPath was returned by os.CreateTemp in the validated private backup directory.
+	backup, err := os.OpenFile(temporaryPath, os.O_RDWR, 0)
+	if err != nil {
+		return fmt.Errorf("open verified panel state backup: %w", err)
+	}
+	if err := errors.Join(backup.Sync(), backup.Close()); err != nil {
+		return fmt.Errorf("persist panel state backup: %w", err)
+	}
 
 	// Link fails if destination appeared after the earlier check and therefore
 	// never overwrites an existing backup.
 	if err := os.Link(temporaryPath, cleanDestination); err != nil {
 		return fmt.Errorf("publish panel state backup: %w", err)
+	}
+	if err := syncBackupDirectory(directory); err != nil {
+		return fmt.Errorf("persist panel state backup publication: %w", err)
 	}
 	return nil
 }

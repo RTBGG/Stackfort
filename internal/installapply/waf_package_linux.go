@@ -79,19 +79,22 @@ func (runner *LinuxRunner) applyWAFPackage(ctx context.Context, source Source) (
 	}
 	if installed {
 		if installedVersion != artifact.PackageVersion {
-			return false, fmt.Errorf("installed %s version %s conflicts with release version %s",
-				releaseartifacts.WAFPackageName, installedVersion, artifact.PackageVersion)
+			if !runner.allowPackageTransition {
+				return false, fmt.Errorf("installed %s version %s conflicts with release version %s",
+					releaseartifacts.WAFPackageName, installedVersion, artifact.PackageVersion)
+			}
+		} else {
+			return false, runner.verifyWAFPackage(ctx, source)
 		}
-		return false, runner.verifyWAFPackage(ctx, source)
 	}
 	packagePath := filepath.Join(source.Root, filepath.FromSlash(artifact.Path))
 	var installErr error
 	switch runner.distribution {
 	case "debian", "ubuntu":
 		installErr = runner.run(ctx, []string{"DEBIAN_FRONTEND=noninteractive"}, "/usr/bin/apt-get",
-			"-o", "DPkg::Lock::Timeout=120", "install", "-y", "--no-install-recommends", packagePath)
+			"-o", "DPkg::Lock::Timeout=120", "install", "-y", "--allow-downgrades", "--no-install-recommends", packagePath)
 	case "rocky":
-		installErr = runner.run(ctx, nil, "/usr/bin/rpm", "--upgrade", "--replacepkgs", packagePath)
+		installErr = runner.run(ctx, nil, "/usr/bin/rpm", "--upgrade", "--oldpackage", "--replacepkgs", packagePath)
 	default:
 		return false, errors.New("unsupported native WAF package manager")
 	}
@@ -100,6 +103,11 @@ func (runner *LinuxRunner) applyWAFPackage(ctx context.Context, source Source) (
 	}
 	if installErr == nil {
 		return true, nil
+	}
+	if runner.allowPackageTransition {
+		// The outer staged updater owns restoration to the exact previous
+		// release. Removing the package here would destroy that rollback base.
+		return true, installErr
 	}
 	rollbackErr := runner.rollbackWAFPackage(ctx)
 	if rollbackErr != nil {

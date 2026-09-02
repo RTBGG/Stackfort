@@ -63,6 +63,8 @@ active_fingerprint() {
   for path in \
     /usr/local/bin/stackfort-api \
     /usr/local/sbin/stackfort-agent \
+    /usr/local/sbin/stackfort-updater \
+    /usr/local/libexec/stackfort-gh \
     /usr/local/libexec/stackfort-trivy \
     /usr/share/stackfort/web/index.html; do
     if [[ -f "$path" && ! -L "$path" ]]; then
@@ -104,6 +106,8 @@ inspect_package() {
   local release_version
   release_version="$(basename "${release_roots[0]}")"
   [[ -x "${release_roots[0]}/bin/stackfort-installer" ]] || fail "$label package omits its installer"
+  [[ -x "${release_roots[0]}/bin/stackfort-updater" ]] || fail "$label package omits its updater"
+  [[ -x "${release_roots[0]}/bin/stackfort-gh" ]] || fail "$label package omits its attestation verifier"
   [[ "$(<"${release_roots[0]}/VERSION")" == "$release_version" ]] ||
     fail "$label package release path and VERSION differ"
   grep -Fq "release_root='/usr/lib/stackfort/releases/$release_version'" \

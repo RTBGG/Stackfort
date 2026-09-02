@@ -129,3 +129,49 @@ func TestUpdateCheckRecordValidation(t *testing.T) {
 		t.Fatalf("unsafe error code error = %v, want ErrInvalidInput", err)
 	}
 }
+
+func TestPrepareUpdateActivationRequiresExactImmutableReleaseAndFreshAdmin(t *testing.T) {
+	repository, state := newTestRepository(t)
+	ctx := context.Background()
+	current := time.Date(2026, time.September, 2, 14, 0, 0, 0, time.UTC)
+	repository.now = func() time.Time { return current }
+	admin := createTestIdentity(t, repository, "functional-update@example.test")
+	if err := repository.GrantPlatformRole(ctx, GrantPlatformRoleParams{
+		IdentityID: admin.ID, Role: PlatformAdministrator,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	subject := createAuthorizationSubject(t, repository, admin)
+	if err := repository.RecordUpdateCheckSuccess(ctx, RecordUpdateCheckSuccessParams{
+		ExpectedChannel: UpdateChannelStable, LatestRelease: &UpdateRelease{
+			Version: "1.2.3", Tag: "v1.2.3", URL: "https://github.com/RTBGG/Stackfort/releases/tag/v1.2.3",
+			PublishedAt: current.Add(-time.Hour), Immutable: true,
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	activation, err := repository.PrepareUpdateActivation(ctx, PrepareUpdateActivationParams{
+		Subject: subject, Version: "1.2.3", RequestID: "functional-update-request", SourceAddress: "192.0.2.20",
+	})
+	if err != nil || activation.Version != "1.2.3" || activation.Tag != "v1.2.3" || activation.AuditEventID == "" {
+		t.Fatalf("activation = %#v, %v", activation, err)
+	}
+	var audits int
+	if err := state.Read(ctx, func(reader store.Reader) error {
+		return reader.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_events
+			WHERE action = 'platform.update_requested' AND target_id = '1.2.3'`).Scan(&audits)
+	}); err != nil || audits != 1 {
+		t.Fatalf("activation audit count = %d, %v", audits, err)
+	}
+	if _, err := repository.PrepareUpdateActivation(ctx, PrepareUpdateActivationParams{
+		Subject: subject, Version: "1.2.4", RequestID: "wrong-update", SourceAddress: "192.0.2.20",
+	}); !errors.Is(err, ErrConflict) {
+		t.Fatalf("unverified update error = %v", err)
+	}
+	current = current.Add(recentAuthenticationTTL + time.Second)
+	if _, err := repository.PrepareUpdateActivation(ctx, PrepareUpdateActivationParams{
+		Subject: subject, Version: "1.2.3", RequestID: "stale-update", SourceAddress: "192.0.2.20",
+	}); !errors.Is(err, ErrRecentAuthenticationRequired) {
+		t.Fatalf("stale update error = %v", err)
+	}
+}

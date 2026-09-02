@@ -64,6 +64,8 @@ const (
 	OperationReconcileOCIResources  Operation = "oci.resources.reconcile"
 	OperationReconcileOCIDeployment Operation = "oci.deployment.reconcile"
 	OperationReadOCIApplicationLogs Operation = "oci.logs.read"
+	OperationInspectPlatformUpdate  Operation = "platform.update.inspect"
+	OperationStartPlatformUpdate    Operation = "platform.update.start"
 )
 
 type ActorKind string
@@ -123,6 +125,8 @@ var operationPolicies = [...]operationPolicy{
 	{operation: OperationReconcileOCIResources, access: operationPrivilegedMutation},
 	{operation: OperationReconcileOCIDeployment, access: operationPrivilegedMutation},
 	{operation: OperationReadOCIApplicationLogs, access: operationReadOnly},
+	{operation: OperationInspectPlatformUpdate, access: operationReadOnly},
+	{operation: OperationStartPlatformUpdate, access: operationPrivilegedMutation},
 }
 
 type ErrorCode string
@@ -193,6 +197,9 @@ const (
 	ErrorOCIDeploymentConflict      ErrorCode = "oci_deployment_conflict"
 	ErrorOCIDeploymentUnhealthy     ErrorCode = "oci_deployment_unhealthy"
 	ErrorOCIDeploymentUnavailable   ErrorCode = "oci_deployment_unavailable"
+	ErrorPlatformUpdateInvalid      ErrorCode = "platform_update_invalid"
+	ErrorPlatformUpdateConflict     ErrorCode = "platform_update_conflict"
+	ErrorPlatformUpdateUnavailable  ErrorCode = "platform_update_unavailable"
 	ErrorMutationFailed             ErrorCode = "mutation_failed"
 	ErrorInternal                   ErrorCode = "internal_error"
 )
@@ -237,6 +244,8 @@ type Request struct {
 	ReconcileOCIResources  *OCIResourceReconcileRequest   `json:"reconcileOciResources,omitempty"`
 	ReconcileOCIDeployment *OCIDeploymentRequest          `json:"reconcileOciDeployment,omitempty"`
 	ReadOCIApplicationLogs *OCIApplicationLogReadRequest  `json:"readOciApplicationLogs,omitempty"`
+	InspectPlatformUpdate  *PlatformUpdateInspectRequest  `json:"inspectPlatformUpdate,omitempty"`
+	StartPlatformUpdate    *PlatformUpdateStartRequest    `json:"startPlatformUpdate,omitempty"`
 }
 
 type HandshakeRequest struct {
@@ -273,6 +282,8 @@ type Response struct {
 	OCIResources             *OCIResourceReconcileResponse   `json:"ociResources,omitempty"`
 	OCIDeployment            *OCIDeploymentResponse          `json:"ociDeployment,omitempty"`
 	OCIApplicationLogs       *OCIApplicationLogReadResponse  `json:"ociApplicationLogs,omitempty"`
+	PlatformUpdateStart      *PlatformUpdateStartResponse    `json:"platformUpdateStart,omitempty"`
+	PlatformUpdateStatus     *PlatformUpdateStatusResponse   `json:"platformUpdateStatus,omitempty"`
 	Error                    *ResponseError                  `json:"error,omitempty"`
 }
 
@@ -485,6 +496,15 @@ func ValidateRequest(request Request) error {
 			validateOCIApplicationLogReadRequest(*request.ReadOCIApplicationLogs) != nil {
 			return fmt.Errorf("%w: OCI application log request is malformed", ErrInvalidRequest)
 		}
+	case OperationInspectPlatformUpdate:
+		if request.InspectPlatformUpdate == nil || requestPayloadCount(request) != 1 {
+			return fmt.Errorf("%w: platform update inspection payload is required", ErrInvalidRequest)
+		}
+	case OperationStartPlatformUpdate:
+		if request.StartPlatformUpdate == nil || requestPayloadCount(request) != 1 ||
+			validatePlatformUpdateStartRequest(request.Correlation, *request.StartPlatformUpdate) != nil {
+			return fmt.Errorf("%w: platform update request is malformed", ErrInvalidRequest)
+		}
 	default:
 		return fmt.Errorf("%w: operation payload policy is missing", ErrInvalidRequest)
 	}
@@ -591,6 +611,12 @@ func ValidateResponse(response Response, requestID string, expectedOperation Ope
 	}
 	if response.OCIApplicationLogs != nil {
 		return validateOCIApplicationLogReadResponse(*response.OCIApplicationLogs, expectedOperation)
+	}
+	if response.PlatformUpdateStart != nil {
+		return validatePlatformUpdateStartResponse(*response.PlatformUpdateStart, expectedOperation)
+	}
+	if response.PlatformUpdateStatus != nil {
+		return validatePlatformUpdateStatusResponse(*response.PlatformUpdateStatus, expectedOperation)
 	}
 	if response.Handshake.AgentMinimumVersion < 1 ||
 		response.Handshake.AgentMaximumVersion < response.Handshake.AgentMinimumVersion ||
@@ -763,6 +789,7 @@ func validErrorCode(code ErrorCode) bool {
 		ErrorOCIImageInvalid, ErrorOCIImageUnavailable, ErrorOCIImageRejected,
 		ErrorOCIResourceInvalid, ErrorOCIResourceConflict, ErrorOCIResourceUnavailable,
 		ErrorOCIDeploymentInvalid, ErrorOCIDeploymentConflict, ErrorOCIDeploymentUnhealthy, ErrorOCIDeploymentUnavailable,
+		ErrorPlatformUpdateInvalid, ErrorPlatformUpdateConflict, ErrorPlatformUpdateUnavailable,
 		ErrorMutationFailed, ErrorInternal:
 		return true
 	default:
@@ -794,6 +821,8 @@ func requestPayloadCount(request Request) int {
 		request.ReconcileOCIResources != nil,
 		request.ReconcileOCIDeployment != nil,
 		request.ReadOCIApplicationLogs != nil,
+		request.InspectPlatformUpdate != nil,
+		request.StartPlatformUpdate != nil,
 	} {
 		if present {
 			count++

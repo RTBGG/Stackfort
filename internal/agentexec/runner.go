@@ -48,6 +48,7 @@ const (
 	ProfileDpkgQuery                        ProfileID = "package.dpkg-query"
 	ProfileRPMQuery                         ProfileID = "package.rpm-query"
 	ProfileSystemctlShow                    ProfileID = "service.systemctl-show"
+	ProfileSystemdStartPlatformUpdate       ProfileID = "platform-update.systemd-start"
 	ProfileGroupAdd                         ProfileID = "account.group-add"
 	ProfileUserAdd                          ProfileID = "account.user-add"
 	ProfileUserMod                          ProfileID = "account.user-mod"
@@ -139,6 +140,7 @@ var (
 	ErrOutputLimit         = errors.New("external process output exceeds limit")
 	ErrStart               = errors.New("external process could not be started")
 	ErrWait                = errors.New("external process could not be reaped cleanly")
+	platformUpdateVersion  = regexp.MustCompile(`^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-beta\.([1-9][0-9]*))?$`)
 )
 
 type runError struct {
@@ -203,6 +205,7 @@ func NewRunner() *Runner {
 			},
 			units,
 		)),
+		ProfileSystemdStartPlatformUpdate: mutationProfile("/usr/bin/systemctl", platformUpdateResolver()),
 		ProfileGroupAdd: accountMutationProfile("/usr/sbin/groupadd", func(spec hostingidentity.Spec) []string {
 			return []string{"-g", strconv.FormatUint(uint64(spec.GID), 10), spec.Username}
 		}),
@@ -686,6 +689,15 @@ func nginxCandidateResolver() argumentResolver {
 		}
 		configuration := nginxbaseline.SiteTransactionsDirectory + "/" + values[0] + "/nginx.conf"
 		return []string{"-t", "-q", "-c", configuration}, nil
+	}
+}
+
+func platformUpdateResolver() argumentResolver {
+	return func(values []string) ([]string, error) {
+		if len(values) != 1 || !platformUpdateVersion.MatchString(values[0]) {
+			return nil, ErrInvalidInvocation
+		}
+		return []string{"start", "--no-block", "stackfort-update@" + values[0] + ".service"}, nil
 	}
 }
 

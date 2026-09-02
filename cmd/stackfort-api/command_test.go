@@ -62,3 +62,22 @@ func TestUnknownCommandReturnsUsageWithoutOpeningState(t *testing.T) {
 		t.Fatalf("unknown command changed state path: %v", err)
 	}
 }
+
+func TestDatabaseMigrateAndCheckCommandsUseTheConfiguredState(t *testing.T) {
+	databasePath := filepath.Join(t.TempDir(), "state", "stackfort.db")
+	t.Setenv("STACKFORT_STATE_PATH", databasePath)
+	var output bytes.Buffer
+	if err := runCommand(t.Context(), []string{"database", "migrate"}, &output); err != nil {
+		t.Fatalf("migrate command: %v", err)
+	}
+	if !strings.Contains(output.String(), "database migrate completed") {
+		t.Fatalf("migrate output = %q", output.String())
+	}
+	output.Reset()
+	if err := runCommand(t.Context(), []string{"database", "check"}, &output); err != nil {
+		t.Fatalf("check command: %v", err)
+	}
+	if !strings.Contains(output.String(), "database check completed") {
+		t.Fatalf("check output = %q", output.String())
+	}
+}

@@ -40,10 +40,11 @@ const (
 )
 
 type LinuxRunner struct {
-	distribution    string
-	output          io.Writer
-	runOverride     func(context.Context, []string, string, ...string) error
-	captureOverride func(context.Context, string, ...string) (string, error)
+	distribution           string
+	output                 io.Writer
+	allowPackageTransition bool
+	runOverride            func(context.Context, []string, string, ...string) error
+	captureOverride        func(context.Context, string, ...string) (string, error)
 }
 
 type selinuxFileContext struct {
@@ -93,6 +94,19 @@ func NewLinuxRunner(output io.Writer) (*LinuxRunner, error) {
 		output = io.Discard
 	}
 	return &LinuxRunner{distribution: platform.DistributionID, output: output}, nil
+}
+
+// NewLinuxUpdateRunner returns the same closed host reconciler with one
+// additional permission: native Stackfort packages may move between two
+// already verified release manifests. Fresh installation keeps rejecting a
+// conflicting installed package version.
+func NewLinuxUpdateRunner(output io.Writer) (*LinuxRunner, error) {
+	runner, err := NewLinuxRunner(output)
+	if err != nil {
+		return nil, err
+	}
+	runner.allowPackageTransition = true
+	return runner, nil
 }
 
 func (runner *LinuxRunner) Distribution() string { return runner.distribution }
@@ -564,6 +578,8 @@ func (runner *LinuxRunner) applyPayload(source Source) (bool, error) {
 	for _, file := range []struct{ source, target string }{
 		{filepath.Join(source.Root, "bin", "stackfort-api"), "/usr/local/bin/stackfort-api"},
 		{filepath.Join(source.Root, "bin", "stackfort-agent"), "/usr/local/sbin/stackfort-agent"},
+		{filepath.Join(source.Root, "bin", "stackfort-updater"), "/usr/local/sbin/stackfort-updater"},
+		{filepath.Join(source.Root, "bin", "stackfort-gh"), "/usr/local/libexec/stackfort-gh"},
 		{filepath.Join(source.Root, "bin", "stackfort-trivy"), ociimage.ScannerExecutable},
 	} {
 		fileChanged, err := copySourceFile(file.source, file.target, 0o755)
@@ -635,6 +651,8 @@ func (runner *LinuxRunner) verifyPayload(source Source) error {
 	}{
 		{filepath.Join(source.Root, "bin", "stackfort-api"), "/usr/local/bin/stackfort-api", 0o755},
 		{filepath.Join(source.Root, "bin", "stackfort-agent"), "/usr/local/sbin/stackfort-agent", 0o755},
+		{filepath.Join(source.Root, "bin", "stackfort-updater"), "/usr/local/sbin/stackfort-updater", 0o755},
+		{filepath.Join(source.Root, "bin", "stackfort-gh"), "/usr/local/libexec/stackfort-gh", 0o755},
 		{filepath.Join(source.Root, "bin", "stackfort-trivy"), ociimage.ScannerExecutable, 0o755},
 	} {
 		content, err := readBoundedRegular(file.source, maximumSingleFile)
@@ -756,7 +774,7 @@ func (runner *LinuxRunner) applyConfiguration(ctx context.Context, source Source
 	}
 	changed = changed || panelTLSChanged
 	units := serviceUnits(runner.distribution)
-	names := []string{"stackfort.slice", "stackfort-core.slice", "stackfort-accounts.slice", "stackfort-agent.service", "stackfort-api.service", phpMyAdminUnit}
+	names := []string{"stackfort.slice", "stackfort-core.slice", "stackfort-accounts.slice", "stackfort-agent.service", "stackfort-api.service", "stackfort-update@.service", phpMyAdminUnit}
 	if runner.distribution != "rocky" {
 		names = append(names, "stackfort-firewall.service")
 		fileChanged, err := reconcileFile("/etc/stackfort/firewall.nft", []byte(nftablesFile()), 0, gid, 0o640, true)
@@ -847,7 +865,7 @@ func (runner *LinuxRunner) verifyConfiguration(ctx context.Context, source Sourc
 		}
 	}
 	units := serviceUnits(runner.distribution)
-	for _, name := range []string{"stackfort.slice", "stackfort-core.slice", "stackfort-accounts.slice", "stackfort-agent.service", "stackfort-api.service", phpMyAdminUnit} {
+	for _, name := range []string{"stackfort.slice", "stackfort-core.slice", "stackfort-accounts.slice", "stackfort-agent.service", "stackfort-api.service", "stackfort-update@.service", phpMyAdminUnit} {
 		if err := verifyFile(filepath.Join("/etc/systemd/system", name), []byte(units[name]), 0, 0, 0o644); err != nil {
 			return err
 		}

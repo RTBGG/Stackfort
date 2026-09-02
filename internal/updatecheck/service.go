@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/RTBGG/stackfort/internal/agentprotocol"
 	"github.com/RTBGG/stackfort/internal/core"
 )
 
@@ -31,9 +32,10 @@ const (
 )
 
 var (
-	ErrDiscoveryUnavailable = errors.New("release discovery is unavailable")
-	ErrRateLimited          = errors.New("release discovery is rate limited")
-	ErrInvalidResponse      = errors.New("release discovery returned an invalid response")
+	ErrDiscoveryUnavailable         = errors.New("release discovery is unavailable")
+	ErrRateLimited                  = errors.New("release discovery is rate limited")
+	ErrInvalidResponse              = errors.New("release discovery returned an invalid response")
+	ErrFunctionalUpdatesUnavailable = errors.New("functional updates are unavailable on this platform")
 
 	sha256DigestPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 )
@@ -61,19 +63,20 @@ type Release struct {
 }
 
 type Status struct {
-	CurrentVersion             string             `json:"currentVersion"`
-	CurrentVersionValid        bool               `json:"currentVersionValid"`
-	Channel                    core.UpdateChannel `json:"channel"`
-	AutomaticChecks            bool               `json:"automaticChecks"`
-	AutomaticFunctionalUpdates bool               `json:"automaticFunctionalUpdates"`
-	CheckIntervalSeconds       int64              `json:"checkIntervalSeconds"`
-	LastAttemptedAt            *time.Time         `json:"lastAttemptedAt,omitempty"`
-	LastSuccessfulAt           *time.Time         `json:"lastSuccessfulAt,omitempty"`
-	NextAutomaticCheckAt       *time.Time         `json:"nextAutomaticCheckAt,omitempty"`
-	LatestRelease              *Release           `json:"latestRelease,omitempty"`
-	UpdateAvailable            bool               `json:"updateAvailable"`
-	LastErrorCode              string             `json:"lastErrorCode,omitempty"`
-	RateLimitResetAt           *time.Time         `json:"rateLimitResetAt,omitempty"`
+	CurrentVersion             string                                      `json:"currentVersion"`
+	CurrentVersionValid        bool                                        `json:"currentVersionValid"`
+	Channel                    core.UpdateChannel                          `json:"channel"`
+	AutomaticChecks            bool                                        `json:"automaticChecks"`
+	AutomaticFunctionalUpdates bool                                        `json:"automaticFunctionalUpdates"`
+	CheckIntervalSeconds       int64                                       `json:"checkIntervalSeconds"`
+	LastAttemptedAt            *time.Time                                  `json:"lastAttemptedAt,omitempty"`
+	LastSuccessfulAt           *time.Time                                  `json:"lastSuccessfulAt,omitempty"`
+	NextAutomaticCheckAt       *time.Time                                  `json:"nextAutomaticCheckAt,omitempty"`
+	LatestRelease              *Release                                    `json:"latestRelease,omitempty"`
+	UpdateAvailable            bool                                        `json:"updateAvailable"`
+	LastErrorCode              string                                      `json:"lastErrorCode,omitempty"`
+	RateLimitResetAt           *time.Time                                  `json:"rateLimitResetAt,omitempty"`
+	PlatformUpdate             *agentprotocol.PlatformUpdateStatusResponse `json:"platformUpdate,omitempty"`
 }
 
 type Service struct {
@@ -126,6 +129,14 @@ func (service *Service) UpdatePolicy(
 func (service *Service) CheckNow(ctx context.Context) (Status, error) {
 	_, status, err := service.check(ctx, true)
 	return status, err
+}
+
+// StartUpdate keeps the discovery-only service safe on unsupported platforms.
+// Linux production wiring replaces it with updateworkspace.Service.
+func (service *Service) StartUpdate(
+	context.Context, core.PrepareUpdateActivationParams,
+) (agentprotocol.PlatformUpdateStartResponse, error) {
+	return agentprotocol.PlatformUpdateStartResponse{}, ErrFunctionalUpdatesUnavailable
 }
 
 // RunAutomatic performs a network request only when the durable default-on

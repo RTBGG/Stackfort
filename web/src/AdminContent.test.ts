@@ -54,6 +54,7 @@ const updateStatus: UpdateStatus = {
   automaticFunctionalUpdates: false, checkIntervalSeconds: 21600,
   lastAttemptedAt: '2026-08-25T09:00:00Z', lastSuccessfulAt: '2026-08-25T09:00:00Z',
   nextAutomaticCheckAt: '2026-08-25T15:00:00Z', updateAvailable: true,
+	platformUpdate: { state: 'idle' },
   latestRelease: {
     version: '1.1.0', tag: 'v1.1.0', url: 'https://github.com/RTBGG/Stackfort/releases/tag/v1.1.0',
     publishedAt: '2026-08-25T08:00:00Z', prerelease: false, immutable: true,
@@ -142,6 +143,11 @@ describe('administrator update policy', () => {
 
     await form.get('button.secondary-action').trigger('click')
     expect(wrapper.emitted('checkUpdates')).toHaveLength(1)
+		const activation = wrapper.get('form.update-activation')
+		expect(activation.get<HTMLButtonElement>('button').element.disabled).toBe(true)
+		await activation.get<HTMLInputElement>('input[type="checkbox"]').setValue(true)
+		await activation.trigger('submit')
+		expect(wrapper.emitted('applyUpdate')?.[0]).toEqual(['1.1.0'])
     const results = await axe.run(wrapper.element, { rules: { 'color-contrast': { enabled: false } } })
     expect(results.violations.map((violation) => violation.id)).toEqual([])
     wrapper.unmount()

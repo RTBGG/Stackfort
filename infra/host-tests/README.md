@@ -155,6 +155,14 @@ surfaces, prerelease upgrade ordering, ownership, wrapper execution, removal,
 and non-interference with active Stackfort payload files. The recorded matrix
 is [2026-09-01-native-core-packages-hyper-v.md](results/2026-09-01-native-core-packages-hyper-v.md).
 
+`Test-StackfortUpdateTransactionHyperVVm.ps1` is the focused Phase 6 staged
+transaction qualification. It runs the production persistent update engine and
+root-owned file journal with a disposable native SQLite fixture. Success proves
+the complete ordered transaction, migration commit, health-failure rollback,
+and recovery from an interrupted durable journal. It intentionally does not add
+a local-release bypass to the production GitHub attestation stager; the next
+roadmap item owns complete published-release upgrade matrices.
+
 `Test-StackfortWAFHyperVVm.ps1` is the focused K-010 runtime qualification
 wrapper. It exercises WAF off, detection-only, and blocking PL1 through the
 production domain lifecycle across static and PHP routes, verifies WAF ordering

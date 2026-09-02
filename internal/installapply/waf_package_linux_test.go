@@ -45,7 +45,7 @@ func TestWAFPackageInstallFailureRollsBackPartialDebianPackage(t *testing.T) {
 	if err == nil || !changed || !strings.Contains(err.Error(), "simulated post-install failure") {
 		t.Fatalf("changed=%t error=%v", changed, err)
 	}
-	if len(mutations) != 2 || !strings.Contains(mutations[0], "install -y --no-install-recommends "+filepath.Join(source.Root, filepath.FromSlash(artifact.Path))) ||
+	if len(mutations) != 2 || !strings.Contains(mutations[0], "install -y --allow-downgrades --no-install-recommends "+filepath.Join(source.Root, filepath.FromSlash(artifact.Path))) ||
 		mutations[1] != "/usr/bin/apt-get -o DPkg::Lock::Timeout=120 remove -y stackfort-waf" {
 		t.Fatalf("mutations = %#v", mutations)
 	}
@@ -84,9 +84,32 @@ func TestWAFPackageVerificationFailureRollsBackNewPackage(t *testing.T) {
 	if err == nil || !changed || !strings.Contains(err.Error(), "NGINX package") {
 		t.Fatalf("changed=%t error=%v", changed, err)
 	}
-	if len(mutations) != 2 || !strings.Contains(mutations[0], "install -y --no-install-recommends") ||
+	if len(mutations) != 2 || !strings.Contains(mutations[0], "install -y --allow-downgrades --no-install-recommends") ||
 		mutations[1] != "/usr/bin/apt-get -o DPkg::Lock::Timeout=120 remove -y stackfort-waf" {
 		t.Fatalf("mutations = %#v", mutations)
+	}
+}
+
+func TestWAFUpdateTransitionLeavesExactRollbackToOuterTransaction(t *testing.T) {
+	t.Parallel()
+	source, artifact := testWAFReleaseSource(t, "debian")
+	var mutations []string
+	runner := &LinuxRunner{distribution: "debian", output: io.Discard, allowPackageTransition: true}
+	runner.captureOverride = func(_ context.Context, executable string, arguments ...string) (string, error) {
+		if executable == "/usr/bin/dpkg-query" && strings.Contains(strings.Join(arguments, " "), "db:Status-Abbrev") {
+			return "ii older-release", nil
+		}
+		return "", errors.New("unexpected capture")
+	}
+	runner.runOverride = func(_ context.Context, _ []string, executable string, arguments ...string) error {
+		mutations = append(mutations, executable+" "+strings.Join(arguments, " "))
+		return errors.New("simulated transition failure")
+	}
+	changed, err := runner.applyWAFPackage(t.Context(), source)
+	if err == nil || !changed || len(mutations) != 1 ||
+		!strings.Contains(mutations[0], "--allow-downgrades") ||
+		!strings.Contains(mutations[0], filepath.Join(source.Root, filepath.FromSlash(artifact.Path))) {
+		t.Fatalf("changed=%t mutations=%#v error=%v", changed, mutations, err)
 	}
 }
 

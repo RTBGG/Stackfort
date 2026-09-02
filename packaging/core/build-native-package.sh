@@ -64,14 +64,15 @@ mapfile -t manifest_architectures < <(json_string_field architecture)
   fail 'native Stackfort core packages currently require an amd64 release tree'
 
 for path in \
-  bin/stackfort-api bin/stackfort-agent bin/stackfort-installer bin/stackfort-trivy \
+  bin/stackfort-api bin/stackfort-agent bin/stackfort-updater bin/stackfort-gh \
+  bin/stackfort-installer bin/stackfort-trivy \
   web/index.html phpmyadmin/index.php phpmyadmin/config.inc.php \
   phpmyadmin-integration/config.inc.php phpmyadmin-integration/signon.php \
   phpmyadmin-integration/stackfort-launch.php COMMIT COPYRIGHT.md LICENSE README.md \
   RELEASE-MANIFEST.json VERSION; do
   [[ -f "$source_root/$path" && ! -L "$source_root/$path" ]] || fail "required release file is unavailable: $path"
 done
-for path in bin/stackfort-api bin/stackfort-agent bin/stackfort-installer bin/stackfort-trivy; do
+for path in bin/stackfort-api bin/stackfort-agent bin/stackfort-updater bin/stackfort-gh bin/stackfort-installer bin/stackfort-trivy; do
   [[ -x "$source_root/$path" ]] || fail "release executable has no execute permission: $path"
 done
 [[ -z "$(find "$source_root" ! -type d ! -type f -print -quit)" ]] ||

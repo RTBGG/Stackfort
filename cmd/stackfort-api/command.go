@@ -15,10 +15,35 @@ import (
 )
 
 func runCommand(ctx context.Context, args []string, output io.Writer) error {
+	if len(args) >= 2 && args[0] == "database" && (args[1] == "migrate" || args[1] == "check") {
+		if len(args) != 2 {
+			return errors.New("usage: stackfort-api database migrate|check")
+		}
+		return runDatabaseCommand(ctx, args[1], output)
+	}
 	if len(args) < 2 || args[0] != "bootstrap" || args[1] != "create" {
-		return errors.New("usage: stackfort-api bootstrap create [--ttl duration] [--replace]")
+		return errors.New("usage: stackfort-api bootstrap create [--ttl duration] [--replace] | database migrate|check")
 	}
 	return runBootstrapCreateCommand(ctx, args[2:], output)
+}
+
+func runDatabaseCommand(ctx context.Context, action string, output io.Writer) (returnErr error) {
+	databasePath, err := panelStatePath()
+	if err != nil {
+		return err
+	}
+	state, err := store.Open(ctx, databasePath)
+	if err != nil {
+		return fmt.Errorf("%s panel state: %w", action, err)
+	}
+	defer func() { returnErr = errors.Join(returnErr, state.Close()) }()
+	if err := state.Ping(ctx); err != nil {
+		return err
+	}
+	if output != nil {
+		_, err = fmt.Fprintf(output, "Stackfort database %s completed.\n", action)
+	}
+	return err
 }
 
 func runBootstrapCreateCommand(ctx context.Context, args []string, output io.Writer) (returnErr error) {

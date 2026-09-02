@@ -182,7 +182,7 @@ and reboot recovery pass on Debian 13, Ubuntu 26.04, and Rocky Linux 10. See the
 - [x] Versioned DEB/RPM packages where appropriate.
 - [x] Verified one-line and manual installers for clean hosts.
 - [x] Stable/beta GitHub Release channels and update checks.
-- Staged update, migration, health check, and rollback.
+- [x] Staged update, migration, health check, and rollback.
 - Upgrade matrices from every supported prior release.
 - Documentation, operations guide, security policy, contribution guide, and
   published benchmark methodology/results.
@@ -211,6 +211,19 @@ the complete digested amd64 artifact inventory become candidates. Policy
 changes are recent-authenticated and audited; the administrator UI is complete
 in English and German. See [ADR 0060](adr/0060-immutable-stable-beta-release-discovery.md)
 and the [update-check operations guide](update-channels-and-checks.md).
+
+The fourth item is complete: a recent-authenticated administrator can start
+only the exact immutable release accepted by discovery. A separate root-owned
+updater verifies repository-scoped current and target GitHub provenance bundles
+locally without a server token, stages both trees, snapshots SQLite, applies
+ordered native-package, payload, configuration, and migration stages, then
+commits only after full installation health. Its
+private journal recovers interrupted work by restoring the exact prior release.
+Success, injected health failure, migration rollback, and interrupted-journal
+recovery passed with the same test binary on Debian 13, Ubuntu 26.04, and Rocky
+Linux 10. See [ADR 0061](adr/0061-attested-health-gated-platform-updates.md),
+the [operator guide](staged-platform-updates.md), and the
+[qualification record](../infra/host-tests/results/2026-09-02-staged-update-transaction-hyper-v.md).
 
 Exit gate: the success criteria in `product-spec.md` pass, followed by a limited
 public beta with an explicit support window.

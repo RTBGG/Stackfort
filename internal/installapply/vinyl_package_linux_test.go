@@ -19,7 +19,7 @@ import (
 	"github.com/RTBGG/stackfort/internal/releaseartifacts"
 )
 
-func TestVinylRockyInstallEnablesEPELAndUsesDNFDependencyResolution(t *testing.T) {
+func TestVinylRockyInstallEnablesEPELAndUsesExactRPMTransaction(t *testing.T) {
 	t.Parallel()
 	source, artifact := testVinylReleaseSource(t, "rocky")
 	var mutations []string
@@ -45,8 +45,33 @@ func TestVinylRockyInstallEnablesEPELAndUsesDNFDependencyResolution(t *testing.T
 		t.Fatalf("changed=%t error=%v", changed, err)
 	}
 	if len(mutations) != 2 || mutations[0] != "/usr/bin/dnf install -y epel-release" ||
-		mutations[1] != "/usr/bin/dnf install -y "+filepath.Join(source.Root, filepath.FromSlash(artifact.Path)) {
+		mutations[1] != "/usr/bin/rpm --upgrade --oldpackage --replacepkgs "+filepath.Join(source.Root, filepath.FromSlash(artifact.Path)) {
 		t.Fatalf("mutations = %#v", mutations)
+	}
+}
+
+func TestVinylUpdateTransitionDoesNotEraseRollbackPackageOnFailure(t *testing.T) {
+	t.Parallel()
+	source, artifact := testVinylReleaseSource(t, "rocky")
+	var mutations []string
+	runner := &LinuxRunner{distribution: "rocky", output: io.Discard, allowPackageTransition: true}
+	runner.captureOverride = func(_ context.Context, executable string, arguments ...string) (string, error) {
+		if executable == "/usr/bin/rpm" && strings.Contains(strings.Join(arguments, " "), "%{VERSION}-%{RELEASE}") {
+			return "older-release", nil
+		}
+		return "", errors.New("unexpected capture")
+	}
+	runner.runOverride = func(_ context.Context, _ []string, executable string, arguments ...string) error {
+		mutations = append(mutations, executable+" "+strings.Join(arguments, " "))
+		if executable == "/usr/bin/rpm" {
+			return errors.New("simulated transition failure")
+		}
+		return nil
+	}
+	changed, err := runner.applyVinylPackage(t.Context(), source)
+	if err == nil || !changed || len(mutations) != 2 ||
+		mutations[1] != "/usr/bin/rpm --upgrade --oldpackage --replacepkgs "+filepath.Join(source.Root, filepath.FromSlash(artifact.Path)) {
+		t.Fatalf("changed=%t mutations=%#v error=%v", changed, mutations, err)
 	}
 }
 

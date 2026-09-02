@@ -49,6 +49,11 @@ func TestProductionProfilesUseFixedPathsAndTemplates(t *testing.T) {
 			},
 			defaultTimeout,
 		},
+		{
+			ProfileSystemdStartPlatformUpdate, []string{"1.2.3-beta.4"}, "/usr/bin/systemctl",
+			[]string{"start", "--no-block", "stackfort-update@1.2.3-beta.4.service"},
+			accountMutationTimeout,
+		},
 	}
 	accountID := "019c1234-5678-7abc-8def-0123456789ab"
 	username, _ := hostingidentity.UsernameForAccount(accountID)

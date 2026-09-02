@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/RTBGG/stackfort/internal/store"
@@ -16,6 +17,10 @@ type UpdateChannel string
 const (
 	UpdateChannelStable UpdateChannel = "stable"
 	UpdateChannelBeta   UpdateChannel = "beta"
+)
+
+var canonicalFunctionalUpdateVersion = regexp.MustCompile(
+	`^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-beta\.([1-9][0-9]*))?$`,
 )
 
 type UpdateRelease struct {
@@ -60,6 +65,19 @@ type RecordUpdateCheckFailureParams struct {
 	ExpectedChannel  UpdateChannel
 	ErrorCode        string
 	RateLimitResetAt *time.Time
+}
+
+type PrepareUpdateActivationParams struct {
+	Subject       AuthorizationSubject
+	Version       string
+	RequestID     string
+	SourceAddress string
+}
+
+type UpdateActivation struct {
+	Version      string
+	Tag          string
+	AuditEventID ID
 }
 
 func validUpdateChannel(channel UpdateChannel) bool {
@@ -193,6 +211,68 @@ func (r *Repository) UpdateUpdatePolicy(ctx context.Context, params UpdatePolicy
 		return UpdateSettings{}, classifyDatabaseError(err)
 	}
 	return r.GetUpdateSettings(ctx)
+}
+
+// PrepareUpdateActivation atomically revalidates the latest immutable release,
+// requires a fresh administrator session, and persists the audit correlation
+// before the privileged agent is contacted.
+func (r *Repository) PrepareUpdateActivation(
+	ctx context.Context,
+	params PrepareUpdateActivationParams,
+) (UpdateActivation, error) {
+	if _, err := r.Authorize(ctx, AuthorizeParams{
+		Subject: params.Subject, Action: AuthorizationPlatformManage,
+	}); err != nil {
+		return UpdateActivation{}, err
+	}
+	if !canonicalFunctionalUpdateVersion.MatchString(params.Version) {
+		return UpdateActivation{}, fmt.Errorf("%w: update version is not canonical", ErrInvalidInput)
+	}
+	requestID, sourceAddress, err := validateSessionManagementMetadata(params.RequestID, params.SourceAddress)
+	if err != nil {
+		return UpdateActivation{}, err
+	}
+	now := r.timestamp()
+	var activation UpdateActivation
+	err = r.state.Write(ctx, func(executor store.Executor) error {
+		if _, err := r.requireSubjectSessionTx(ctx, executor, params.Subject, true, now); err != nil {
+			return err
+		}
+		var channel UpdateChannel
+		var version, tag string
+		var immutable int64
+		if err := executor.QueryRowContext(ctx, `
+			SELECT p.channel, s.latest_version, s.latest_tag, s.latest_immutable
+			FROM update_policy p JOIN update_check_state s ON s.singleton = p.singleton
+			WHERE p.singleton = 1 AND s.latest_version IS NOT NULL`).Scan(
+			&channel, &version, &tag, &immutable,
+		); err != nil {
+			if err == sql.ErrNoRows {
+				return fmt.Errorf("%w: no verified update release is available", ErrConflict)
+			}
+			return err
+		}
+		if version != params.Version || tag != "v"+params.Version || immutable != 1 {
+			return fmt.Errorf("%w: requested update is not the current immutable release", ErrConflict)
+		}
+		event, err := r.appendAuditEventTx(ctx, executor, AppendAuditEventParams{
+			ActorID: &params.Subject.identityID, SessionID: &params.Subject.sessionID,
+			SourceAddress: sourceAddress, Action: "platform.update_requested",
+			TargetType: "platform_release", TargetID: version, RequestID: requestID,
+			Result: AuditSuccess, Details: map[string]any{
+				"version": version, "tag": tag, "channel": channel, "immutable": true,
+			},
+		}, now)
+		if err != nil {
+			return err
+		}
+		activation = UpdateActivation{Version: version, Tag: tag, AuditEventID: event.ID}
+		return nil
+	})
+	if err != nil {
+		return UpdateActivation{}, classifyDatabaseError(err)
+	}
+	return activation, nil
 }
 
 func (r *Repository) RecordUpdateCheckSuccess(

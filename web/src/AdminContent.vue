@@ -69,6 +69,7 @@ const emit = defineEmits<{
   removeWAFException: [input: { accountId: string; domainId: string; exceptionId: string }]
   updatePolicy: [input: { channel: UpdateStatus['channel']; automaticChecks: boolean }]
   checkUpdates: []
+	applyUpdate: [version: string]
   logout: []
 }>()
 
@@ -100,6 +101,7 @@ const updateForm = reactive({
   channel: 'stable' as UpdateStatus['channel'],
   automaticChecks: true,
 })
+const updateConfirmed = ref(false)
 
 const activeLocale = computed<SupportedLocale>(() => (
   isSupportedLocale(locale.value) ? locale.value : 'en'
@@ -137,6 +139,14 @@ const updatePolicyChanged = computed(() => Boolean(props.updateStatus) && (
   updateForm.channel !== props.updateStatus?.channel
   || updateForm.automaticChecks !== props.updateStatus?.automaticChecks
 ))
+const platformUpdateActive = computed(() => (
+	props.updateStatus?.platformUpdate?.state === 'applying'
+	|| props.updateStatus?.platformUpdate?.state === 'rolling_back'
+))
+const canApplyUpdate = computed(() => Boolean(
+	props.updateStatus?.updateAvailable && props.updateStatus.latestRelease?.immutable
+	&& !platformUpdateActive.value && updateConfirmed.value,
+))
 
 watch(() => props.packages, (packages) => {
   if (!accountForm.packageId && packages[0]) accountForm.packageId = packages[0].id
@@ -167,6 +177,8 @@ watch(() => props.updateStatus, (status) => {
   updateForm.channel = status.channel
   updateForm.automaticChecks = status.automaticChecks
 }, { immediate: true })
+
+watch(() => props.updateStatus?.latestRelease?.version, () => { updateConfirmed.value = false })
 
 function defaultExceptionExpiry(): string {
   const date = new Date(Date.now() + 60 * 60 * 1000)
@@ -502,6 +514,21 @@ function removeWAFException(exception: DomainWAFException) {
           <div class="form-actions"><button class="primary-action" type="submit" :disabled="actionBusy || !updatePolicyChanged">{{ t('updates.savePolicy') }}</button><button class="secondary-action" type="button" :disabled="actionBusy" @click="emit('checkUpdates')">{{ t('updates.checkNow') }}</button></div>
         </form>
       </div>
+
+		<section v-if="updateStatus?.platformUpdate && updateStatus.platformUpdate.state !== 'idle'" class="update-transaction" aria-live="polite">
+			<div><p class="eyebrow">{{ t('updates.transaction') }}</p><strong>{{ t(`updates.states.${updateStatus.platformUpdate.state}`) }}</strong></div>
+			<dl class="detail-list update-details">
+				<div><dt>{{ t('updates.transactionTarget') }}</dt><dd><code>{{ updateStatus.platformUpdate.targetVersion }}</code></dd></div>
+				<div><dt>{{ t('updates.transactionUpdated') }}</dt><dd>{{ displayDate(updateStatus.platformUpdate.updatedAt) }}</dd></div>
+			</dl>
+			<p v-if="updateStatus.platformUpdate.errorCode" class="inline-feedback error" role="alert">{{ t('updates.transactionError', { code: updateStatus.platformUpdate.errorCode }) }}</p>
+		</section>
+
+		<form v-if="updateStatus?.updateAvailable && updateStatus.latestRelease" class="management-form update-activation" @submit.prevent="emit('applyUpdate', updateStatus.latestRelease.version)">
+			<div><p class="eyebrow">{{ t('updates.installEyebrow') }}</p><h3>{{ t('updates.installTitle', { version: updateStatus.latestRelease.version }) }}</h3><p>{{ t('updates.installBody') }}</p></div>
+			<label class="check-field"><input v-model="updateConfirmed" required type="checkbox"><span>{{ t('updates.installConfirmation') }}</span></label>
+			<button class="danger-action" type="submit" :disabled="actionBusy || !canApplyUpdate">{{ updateStatus.platformUpdate?.state === 'rollback_failed' ? t('updates.retryRecovery') : t('updates.installAction') }}</button>
+		</form>
 
       <p v-if="updateStatus?.lastErrorCode" class="inline-feedback error" role="alert">{{ t(`errors.${updateStatus.lastErrorCode}`) }}<span v-if="updateStatus.rateLimitResetAt"> {{ t('updates.retryAfter', { date: displayDate(updateStatus.rateLimitResetAt) }) }}</span></p>
       <p v-if="updateStatus" class="update-safety-note">{{ t('updates.functionalUpdatesOff') }}</p>

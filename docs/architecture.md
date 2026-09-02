@@ -473,11 +473,18 @@ mutable, incomplete, mismatched, or non-canonical releases are discarded before
 their bounded metadata reaches the browser. Platform-manage policy changes are
 recent-authenticated and audited. See [ADR 0060](adr/0060-immutable-stable-beta-release-discovery.md).
 
-The future functional updater downloads a selected immutable semantic version, verifies provenance
-and hashes, stages it, checks compatibility and free space, snapshots state,
-applies migrations, swaps versioned binaries/assets, restarts services in order,
-and runs health checks. It rolls back binaries/configuration automatically when
-possible and clearly reports when a migration crossed the rollback boundary.
+The functional updater is a separate root-owned oneshot rather than part of the
+API process it replaces. The API accepts only the currently discovered exact
+immutable version after recent authorization and audit; the agent can only
+inspect bounded journal state or start the fixed version-instantiated unit. The
+updater verifies the current and target GitHub provenance bundles locally with
+the exact repository/tag/workflow policy, hashes and complete inventories,
+stages both sources, checks compatibility and free space,
+snapshots SQLite, transitions exact native packages, applies checksum-locked
+migrations, restarts services, and runs the full installation health gate. A
+failure restores the prior database, packages, payload, configuration, and
+service health from a digest-fenced journal outside the panel database. See
+[ADR 0061](adr/0061-attested-health-gated-platform-updates.md).
 
 ## 9. API approach
 

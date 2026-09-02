@@ -332,16 +332,22 @@ The one-line installer is a convenience entry point. Documentation must also
 show how to download, inspect, verify, and execute it separately.
 
 Updates use semantic versions and stable/beta channels. Automatic update checks
-are enabled by default; automatic functional updates are opt-in. Downloaded
-artifacts require cryptographic verification, staging, a health check, and a
-rollback path. Database migrations are forward-compatible within the documented
-rollback window.
+are enabled by default; automatic functional updates remain disabled. A
+platform administrator can explicitly activate the exact discovered immutable
+release after recent authentication and a downtime confirmation. Downloaded
+artifacts require locally verified, exact-tag provenance and checksum
+verification without a server-side GitHub token, private staging, a consistent
+database snapshot, a health gate, and exact prior-release
+rollback. Database migrations are forward-compatible within the transaction;
+the preserved snapshot defines the rollback boundary.
 
 Discovery accepts only canonical stable or beta tags backed by a published,
 immutable GitHub Release and the complete digested release inventory. It uses
 conditional, bounded checks against the fixed project endpoint and never treats
 discovery as authorization to download or activate code. See
 [Update channels and release checks](update-channels-and-checks.md).
+The activation and recovery contract is documented in
+[Staged platform updates](staged-platform-updates.md).
 
 ## 7. Explicit non-goals for version 1
 

@@ -184,6 +184,60 @@ func (client *Client) InspectCapabilities(
 	return *response.Capabilities, nil
 }
 
+func (client *Client) InspectPlatformUpdate(
+	ctx context.Context,
+	idempotencyKey string,
+) (agentprotocol.PlatformUpdateStatusResponse, error) {
+	requestID, err := newRequestID()
+	if err != nil {
+		return agentprotocol.PlatformUpdateStatusResponse{}, err
+	}
+	request := agentprotocol.Request{
+		ProtocolVersion: agentprotocol.WireVersion, RequestID: requestID,
+		IdempotencyKey: idempotencyKey, Operation: agentprotocol.OperationInspectPlatformUpdate,
+		InspectPlatformUpdate: &agentprotocol.PlatformUpdateInspectRequest{},
+	}
+	response, status, err := client.callValidated(ctx, request)
+	if err != nil {
+		return agentprotocol.PlatformUpdateStatusResponse{}, err
+	}
+	if response.Error != nil {
+		return agentprotocol.PlatformUpdateStatusResponse{}, remoteError(status, response.Error)
+	}
+	if status != http.StatusOK || response.PlatformUpdateStatus == nil {
+		return agentprotocol.PlatformUpdateStatusResponse{}, errors.New("agent returned an invalid platform update status")
+	}
+	return *response.PlatformUpdateStatus, nil
+}
+
+func (client *Client) StartPlatformUpdate(
+	ctx context.Context,
+	idempotencyKey string,
+	correlation agentprotocol.AuditCorrelation,
+	version string,
+) (agentprotocol.PlatformUpdateStartResponse, error) {
+	requestID, err := newRequestID()
+	if err != nil {
+		return agentprotocol.PlatformUpdateStartResponse{}, err
+	}
+	request := agentprotocol.Request{
+		ProtocolVersion: agentprotocol.WireVersion, RequestID: requestID,
+		IdempotencyKey: idempotencyKey, Operation: agentprotocol.OperationStartPlatformUpdate,
+		Correlation: &correlation, StartPlatformUpdate: &agentprotocol.PlatformUpdateStartRequest{Version: version},
+	}
+	response, status, err := client.callValidated(ctx, request)
+	if err != nil {
+		return agentprotocol.PlatformUpdateStartResponse{}, err
+	}
+	if response.Error != nil {
+		return agentprotocol.PlatformUpdateStartResponse{}, remoteError(status, response.Error)
+	}
+	if status != http.StatusAccepted || response.PlatformUpdateStart == nil {
+		return agentprotocol.PlatformUpdateStartResponse{}, errors.New("agent returned an invalid platform update acceptance")
+	}
+	return *response.PlatformUpdateStart, nil
+}
+
 // ProvisionDatabase submits only server-derived MariaDB names and a transient
 // credential over the authenticated local Unix socket. The caller retains
 // ownership of request.Password and must clear it after this method returns.

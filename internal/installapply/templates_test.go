@@ -35,6 +35,16 @@ func TestServiceUnitsContainRequiredSandboxAndOwnershipContract(t *testing.T) {
 	if strings.Contains(rockyAPI, "AppArmorProfile=") {
 		t.Fatal("Rocky API unit references AppArmor")
 	}
+	updater := debian["stackfort-update@.service"]
+	for _, required := range []string{
+		"Type=oneshot\n", "User=root\n", "ExecStartPre=/usr/bin/sleep 2\n", "ExecStart=/usr/local/sbin/stackfort-updater apply --version=%i --yes --format=json\n",
+		"TimeoutStartSec=30min\n", "UMask=0077\n", "PrivateTmp=yes\n", "ProtectHome=yes\n",
+		"RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6\n", "Restart=no\n",
+	} {
+		if !strings.Contains(updater, required) {
+			t.Fatalf("updater unit lacks %q:\n%s", required, updater)
+		}
+	}
 	pma := debian[phpMyAdminUnit]
 	for _, required := range []string{
 		"User=stackfort-pma\n", "Group=www-data\n", "SupplementaryGroups=stackfort-pma\n",

@@ -81,8 +81,11 @@ const pageHeading = ref<HTMLHeadingElement | null>(null)
 let navigationMedia: MediaQueryList | null = null
 let accountOperationTimer: ReturnType<typeof setTimeout> | null = null
 let accountOperationGeneration = 0
+let platformUpdateTimer: ReturnType<typeof setTimeout> | null = null
+let platformUpdateDeadline = 0
 
 const accountOperationPollInterval = 1000
+const platformUpdatePollInterval = 2000
 
 const activePage = computed<PageKey>(() => consoleMode.value === 'administrator' ? activeAdminPage.value : activeAccountPage.value)
 const healthLabel = computed(() => t(`states.${apiHealth.value}`))
@@ -230,6 +233,10 @@ async function refreshAdminData() {
   else capabilities.value = null
   if (results[6].status === 'fulfilled') updateStatus.value = results[6].value
   else updateStatus.value = null
+	if (updateStatus.value?.platformUpdate?.state === 'applying'
+		|| updateStatus.value?.platformUpdate?.state === 'rolling_back') {
+		beginPlatformUpdateTracking()
+	}
   handleDataFailures(results.slice(0, 5))
   dataLoading.value = false
 }
@@ -629,6 +636,62 @@ async function checkUpdates() {
   })
 }
 
+function stopPlatformUpdateTracking() {
+	if (platformUpdateTimer !== null) clearTimeout(platformUpdateTimer)
+	platformUpdateTimer = null
+	platformUpdateDeadline = 0
+}
+
+function beginPlatformUpdateTracking() {
+	if (platformUpdateTimer !== null) return
+	platformUpdateDeadline = Date.now() + 30 * 60 * 1000
+	const poll = async () => {
+		if (Date.now() >= platformUpdateDeadline || !session.value) {
+			stopPlatformUpdateTracking()
+			return
+		}
+		try {
+			const status = await api.updateStatus()
+			updateStatus.value = status
+			const state = status.platformUpdate?.state
+			if (state === 'complete') {
+				stopPlatformUpdateTracking()
+				noticeCode.value = 'platformUpdateCompleted'
+				void api.build().then((value) => { build.value = value }).catch(() => {})
+				return
+			}
+			if (state === 'rolled_back' || state === 'rollback_failed') {
+				stopPlatformUpdateTracking()
+				errorCode.value = state === 'rolled_back' ? 'platform_update_rolled_back' : 'platform_update_rollback_failed'
+				return
+			}
+		} catch (error) {
+			if (error instanceof ApiError && error.status === 401) {
+				stopPlatformUpdateTracking()
+				clearAuthenticatedState()
+				applicationState.value = 'login'
+				return
+			}
+		}
+		platformUpdateTimer = setTimeout(() => { platformUpdateTimer = null; void poll() }, platformUpdatePollInterval)
+	}
+	platformUpdateTimer = setTimeout(() => { platformUpdateTimer = null; void poll() }, platformUpdatePollInterval)
+}
+
+async function applyUpdate(version: string) {
+	await runAction(async () => {
+		await api.applyUpdate(version)
+		if (updateStatus.value) {
+			updateStatus.value = { ...updateStatus.value, platformUpdate: {
+				state: 'applying', currentVersion: updateStatus.value.currentVersion,
+				targetVersion: version, startedAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+			} }
+		}
+		noticeCode.value = 'platformUpdateAccepted'
+		beginPlatformUpdateTracking()
+	})
+}
+
 async function revokeManagedSession(sessionId: string) {
   await runAction(async () => {
     const current = managedSessions.value.some((item) => item.id === sessionId && item.current)
@@ -665,7 +728,8 @@ async function runAction(action: () => Promise<void>) {
 }
 
 function clearAuthenticatedState() {
-  stopAccountOperationTracking(true)
+	stopAccountOperationTracking(true)
+	stopPlatformUpdateTracking()
   session.value = null
   selfContext.value = null
   packages.value = []
@@ -720,7 +784,8 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  stopAccountOperationTracking()
+	stopAccountOperationTracking()
+	stopPlatformUpdateTracking()
   navigationMedia?.removeEventListener('change', updateNarrowState)
   document.body.classList.remove('navigation-open')
 })
@@ -751,7 +816,7 @@ onBeforeUnmount(() => {
 
       <div class="site-frame" :inert="isNarrow && mobileNavigationOpen">
         <header class="topbar"><button ref="menuButton" class="mobile-menu" type="button" :aria-label="t('topbar.openMenu')" :aria-expanded="mobileNavigationOpen" aria-controls="primary-navigation" @click="openNavigation"><span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span></button><p class="context-label">{{ topbarContext }}</p><div class="topbar-actions"><div class="api-pill" :data-health="apiHealth" role="status" aria-live="polite"><span class="status-dot" aria-hidden="true"></span><span>{{ t('status.api') }}: {{ healthLabel }}</span></div><label class="language-select" for="language"><span>{{ t('topbar.language') }}</span><select id="language" :value="locale" @change="setLocale"><option value="en">{{ t('localeNames.en') }}</option><option value="de">{{ t('localeNames.de') }}</option></select></label></div></header>
-        <main id="main-content" ref="mainContent" class="main-content" tabindex="-1"><div class="page"><header class="page-heading"><p class="eyebrow">{{ consoleMode === 'administrator' ? t('overview.eyebrow') : t('account.eyebrow') }}</p><h1 ref="pageHeading" class="page-title" tabindex="-1">{{ activePageTitle }}</h1><p>{{ activePageDescription }}</p></header><AdminContent v-if="consoleMode === 'administrator'" :page="activeAdminPage" :session="session" :health="apiHealth" :build="build" :packages="packages" :accounts="accounts" :domains="domains" :waf-exceptions="wafExceptions" :operations="operations" :audit-events="auditEvents" :capabilities="capabilities" :update-status="updateStatus" :php-status="accountPHP" :acme-accounts="acmeAccounts" :loading="dataLoading" :action-busy="actionBusy" :error-code="errorCode" :notice-code="noticeCode" @refresh="refreshAdminData" @create-package="createPackage" @create-account="createAccount" @register-acme-account="registerACMEAccount" @select-account="loadDomains" @create-domain="createDomain" @domain-action="runDomainAction" @load-waf-exceptions="loadWAFExceptions" @create-waf-exception="createWAFException" @remove-waf-exception="removeWAFException" @update-policy="updatePolicy" @check-updates="checkUpdates" @logout="logout" /><AccountContent v-else :page="activeAccountPage" :session="session" :accounts="selfContext.accounts" :selected-account-id="selectedOwnerAccountId" :domains="domains" :php-status="accountPHP" :database-workspace="databaseWorkspace" :database-credential="databaseCredential" :file-listing="fileListing" :operation="accountOperation" :certificate-history="certificateHistory" :certificate-history-loading-domain-id="certificateHistoryLoadingDomainId" :sessions="managedSessions" :health="apiHealth" :loading="dataLoading" :action-busy="actionBusy" :error-code="errorCode" :notice-code="noticeCode" @refresh="refreshAccountData" @select-account="selectOwnerAccount" @load-files="loadFiles" @create-domain="createDomain" @create-database="createDatabase" @reveal-database-credential="revealDatabaseCredential" @launch-php-my-admin="launchPHPMyAdmin" @rotate-database-credential="rotateDatabaseCredential" @delete-database-target="deleteDatabaseTarget" @dismiss-database-credential="databaseCredential = null" @update-domain="updateDomain" @domain-action="runDomainAction" @issue-certificate="issueCertificate" @load-certificate-history="loadCertificateHistory" @update-profile="updateProfile" @revoke-session="revokeManagedSession" @revoke-other-sessions="revokeOtherSessions" @logout="logout" /></div></main>
+        <main id="main-content" ref="mainContent" class="main-content" tabindex="-1"><div class="page"><header class="page-heading"><p class="eyebrow">{{ consoleMode === 'administrator' ? t('overview.eyebrow') : t('account.eyebrow') }}</p><h1 ref="pageHeading" class="page-title" tabindex="-1">{{ activePageTitle }}</h1><p>{{ activePageDescription }}</p></header><AdminContent v-if="consoleMode === 'administrator'" :page="activeAdminPage" :session="session" :health="apiHealth" :build="build" :packages="packages" :accounts="accounts" :domains="domains" :waf-exceptions="wafExceptions" :operations="operations" :audit-events="auditEvents" :capabilities="capabilities" :update-status="updateStatus" :php-status="accountPHP" :acme-accounts="acmeAccounts" :loading="dataLoading" :action-busy="actionBusy" :error-code="errorCode" :notice-code="noticeCode" @refresh="refreshAdminData" @create-package="createPackage" @create-account="createAccount" @register-acme-account="registerACMEAccount" @select-account="loadDomains" @create-domain="createDomain" @domain-action="runDomainAction" @load-waf-exceptions="loadWAFExceptions" @create-waf-exception="createWAFException" @remove-waf-exception="removeWAFException" @update-policy="updatePolicy" @check-updates="checkUpdates" @apply-update="applyUpdate" @logout="logout" /><AccountContent v-else :page="activeAccountPage" :session="session" :accounts="selfContext.accounts" :selected-account-id="selectedOwnerAccountId" :domains="domains" :php-status="accountPHP" :database-workspace="databaseWorkspace" :database-credential="databaseCredential" :file-listing="fileListing" :operation="accountOperation" :certificate-history="certificateHistory" :certificate-history-loading-domain-id="certificateHistoryLoadingDomainId" :sessions="managedSessions" :health="apiHealth" :loading="dataLoading" :action-busy="actionBusy" :error-code="errorCode" :notice-code="noticeCode" @refresh="refreshAccountData" @select-account="selectOwnerAccount" @load-files="loadFiles" @create-domain="createDomain" @create-database="createDatabase" @reveal-database-credential="revealDatabaseCredential" @launch-php-my-admin="launchPHPMyAdmin" @rotate-database-credential="rotateDatabaseCredential" @delete-database-target="deleteDatabaseTarget" @dismiss-database-credential="databaseCredential = null" @update-domain="updateDomain" @domain-action="runDomainAction" @issue-certificate="issueCertificate" @load-certificate-history="loadCertificateHistory" @update-profile="updateProfile" @revoke-session="revokeManagedSession" @revoke-other-sessions="revokeOtherSessions" @logout="logout" /></div></main>
       </div>
     </div>
   </template>

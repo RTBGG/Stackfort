@@ -81,6 +81,48 @@ func TestClientPrepareOCIImageCarriesOnlyTypedIntent(t *testing.T) {
 	}
 }
 
+func TestClientPlatformUpdateMethodsAreTyped(t *testing.T) {
+	t.Parallel()
+	correlation := agentprotocol.AuditCorrelation{OperationID: "019d2eaa-62d0-7f52-8ac7-0aeb932455db",
+		ActorKind: agentprotocol.ActorIdentity, ActorID: "019d2eaa-52d0-7f52-8ac7-0aeb932455db"}
+	client := &Client{httpClient: &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		decoded, err := agentprotocol.DecodeRequest(request.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response := agentprotocol.Response{ProtocolVersion: agentprotocol.WireVersion, RequestID: decoded.RequestID}
+		status := http.StatusOK
+		switch decoded.Operation {
+		case agentprotocol.OperationInspectPlatformUpdate:
+			response.PlatformUpdateStatus = &agentprotocol.PlatformUpdateStatusResponse{State: "idle"}
+		case agentprotocol.OperationStartPlatformUpdate:
+			if decoded.StartPlatformUpdate == nil || decoded.StartPlatformUpdate.Version != "1.2.3" ||
+				decoded.Correlation == nil || *decoded.Correlation != correlation {
+				t.Fatalf("start request = %#v", decoded)
+			}
+			status = http.StatusAccepted
+			response.PlatformUpdateStart = &agentprotocol.PlatformUpdateStartResponse{Version: "1.2.3", Accepted: true}
+		default:
+			t.Fatalf("unexpected operation %s", decoded.Operation)
+		}
+		body, marshalErr := json.Marshal(response)
+		if marshalErr != nil {
+			t.Fatal(marshalErr)
+		}
+		return &http.Response{StatusCode: status, Header: http.Header{
+			"Content-Type": []string{agentprotocol.MediaType}, "X-Stackfort-Protocol": []string{"1"},
+		}, Body: io.NopCloser(bytes.NewReader(body))}, nil
+	})}}
+	status, err := client.InspectPlatformUpdate(t.Context(), "update-inspect-key")
+	if err != nil || status.State != "idle" {
+		t.Fatalf("inspect = %#v, %v", status, err)
+	}
+	accepted, err := client.StartPlatformUpdate(t.Context(), "update-start-key", correlation, "1.2.3")
+	if err != nil || !accepted.Accepted || accepted.Version != "1.2.3" {
+		t.Fatalf("start = %#v, %v", accepted, err)
+	}
+}
+
 func TestClientReconcilesOnlyMetadataOCIResources(t *testing.T) {
 	t.Parallel()
 	identity := handlerClientIdentity(t)

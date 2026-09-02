@@ -1371,5 +1371,5 @@ and healthy Quadlet replay. See the
 ## Deferred from the current Phase 2 slice
 
 Database/application-consistent backup,
-SFTP, the functional updater application, and arm64 support remain
+SFTP, functional-updater upgrade-matrix qualification, and arm64 support remain
 deliberately sequenced as described in `roadmap.md`.
