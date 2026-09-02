@@ -29,6 +29,7 @@ import {
   type SelfServiceContext,
   type Session,
   type TLSCertificate,
+  type UpdateStatus,
 } from './api'
 import AuthView from './AuthView.vue'
 import { isSupportedLocale } from './i18n'
@@ -62,6 +63,7 @@ const certificateHistoryLoadingDomainId = ref('')
 const auditEvents = ref<AuditEvent[]>([])
 const managedSessions = ref<ManagedSession[]>([])
 const capabilities = ref<HostCapabilities | null>(null)
+const updateStatus = ref<UpdateStatus | null>(null)
 const acmeAccounts = ref<ACMEAccount[]>([])
 const selectedOwnerAccountId = ref('')
 const dataLoading = ref(false)
@@ -217,6 +219,7 @@ async function refreshAdminData() {
   errorCode.value = ''
   const results = await Promise.allSettled([
     api.packages(), api.accounts(), api.operations(), api.auditEvents(), api.acmeAccounts(), api.hostCapabilities(),
+    api.updateStatus(),
   ])
   if (results[0].status === 'fulfilled') packages.value = results[0].value
   if (results[1].status === 'fulfilled') accounts.value = results[1].value
@@ -225,6 +228,8 @@ async function refreshAdminData() {
   if (results[4].status === 'fulfilled') acmeAccounts.value = results[4].value
   if (results[5].status === 'fulfilled') capabilities.value = results[5].value
   else capabilities.value = null
+  if (results[6].status === 'fulfilled') updateStatus.value = results[6].value
+  else updateStatus.value = null
   handleDataFailures(results.slice(0, 5))
   dataLoading.value = false
 }
@@ -610,6 +615,20 @@ async function updateProfile(input: { email: string; displayName: string; locale
   })
 }
 
+async function updatePolicy(input: { channel: UpdateStatus['channel']; automaticChecks: boolean }) {
+  await runAction(async () => {
+    updateStatus.value = await api.updatePolicy(input)
+    noticeCode.value = 'updatePolicySaved'
+  })
+}
+
+async function checkUpdates() {
+  await runAction(async () => {
+    updateStatus.value = await api.checkUpdates()
+    noticeCode.value = 'updateCheckCompleted'
+  })
+}
+
 async function revokeManagedSession(sessionId: string) {
   await runAction(async () => {
     const current = managedSessions.value.some((item) => item.id === sessionId && item.current)
@@ -663,6 +682,7 @@ function clearAuthenticatedState() {
   managedSessions.value = []
   acmeAccounts.value = []
   capabilities.value = null
+  updateStatus.value = null
 }
 
 async function logout() {
@@ -731,7 +751,7 @@ onBeforeUnmount(() => {
 
       <div class="site-frame" :inert="isNarrow && mobileNavigationOpen">
         <header class="topbar"><button ref="menuButton" class="mobile-menu" type="button" :aria-label="t('topbar.openMenu')" :aria-expanded="mobileNavigationOpen" aria-controls="primary-navigation" @click="openNavigation"><span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span></button><p class="context-label">{{ topbarContext }}</p><div class="topbar-actions"><div class="api-pill" :data-health="apiHealth" role="status" aria-live="polite"><span class="status-dot" aria-hidden="true"></span><span>{{ t('status.api') }}: {{ healthLabel }}</span></div><label class="language-select" for="language"><span>{{ t('topbar.language') }}</span><select id="language" :value="locale" @change="setLocale"><option value="en">{{ t('localeNames.en') }}</option><option value="de">{{ t('localeNames.de') }}</option></select></label></div></header>
-        <main id="main-content" ref="mainContent" class="main-content" tabindex="-1"><div class="page"><header class="page-heading"><p class="eyebrow">{{ consoleMode === 'administrator' ? t('overview.eyebrow') : t('account.eyebrow') }}</p><h1 ref="pageHeading" class="page-title" tabindex="-1">{{ activePageTitle }}</h1><p>{{ activePageDescription }}</p></header><AdminContent v-if="consoleMode === 'administrator'" :page="activeAdminPage" :session="session" :health="apiHealth" :build="build" :packages="packages" :accounts="accounts" :domains="domains" :waf-exceptions="wafExceptions" :operations="operations" :audit-events="auditEvents" :capabilities="capabilities" :php-status="accountPHP" :acme-accounts="acmeAccounts" :loading="dataLoading" :action-busy="actionBusy" :error-code="errorCode" :notice-code="noticeCode" @refresh="refreshAdminData" @create-package="createPackage" @create-account="createAccount" @register-acme-account="registerACMEAccount" @select-account="loadDomains" @create-domain="createDomain" @domain-action="runDomainAction" @load-waf-exceptions="loadWAFExceptions" @create-waf-exception="createWAFException" @remove-waf-exception="removeWAFException" @logout="logout" /><AccountContent v-else :page="activeAccountPage" :session="session" :accounts="selfContext.accounts" :selected-account-id="selectedOwnerAccountId" :domains="domains" :php-status="accountPHP" :database-workspace="databaseWorkspace" :database-credential="databaseCredential" :file-listing="fileListing" :operation="accountOperation" :certificate-history="certificateHistory" :certificate-history-loading-domain-id="certificateHistoryLoadingDomainId" :sessions="managedSessions" :health="apiHealth" :loading="dataLoading" :action-busy="actionBusy" :error-code="errorCode" :notice-code="noticeCode" @refresh="refreshAccountData" @select-account="selectOwnerAccount" @load-files="loadFiles" @create-domain="createDomain" @create-database="createDatabase" @reveal-database-credential="revealDatabaseCredential" @launch-php-my-admin="launchPHPMyAdmin" @rotate-database-credential="rotateDatabaseCredential" @delete-database-target="deleteDatabaseTarget" @dismiss-database-credential="databaseCredential = null" @update-domain="updateDomain" @domain-action="runDomainAction" @issue-certificate="issueCertificate" @load-certificate-history="loadCertificateHistory" @update-profile="updateProfile" @revoke-session="revokeManagedSession" @revoke-other-sessions="revokeOtherSessions" @logout="logout" /></div></main>
+        <main id="main-content" ref="mainContent" class="main-content" tabindex="-1"><div class="page"><header class="page-heading"><p class="eyebrow">{{ consoleMode === 'administrator' ? t('overview.eyebrow') : t('account.eyebrow') }}</p><h1 ref="pageHeading" class="page-title" tabindex="-1">{{ activePageTitle }}</h1><p>{{ activePageDescription }}</p></header><AdminContent v-if="consoleMode === 'administrator'" :page="activeAdminPage" :session="session" :health="apiHealth" :build="build" :packages="packages" :accounts="accounts" :domains="domains" :waf-exceptions="wafExceptions" :operations="operations" :audit-events="auditEvents" :capabilities="capabilities" :update-status="updateStatus" :php-status="accountPHP" :acme-accounts="acmeAccounts" :loading="dataLoading" :action-busy="actionBusy" :error-code="errorCode" :notice-code="noticeCode" @refresh="refreshAdminData" @create-package="createPackage" @create-account="createAccount" @register-acme-account="registerACMEAccount" @select-account="loadDomains" @create-domain="createDomain" @domain-action="runDomainAction" @load-waf-exceptions="loadWAFExceptions" @create-waf-exception="createWAFException" @remove-waf-exception="removeWAFException" @update-policy="updatePolicy" @check-updates="checkUpdates" @logout="logout" /><AccountContent v-else :page="activeAccountPage" :session="session" :accounts="selfContext.accounts" :selected-account-id="selectedOwnerAccountId" :domains="domains" :php-status="accountPHP" :database-workspace="databaseWorkspace" :database-credential="databaseCredential" :file-listing="fileListing" :operation="accountOperation" :certificate-history="certificateHistory" :certificate-history-loading-domain-id="certificateHistoryLoadingDomainId" :sessions="managedSessions" :health="apiHealth" :loading="dataLoading" :action-busy="actionBusy" :error-code="errorCode" :notice-code="noticeCode" @refresh="refreshAccountData" @select-account="selectOwnerAccount" @load-files="loadFiles" @create-domain="createDomain" @create-database="createDatabase" @reveal-database-credential="revealDatabaseCredential" @launch-php-my-admin="launchPHPMyAdmin" @rotate-database-credential="rotateDatabaseCredential" @delete-database-target="deleteDatabaseTarget" @dismiss-database-credential="databaseCredential = null" @update-domain="updateDomain" @domain-action="runDomainAction" @issue-certificate="issueCertificate" @load-certificate-history="loadCertificateHistory" @update-profile="updateProfile" @revoke-session="revokeManagedSession" @revoke-other-sessions="revokeOtherSessions" @logout="logout" /></div></main>
       </div>
     </div>
   </template>

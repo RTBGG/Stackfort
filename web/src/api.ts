@@ -23,6 +23,31 @@ export type Session = {
   mfaAuthenticatedAt?: string
 }
 
+export type UpdateRelease = {
+  version: string
+  tag: string
+  url: string
+  publishedAt: string
+  prerelease: boolean
+  immutable: boolean
+}
+
+export type UpdateStatus = {
+  currentVersion: string
+  currentVersionValid: boolean
+  channel: 'stable' | 'beta'
+  automaticChecks: boolean
+  automaticFunctionalUpdates: false
+  checkIntervalSeconds: number
+  lastAttemptedAt?: string
+  lastSuccessfulAt?: string
+  nextAutomaticCheckAt?: string
+  latestRelease?: UpdateRelease
+  updateAvailable: boolean
+  lastErrorCode?: string
+  rateLimitResetAt?: string
+}
+
 export type PackageLimits = {
   maxDomains: number
   maxDatabases: number
@@ -665,6 +690,13 @@ export const api = {
     { method: 'DELETE', csrf: true, idempotent: true },
   ),
   hostCapabilities: () => request<HostCapabilities>('/api/v1/admin/host/capabilities'),
+  updateStatus: () => request<UpdateStatus>('/api/v1/admin/updates'),
+  updatePolicy: (input: { channel: UpdateStatus['channel']; automaticChecks: boolean }) => request<UpdateStatus>(
+    '/api/v1/admin/updates/policy', { method: 'PATCH', body: input, csrf: true },
+  ),
+  checkUpdates: () => request<UpdateStatus>(
+    '/api/v1/admin/updates/check', { method: 'POST', csrf: true },
+  ),
   accountPHP: (accountId: string) => request<AccountPHPStatus>(
     `/api/v1/accounts/${encodeURIComponent(accountId)}/php`,
   ),

@@ -48,6 +48,10 @@ function installHealthyAPI() {
       platform: { distributionId: 'debian', versionId: '13', architecture: 'amd64', kernelRelease: '6.12', support: { status: 'available' } },
       services: [],
     }
+    else if (url.endsWith('/admin/updates')) body = {
+      currentVersion: '1.0.0', currentVersionValid: true, channel: 'stable', automaticChecks: true,
+      automaticFunctionalUpdates: false, checkIntervalSeconds: 21600, updateAvailable: false,
+    }
     return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) } as Response)
   }))
 }

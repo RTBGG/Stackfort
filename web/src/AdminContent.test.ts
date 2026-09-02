@@ -6,7 +6,7 @@ import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createI18n } from 'vue-i18n'
 import AdminContent from './AdminContent.vue'
-import type { AccountPHPStatus, HostCapabilities, HostingAccount, HostingPackage, Session } from './api'
+import type { AccountPHPStatus, HostCapabilities, HostingAccount, HostingPackage, Session, UpdateStatus } from './api'
 import { messages } from './i18n'
 
 const session: Session = {
@@ -49,8 +49,19 @@ const phpStatus: AccountPHPStatus = {
   pools: [{ version: '8.4', state: 'missing', configuredDomains: 0 }],
 }
 
+const updateStatus: UpdateStatus = {
+  currentVersion: '1.0.0', currentVersionValid: true, channel: 'stable', automaticChecks: true,
+  automaticFunctionalUpdates: false, checkIntervalSeconds: 21600,
+  lastAttemptedAt: '2026-08-25T09:00:00Z', lastSuccessfulAt: '2026-08-25T09:00:00Z',
+  nextAutomaticCheckAt: '2026-08-25T15:00:00Z', updateAvailable: true,
+  latestRelease: {
+    version: '1.1.0', tag: 'v1.1.0', url: 'https://github.com/RTBGG/Stackfort/releases/tag/v1.1.0',
+    publishedAt: '2026-08-25T08:00:00Z', prerelease: false, immutable: true,
+  },
+}
+
 function mountContent(
-  page: 'settings' | 'packages' | 'domains',
+  page: 'settings' | 'packages' | 'domains' | 'updates',
   packages: HostingPackage[] = [],
   accounts: HostingAccount[] = [],
 ) {
@@ -58,7 +69,7 @@ function mountContent(
     attachTo: document.body,
     props: {
       page, session, health: 'healthy', build: null, packages, accounts,
-      domains: [], wafExceptions: [], operations: [], auditEvents: [], capabilities, phpStatus, acmeAccounts: [],
+      domains: [], wafExceptions: [], operations: [], auditEvents: [], capabilities, updateStatus, phpStatus, acmeAccounts: [],
       loading: false, actionBusy: false, errorCode: '', noticeCode: '',
     },
     global: { plugins: [createI18n({ legacy: false, locale: 'en', fallbackLocale: 'en', messages })] },
@@ -113,6 +124,26 @@ describe('administrator PHP controls', () => {
       target: { type: 'php', rootMode: 'default', phpVersion: '8.4' },
 		disableTls: false, tlsMode: 'acme', wafMode: 'off', cachePreset: 'disabled',
     }])
+    wrapper.unmount()
+  })
+})
+
+describe('administrator update policy', () => {
+  it('shows verified discovery state and emits explicit policy and check actions', async () => {
+    const wrapper = mountContent('updates')
+    expect(wrapper.text()).toContain('v1.1.0')
+    expect(wrapper.text()).toContain('Immutable GitHub release')
+
+    const form = wrapper.get('form.update-policy')
+    await form.get('select').setValue('beta')
+    await form.get<HTMLInputElement>('input[type="checkbox"]').setValue(false)
+    await form.trigger('submit')
+    expect(wrapper.emitted('updatePolicy')?.[0]).toEqual([{ channel: 'beta', automaticChecks: false }])
+
+    await form.get('button.secondary-action').trigger('click')
+    expect(wrapper.emitted('checkUpdates')).toHaveLength(1)
+    const results = await axe.run(wrapper.element, { rules: { 'color-contrast': { enabled: false } } })
+    expect(results.violations.map((violation) => violation.id)).toEqual([])
     wrapper.unmount()
   })
 })

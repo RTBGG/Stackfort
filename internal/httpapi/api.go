@@ -49,6 +49,7 @@ type Services struct {
 	LogWorkspace          LogWorkspaceService
 	CacheWorkspace        CacheWorkspaceService
 	ScheduledJobs         ScheduledJobWorkspaceService
+	UpdateChecks          UpdateCheckService
 }
 
 // New returns the API handler with safe defaults and explicit routes.
@@ -144,6 +145,11 @@ func NewWithServices(logger *slog.Logger, state HealthChecker, services Services
 	}
 	if services.Authentication != nil && services.ScheduledJobs != nil {
 		registerScheduledJobRoutes(mux, logger, services.Authentication, services.ScheduledJobs)
+	}
+	if services.Authentication != nil && services.PlatformAuthorization != nil && services.UpdateChecks != nil {
+		registerUpdateRoutes(
+			mux, logger, services.Authentication, services.PlatformAuthorization, services.UpdateChecks,
+		)
 	}
 
 	return securityHeaders(requestLog(logger, rejectCrossSiteMutations(mux)))

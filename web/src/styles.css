@@ -282,6 +282,16 @@ td progress { width: 130px; max-width: 100%; accent-color: #2f9e68; }
 .update-placeholder, .settings-panel { display: grid; grid-template-columns: auto 1fr; min-height: 260px; align-items: start; gap: 24px; }
 .update-placeholder h2, .settings-panel h2 { margin: 0; color: #22352f; font-family: Georgia, "Times New Roman", serif; font-size: 29px; font-weight: 500; }
 .update-placeholder > div > p, .settings-panel > div > p { color: #586d65; font-size: 13px; line-height: 1.6; }
+.update-panel { display: grid; gap: 22px; }
+.update-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 22px; padding-bottom: 18px; border-bottom: 1px solid #e4ebe7; }
+.update-heading h2 { margin: 0; color: #22352f; font-family: Georgia, "Times New Roman", serif; font-size: 29px; font-weight: 500; }
+.update-heading p:not(.eyebrow) { max-width: 720px; margin-bottom: 0; color: #586d65; font-size: 13px; line-height: 1.6; }
+.update-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(260px, .85fr); gap: 30px; align-items: start; }
+.update-details { margin-top: 0; }
+.update-details a { color: #236b4a; }
+.update-policy { position: static; padding: 18px; background: #f6f9f7; border: 1px solid #dfe8e3; border-radius: 9px; }
+.update-policy .form-actions { display: flex; flex-wrap: wrap; gap: 9px; }
+.update-safety-note { margin: 0; padding: 13px 15px; color: #526a61; background: #f4f7f5; border-left: 3px solid #87aa99; border-radius: 5px; font-size: 12px; line-height: 1.55; }
 .settings-panel { grid-template-columns: 1fr 1fr; }
 .settings-panel .danger-action { justify-self: end; grid-column: 2; }
 
@@ -336,7 +346,7 @@ td progress { width: 130px; max-width: 100%; accent-color: #2f9e68; }
   .metric-grid { grid-template-columns: 1fr 1fr; }
   .management-grid { grid-template-columns: 1fr; }
   .management-form { position: static; }
-  .usage-grid, .settings-grid { grid-template-columns: 1fr; }
+  .usage-grid, .settings-grid, .update-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 680px) {
@@ -361,6 +371,7 @@ td progress { width: 130px; max-width: 100%; accent-color: #2f9e68; }
   .content-toolbar .inline-feedback { width: 100%; }
   .compact-picker { width: 100%; max-width: none; margin-left: 0; }
   .update-placeholder { grid-template-columns: 1fr; }
+  .update-heading { align-items: stretch; flex-direction: column; }
   .settings-panel .danger-action { justify-self: start; grid-column: 1; }
   .inline-edit, .quota-list { grid-template-columns: 1fr; }
 	.file-mutation-panel { grid-template-columns: 1fr; }

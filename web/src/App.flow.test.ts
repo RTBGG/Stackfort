@@ -43,6 +43,10 @@ function authenticatedResource(input: string) {
   if (input.includes('/admin/audit-events')) return response(200, { events: [] })
   if (input.endsWith('/admin/acme/accounts')) return response(200, { accounts: [] })
   if (input.endsWith('/admin/host/capabilities')) return response(503, { code: 'host_agent_unavailable' })
+  if (input.endsWith('/admin/updates')) return response(200, {
+    currentVersion: '1.0.0', currentVersionValid: true, channel: 'stable', automaticChecks: true,
+    automaticFunctionalUpdates: false, checkIntervalSeconds: 21600, updateAvailable: false,
+  })
   if (input.endsWith('/health')) return response(200, { status: 'ok' })
   if (input.endsWith('/build')) return response(200, { version: 'dev', commit: 'test', buildDate: 'unknown' })
   return null

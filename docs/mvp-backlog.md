@@ -593,15 +593,17 @@ Acceptance:
 
 Bootstrap, password/MFA login, session restoration, dashboard, package/account
 creation, account-selected domain lifecycle actions, host services, operation
-progress, audit history, settings/logout, and an honest read-only updater
-placeholder now form one responsive administrator console. Bounded admin APIs
+progress, audit history, settings/logout, and an honest release-discovery view
+now form one responsive administrator console. Bounded admin APIs
 reuse server-side authorization, recent-authentication, CSRF, immutable package,
 and durable-operation contracts. See
 [Administrator Phase 1 flows](administrator-phase1-flows.md) and
 [ADR 0030](adr/0030-authenticated-bounded-administrator-console.md).
 
 Build login/bootstrap, dashboard, packages, accounts, domain operations, service
-health, operation progress, audit history, and update status placeholder.
+health, operation progress, audit history, and update status. Phase 6 extends
+that status with immutable stable/beta release discovery; functional updating
+remains separate.
 
 ### H-004 — Account-owner Phase 1 flows (`P0`, implemented and browser-validated)
 
@@ -1369,5 +1371,5 @@ and healthy Quadlet replay. See the
 ## Deferred from the current Phase 2 slice
 
 Database/application-consistent backup,
-OCI applications, SFTP, the updater application, and arm64 support remain
+SFTP, the functional updater application, and arm64 support remain
 deliberately sequenced as described in `roadmap.md`.

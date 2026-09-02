@@ -225,8 +225,25 @@ shared contract and standalone commands are documented in
 
 CI performs the build twice and rejects differing archive checksums. A tag or
 manual release-candidate run also creates an SPDX JSON SBOM and GitHub/Sigstore
-build attestations. It does not automatically create or publish a GitHub
-Release.
+build attestations. A manual run uploads a release candidate only. A canonical
+stable or beta tag publishes a GitHub Release after verifying that repository
+release immutability is enabled; beta releases are prereleases and never become
+the latest stable release. If the resulting release is unexpectedly mutable,
+CI removes that release and fails while retaining the tag for a retry. See
+[`docs/update-channels-and-checks.md`](docs/update-channels-and-checks.md).
+
+For local update-check work, the API routes are:
+
+```text
+GET   /api/v1/admin/updates
+PATCH /api/v1/admin/updates/policy
+POST  /api/v1/admin/updates/check
+```
+
+The scheduler wakes every 15 minutes but makes a network request only when the
+durable six-hour policy (or one-hour failure retry) is due. Tests must replace
+the internal endpoint/client with a local server; automated tests must not call
+GitHub. Functional updating is deliberately absent at this milestone.
 
 The WAF and Vinyl package directories must each contain their three native
 packages and adjacent `*.release.json` records produced on the locked Debian

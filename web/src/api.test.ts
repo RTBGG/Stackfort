@@ -273,4 +273,26 @@ describe('browser API client', () => {
       environment: 'letsencrypt-production', contactEmail: 'admin@example.test', termsAccepted: true,
     })
   })
+
+  it('binds update-policy changes and manual checks to same-origin CSRF', async () => {
+    vi.spyOn(document, 'cookie', 'get').mockReturnValue('__Host-sf-csrf=csrf-bound')
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true, status: 200,
+      json: () => Promise.resolve({ channel: 'beta', automaticChecks: false }),
+    } as Response)
+    vi.stubGlobal('fetch', fetchMock)
+
+    await api.updatePolicy({ channel: 'beta', automaticChecks: false })
+    await api.checkUpdates()
+
+    const [policyURL, policyRequest] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(policyURL).toBe('/api/v1/admin/updates/policy')
+    expect(policyRequest.method).toBe('PATCH')
+    expect((policyRequest.headers as Headers).get('X-CSRF-Token')).toBe('csrf-bound')
+    expect(JSON.parse(String(policyRequest.body))).toEqual({ channel: 'beta', automaticChecks: false })
+    const [checkURL, checkRequest] = fetchMock.mock.calls[1] as [string, RequestInit]
+    expect(checkURL).toBe('/api/v1/admin/updates/check')
+    expect(checkRequest.method).toBe('POST')
+    expect((checkRequest.headers as Headers).get('X-CSRF-Token')).toBe('csrf-bound')
+  })
 })

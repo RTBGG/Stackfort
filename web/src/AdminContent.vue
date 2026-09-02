@@ -17,6 +17,7 @@ import type {
   Operation,
   PackageLimits,
   Session,
+  UpdateStatus,
 } from './api'
 import { formatBytes, formatDateTime, formatNumber, formatPercent } from './formatting'
 import { isSupportedLocale, type SupportedLocale } from './i18n'
@@ -33,6 +34,7 @@ const props = defineProps<{
   operations: Operation[]
   auditEvents: AuditEvent[]
   capabilities: HostCapabilities | null
+  updateStatus: UpdateStatus | null
   phpStatus: AccountPHPStatus | null
   acmeAccounts: ACMEAccount[]
   loading: boolean
@@ -65,6 +67,8 @@ const emit = defineEmits<{
     accountId: string; domainId: string; ruleId: number; requestPath?: string; parameter?: string; expiresAt: string
   }]
   removeWAFException: [input: { accountId: string; domainId: string; exceptionId: string }]
+  updatePolicy: [input: { channel: UpdateStatus['channel']; automaticChecks: boolean }]
+  checkUpdates: []
   logout: []
 }>()
 
@@ -91,6 +95,10 @@ const wafExceptionForm = reactive({
   requestPath: '',
   parameter: '',
   expiresAt: defaultExceptionExpiry(),
+})
+const updateForm = reactive({
+  channel: 'stable' as UpdateStatus['channel'],
+  automaticChecks: true,
 })
 
 const activeLocale = computed<SupportedLocale>(() => (
@@ -125,6 +133,10 @@ const acmeRegistrationPending = computed(() => props.operations.some((item) => (
     item.status === 'pending' || item.status === 'running' || item.status === 'cancelling'
   )
 )))
+const updatePolicyChanged = computed(() => Boolean(props.updateStatus) && (
+  updateForm.channel !== props.updateStatus?.channel
+  || updateForm.automaticChecks !== props.updateStatus?.automaticChecks
+))
 
 watch(() => props.packages, (packages) => {
   if (!accountForm.packageId && packages[0]) accountForm.packageId = packages[0].id
@@ -150,6 +162,12 @@ watch([() => props.accounts, () => props.page], ([accounts, page]) => {
 
 watch(selectedAccountId, () => { selectedWAFDomainId.value = '' })
 
+watch(() => props.updateStatus, (status) => {
+  if (!status) return
+  updateForm.channel = status.channel
+  updateForm.automaticChecks = status.automaticChecks
+}, { immediate: true })
+
 function defaultExceptionExpiry(): string {
   const date = new Date(Date.now() + 60 * 60 * 1000)
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
@@ -163,6 +181,13 @@ function displayDate(value?: string): string {
   } catch {
     return t('common.notAvailable')
   }
+}
+
+function submitUpdatePolicy() {
+  emit('updatePolicy', {
+    channel: updateForm.channel,
+    automaticChecks: updateForm.automaticChecks,
+  })
 }
 
 function optionalBytes(gibibytes: number): number | undefined {
@@ -453,9 +478,34 @@ function removeWAFException(exception: DomainWAFException) {
       <div v-if="auditEvents.length === 0" class="empty-state"><strong>{{ t('audit.empty') }}</strong><p>{{ t('audit.emptyBody') }}</p></div>
     </section>
 
-    <section v-else-if="page === 'updates'" class="panel update-placeholder">
-      <span class="placeholder-icon" aria-hidden="true"><span class="nav-icon" data-icon="update"></span></span>
-      <div><p class="eyebrow">{{ t('updates.channel') }}</p><h2>{{ t('updates.title') }}</h2><p>{{ t('updates.body') }}</p><dl class="detail-list"><div><dt>{{ t('updates.currentVersion') }}</dt><dd>{{ build?.version ?? t('common.notAvailable') }}</dd></div><div><dt>{{ t('updates.automaticChecks') }}</dt><dd>{{ t('updates.planned') }}</dd></div></dl></div>
+    <section v-else-if="page === 'updates'" class="panel update-panel">
+      <header class="update-heading">
+        <div><p class="eyebrow">{{ t('updates.channel') }}</p><h2>{{ t('updates.title') }}</h2><p>{{ t('updates.body') }}</p></div>
+        <span v-if="updateStatus" class="state-badge" :data-state="updateStatus.updateAvailable ? 'pending' : 'active'">{{ updateStatus.updateAvailable ? t('updates.available') : t('updates.current') }}</span>
+      </header>
+
+      <div v-if="updateStatus" class="update-grid">
+        <dl class="detail-list update-details">
+          <div><dt>{{ t('updates.currentVersion') }}</dt><dd><code>{{ updateStatus.currentVersion }}</code></dd></div>
+          <div><dt>{{ t('updates.latestVersion') }}</dt><dd><a v-if="updateStatus.latestRelease" :href="updateStatus.latestRelease.url" target="_blank" rel="noopener noreferrer"><code>{{ updateStatus.latestRelease.tag }}</code></a><span v-else>{{ t('common.notAvailable') }}</span></dd></div>
+          <div><dt>{{ t('updates.releaseIntegrity') }}</dt><dd>{{ updateStatus.latestRelease?.immutable ? t('updates.immutable') : t('common.notAvailable') }}</dd></div>
+          <div><dt>{{ t('updates.lastSuccessfulCheck') }}</dt><dd>{{ displayDate(updateStatus.lastSuccessfulAt) }}</dd></div>
+          <div><dt>{{ t('updates.nextCheck') }}</dt><dd>{{ updateStatus.automaticChecks ? displayDate(updateStatus.nextAutomaticCheckAt) : t('updates.disabled') }}</dd></div>
+          <div><dt>{{ t('updates.checkInterval') }}</dt><dd>{{ t('updates.hours', { count: formatNumber(updateStatus.checkIntervalSeconds / 3600, activeLocale) }) }}</dd></div>
+        </dl>
+
+        <form class="management-form update-policy" @submit.prevent="submitUpdatePolicy">
+          <label><span>{{ t('updates.releaseChannel') }}</span><select v-model="updateForm.channel"><option value="stable">{{ t('updates.stable') }}</option><option value="beta">{{ t('updates.beta') }}</option></select></label>
+          <p class="form-hint">{{ updateForm.channel === 'stable' ? t('updates.stableHint') : t('updates.betaHint') }}</p>
+          <label class="check-field"><input v-model="updateForm.automaticChecks" type="checkbox"><span>{{ t('updates.automaticChecks') }}</span></label>
+          <p class="form-hint">{{ t('updates.automaticChecksHint') }}</p>
+          <div class="form-actions"><button class="primary-action" type="submit" :disabled="actionBusy || !updatePolicyChanged">{{ t('updates.savePolicy') }}</button><button class="secondary-action" type="button" :disabled="actionBusy" @click="emit('checkUpdates')">{{ t('updates.checkNow') }}</button></div>
+        </form>
+      </div>
+
+      <p v-if="updateStatus?.lastErrorCode" class="inline-feedback error" role="alert">{{ t(`errors.${updateStatus.lastErrorCode}`) }}<span v-if="updateStatus.rateLimitResetAt"> {{ t('updates.retryAfter', { date: displayDate(updateStatus.rateLimitResetAt) }) }}</span></p>
+      <p v-if="updateStatus" class="update-safety-note">{{ t('updates.functionalUpdatesOff') }}</p>
+      <div v-else class="empty-state"><strong>{{ t('updates.unavailable') }}</strong><p>{{ t('updates.unavailableBody') }}</p></div>
     </section>
 
     <div v-else class="management-grid">

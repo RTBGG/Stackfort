@@ -466,7 +466,14 @@ GitHub Releases are the initial distribution channel. Release assets include:
 - installer;
 - checksum manifest, SBOM, signatures/attestations, and release metadata.
 
-The updater downloads a selected immutable semantic version, verifies provenance
+The unprivileged API performs discovery separately from activation. A durable
+singleton policy defaults to six-hour stable-channel checks; a scheduler uses
+ETag validation and rate-limit state against the fixed project endpoint. Draft,
+mutable, incomplete, mismatched, or non-canonical releases are discarded before
+their bounded metadata reaches the browser. Platform-manage policy changes are
+recent-authenticated and audited. See [ADR 0060](adr/0060-immutable-stable-beta-release-discovery.md).
+
+The future functional updater downloads a selected immutable semantic version, verifies provenance
 and hashes, stages it, checks compatibility and free space, snapshots state,
 applies migrations, swaps versioned binaries/assets, restarts services in order,
 and runs health checks. It rolls back binaries/configuration automatically when

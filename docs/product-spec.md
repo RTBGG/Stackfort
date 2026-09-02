@@ -337,6 +337,12 @@ artifacts require cryptographic verification, staging, a health check, and a
 rollback path. Database migrations are forward-compatible within the documented
 rollback window.
 
+Discovery accepts only canonical stable or beta tags backed by a published,
+immutable GitHub Release and the complete digested release inventory. It uses
+conditional, bounded checks against the fixed project endpoint and never treats
+discovery as authorization to download or activate code. See
+[Update channels and release checks](update-channels-and-checks.md).
+
 ## 7. Explicit non-goals for version 1
 
 - mail server or mailbox hosting;

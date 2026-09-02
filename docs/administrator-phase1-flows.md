@@ -69,11 +69,14 @@ The administrator shell now provides:
 - session identity and sign-out;
 - fixed-environment Let's Encrypt production-account registration with
   explicit terms acceptance and non-secret state; and
-- an honest update-status placeholder showing only the installed build.
+- an update view with installed/latest version, immutable-release evidence,
+  stable/beta policy, automatic-check schedule, manual checks, and bounded
+  failure state.
 
-The updater view performs no release discovery or mutation. Signed channels,
-staging, health verification, and rollback remain assigned to the updater
-milestone.
+The update view performs bounded release discovery but no download or host
+mutation. Policy changes are recent-authenticated and audited. Local provenance
+verification, staging, health verification, activation, migrations, and rollback
+remain assigned to the functional-updater milestone.
 
 ## Verification
 

@@ -36,6 +36,7 @@ import (
 	"github.com/RTBGG/stackfort/internal/phpworkspace"
 	"github.com/RTBGG/stackfort/internal/secretstore"
 	"github.com/RTBGG/stackfort/internal/store"
+	"github.com/RTBGG/stackfort/internal/updatecheck"
 )
 
 const (
@@ -88,6 +89,10 @@ func run(logger *slog.Logger) (returnErr error) {
 	clear(masterKey[:])
 	if err != nil {
 		return fmt.Errorf("initialize control-plane repository: %w", err)
+	}
+	updateCheckService, err := updatecheck.New(repository, buildinfo.Version)
+	if err != nil {
+		return fmt.Errorf("initialize update check service: %w", err)
 	}
 	recoveryCtx, cancelRecovery := context.WithTimeout(context.Background(), 30*time.Second)
 	recoveredOperations, err := repository.RecoverExpiredOperations(recoveryCtx)
@@ -198,6 +203,7 @@ func run(logger *slog.Logger) (returnErr error) {
 			LogWorkspace:      logWorkspaceService,
 			CacheWorkspace:    cacheWorkspaceService,
 			ScheduledJobs:     jobWorkspaceService,
+			UpdateChecks:      updateCheckService,
 		}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
@@ -274,6 +280,7 @@ func run(logger *slog.Logger) (returnErr error) {
 		return fmt.Errorf("initialize operation runner: %w", err)
 	}
 	go runOperationWorker(ctx, logger, runner)
+	go runUpdateCheckScheduler(ctx, logger, updateCheckService)
 	if hostCapabilityClient != nil {
 		go runAccountProvisioningScheduler(ctx, logger, accountProvisioningService)
 		go runTLSCertificateScheduler(ctx, logger, certificateService)
@@ -381,6 +388,32 @@ func runTLSCertificateScheduler(
 			logger.Info("queued automatic TLS certificate work", "count", queued)
 		}
 		timer.Reset(time.Minute)
+	}
+}
+
+func runUpdateCheckScheduler(ctx context.Context, logger *slog.Logger, service *updatecheck.Service) {
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-timer.C:
+		}
+		performed, status, err := service.RunAutomatic(ctx)
+		switch {
+		case errors.Is(err, context.Canceled):
+			return
+		case err != nil:
+			logger.Warn("automatic update check failed", "error", err)
+		case performed && status.LatestRelease != nil:
+			logger.Info("automatic update check completed",
+				"channel", status.Channel, "latestVersion", status.LatestRelease.Version,
+				"updateAvailable", status.UpdateAvailable)
+		case performed:
+			logger.Info("automatic update check completed", "channel", status.Channel, "release", "none")
+		}
+		timer.Reset(15 * time.Minute)
 	}
 }
 

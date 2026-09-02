@@ -356,6 +356,14 @@ than adopting them. See [Account systemd slices and cgroup-v2 limits](account-re
 ### 4.11 Updates and dependencies
 
 - Immutable releases, checksums, provenance attestations, and SBOMs.
+- Release discovery uses one fixed HTTPS endpoint, refuses redirects, bounds
+  time/body/release count, uses ETags, and persists only minimized metadata.
+- Only canonical channel-matching releases with a complete uploaded asset set
+  and GitHub-provided SHA-256 digests are advertised; drafts and mutable or
+  partially published releases fail closed.
+- Discovery cannot download, stage, execute, migrate, restart, or activate a
+  release. Policy changes require platform-manage authorization, recent
+  authentication, CSRF protection, and an audit record.
 - Update artifacts are verified before any privileged process handles content.
 - Installer and updater pin a version; mutable branch content is never executed
   as an update payload.

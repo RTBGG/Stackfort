@@ -181,7 +181,7 @@ and reboot recovery pass on Debian 13, Ubuntu 26.04, and Rocky Linux 10. See the
 
 - [x] Versioned DEB/RPM packages where appropriate.
 - [x] Verified one-line and manual installers for clean hosts.
-- Stable/beta GitHub Release channels and update checks.
+- [x] Stable/beta GitHub Release channels and update checks.
 - Staged update, migration, health check, and rollback.
 - Upgrade matrices from every supported prior release.
 - Documentation, operations guide, security policy, contribution guide, and
@@ -203,6 +203,14 @@ endpoint gates from the same clean checkpoint on Debian 13, Ubuntu 26.04, and
 Rocky Linux 10. The bootstrap remains GitHub-HTTPS-only in production; its
 explicit root-only local fixture exists solely to qualify unreleased artifacts.
 See the [clean-host installer matrix](../infra/host-tests/results/2026-09-01-clean-installer-matrix-hyper-v.md).
+
+The third item is complete: strict stable and beta tags now publish through an
+immutability-gated workflow, and the API performs default-on, ETag-aware release
+discovery without downloading or applying content. Only immutable releases with
+the complete digested amd64 artifact inventory become candidates. Policy
+changes are recent-authenticated and audited; the administrator UI is complete
+in English and German. See [ADR 0060](adr/0060-immutable-stable-beta-release-discovery.md)
+and the [update-check operations guide](update-channels-and-checks.md).
 
 Exit gate: the success criteria in `product-spec.md` pass, followed by a limited
 public beta with an explicit support window.
