@@ -79,6 +79,14 @@ try {
     & ssh.exe @sshOptions "${GuestUser}@${address}" "chmod 0755 '$remoteBinary'"
     if ($LASTEXITCODE -ne 0) { throw 'Making the update transaction test executable failed.' }
 
+    $unprivilegedOutput = & ssh.exe @sshOptions "${GuestUser}@${address}" `
+        "'$remoteBinary' -test.v -test.run '^TestStagerRequiresCompleteImmutableDigestedAttestedRelease$' -test.timeout=1m" 2>&1
+    $unprivilegedExitCode = $LASTEXITCODE
+    $unprivilegedOutput | Write-Output
+    if ($unprivilegedExitCode -ne 0) {
+        throw "Unprivileged release-stager unit test failed with exit code $unprivilegedExitCode."
+    }
+
     $output = & ssh.exe @sshOptions "${GuestUser}@${address}" `
         "sudo env STACKFORT_DISPOSABLE_HOST_TEST=1 '$remoteBinary' -test.v -test.run '^(TestDisposableHostStagedUpdateTransaction|TestStagerRequiresCompleteImmutableDigestedAttestedRelease)$' -test.timeout=5m" 2>&1
     $exitCode = $LASTEXITCODE

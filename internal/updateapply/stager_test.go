@@ -135,6 +135,7 @@ func testStager(t *testing.T, server *httptest.Server, verifier AttestationVerif
 			version := strings.TrimSpace(string(content))
 			return installapply.Source{Root: root, Version: version, Digest: strings.Repeat("c", 64)}, nil
 		},
+		ensureDirectory:   func(path string) error { return os.MkdirAll(path, 0o700) },
 		releasesDirectory: directory,
 		apiBase:           server.URL + "/releases/tags/", downloadBase: server.URL + "/download",
 		attestationBase: server.URL + "/attestations/sha256:", bundleHost: strings.TrimPrefix(server.URL, "https://"),

@@ -69,6 +69,7 @@ type Stager struct {
 	bundleClient      *http.Client
 	verifier          AttestationVerifier
 	inspectSource     func(string) (installapply.Source, error)
+	ensureDirectory   func(string) error
 	releasesDirectory string
 	apiBase           string
 	downloadBase      string
@@ -95,6 +96,7 @@ func NewStager() (*Stager, error) {
 		attestationClient: attestationClient, bundleClient: bundleClient,
 		verifier:          CommandAttestationVerifier{Executable: installedGitHubCLI},
 		inspectSource:     installapply.InspectSource,
+		ensureDirectory:   ensureStagingDirectory,
 		releasesDirectory: DefaultReleaseDirectory,
 		apiBase:           releaseAPIBase, downloadBase: releaseDownloadBase,
 		attestationBase: attestationAPIBase, bundleHost: attestationBundleHost,
@@ -131,10 +133,11 @@ func (stager *Stager) Prepare(ctx context.Context, version string) (PreparedRele
 	}
 	if stager == nil || stager.apiClient == nil || stager.downloadClient == nil ||
 		stager.attestationClient == nil || stager.bundleClient == nil ||
-		stager.verifier == nil || stager.inspectSource == nil || stager.releasesDirectory == "" {
+		stager.verifier == nil || stager.inspectSource == nil || stager.ensureDirectory == nil ||
+		stager.releasesDirectory == "" {
 		return PreparedRelease{}, errors.New("invalid release stager")
 	}
-	if err := ensureStagingDirectory(stager.releasesDirectory); err != nil {
+	if err := stager.ensureDirectory(stager.releasesDirectory); err != nil {
 		return PreparedRelease{}, err
 	}
 	tag := "v" + version
