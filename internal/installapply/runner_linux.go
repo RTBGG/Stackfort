@@ -43,6 +43,7 @@ type LinuxRunner struct {
 	distribution           string
 	output                 io.Writer
 	allowPackageTransition bool
+	payloadSources         []Source
 	runOverride            func(context.Context, []string, string, ...string) error
 	captureOverride        func(context.Context, string, ...string) (string, error)
 }
@@ -97,9 +98,9 @@ func NewLinuxRunner(output io.Writer) (*LinuxRunner, error) {
 }
 
 // NewLinuxUpdateRunner returns the same closed host reconciler with one
-// additional permission: native Stackfort packages may move between two
-// already verified release manifests. Fresh installation keeps rejecting a
-// conflicting installed package version.
+// additional permission: native Stackfort packages may move between verified
+// manifests. Binary/web transitions additionally require AuthorizePayloadTransition.
+// Fresh installation keeps rejecting conflicting installed content.
 func NewLinuxUpdateRunner(output io.Writer) (*LinuxRunner, error) {
 	runner, err := NewLinuxRunner(output)
 	if err != nil {
@@ -558,6 +559,10 @@ func (runner *LinuxRunner) applyPayload(source Source) (bool, error) {
 	if err := verifyRootOwnedSource(source); err != nil {
 		return false, err
 	}
+	other, transition, err := runner.payloadCounterpart(source)
+	if err != nil {
+		return false, err
+	}
 	uid, gid, err := serviceIdentity()
 	if err != nil {
 		return false, err
@@ -582,21 +587,35 @@ func (runner *LinuxRunner) applyPayload(source Source) (bool, error) {
 		{filepath.Join(source.Root, "bin", "stackfort-gh"), "/usr/local/libexec/stackfort-gh"},
 		{filepath.Join(source.Root, "bin", "stackfort-trivy"), ociimage.ScannerExecutable},
 	} {
-		fileChanged, err := copySourceFile(file.source, file.target, 0o755)
+		var fileChanged bool
+		var err error
+		if transition {
+			relative, relativeErr := filepath.Rel(source.Root, file.source)
+			if relativeErr != nil {
+				return false, relativeErr
+			}
+			fileChanged, err = transitionPayloadFile(file.source, filepath.Join(other.Root, relative), file.target, 0o755)
+		} else {
+			fileChanged, err = copySourceFile(file.source, file.target, 0o755)
+		}
 		if err != nil {
 			return false, err
 		}
 		changed = changed || fileChanged
 	}
-	webChanged, err := deployWebTree(filepath.Join(source.Root, "web"), "/usr/share/stackfort/web")
+	deployTree := func(relative, destination string) (bool, error) {
+		if transition {
+			return transitionPayloadTree(filepath.Join(source.Root, relative), filepath.Join(other.Root, relative), destination)
+		}
+		return deployWebTree(filepath.Join(source.Root, relative), destination)
+	}
+	webChanged, err := deployTree("web", "/usr/share/stackfort/web")
 	if err != nil {
 		return changed || webChanged, err
 	}
 	changed = changed || webChanged
 	if runner.distribution == "rocky" {
-		phpMyAdminChanged, deployErr := deployWebTree(
-			filepath.Join(source.Root, "phpmyadmin"), "/usr/share/stackfort/phpmyadmin",
-		)
+		phpMyAdminChanged, deployErr := deployTree("phpmyadmin", "/usr/share/stackfort/phpmyadmin")
 		return changed || phpMyAdminChanged, deployErr
 	}
 	return changed, nil

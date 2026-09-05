@@ -107,6 +107,9 @@ func (runner *LinuxRunner) Apply(
 		return runner.applyInstallerStages(ctx, target,
 			installapply.StageWAFPackage, installapply.StageVinylPackage)
 	case StagePayload:
+		if err := runner.installer.AuthorizePayloadTransition(current, target); err != nil {
+			return err
+		}
 		return runner.applyInstallerStages(ctx, target, installapply.StagePayload)
 	case StageConfiguration:
 		return runner.applyInstallerStages(ctx, target,
@@ -164,10 +167,13 @@ func (runner *LinuxRunner) Verify(
 func (runner *LinuxRunner) Rollback(
 	ctx context.Context,
 	current installapply.Source,
-	_ installapply.Source,
+	target installapply.Source,
 	journal Journal,
 ) error {
 	var result error
+	if err := runner.installer.AuthorizePayloadTransition(current, target); err != nil {
+		return err
+	}
 	if err := runner.stopServices(ctx); err != nil {
 		result = errors.Join(result, err)
 	}
@@ -330,7 +336,7 @@ func (runner *LinuxRunner) restoreState() error {
 func (runner *LinuxRunner) databaseCommand(ctx context.Context, command string) error {
 	return runner.run(ctx, "/usr/sbin/runuser", "--user", "stackfort", "--", "/usr/bin/env",
 		"STACKFORT_STATE_PATH="+runner.statePath,
-		"STACKFORT_MASTER_KEY_PATH=/etc/stackfort/master.key",
+		"STACKFORT_MASTER_KEY_PATH=/var/lib/stackfort/master.key",
 		"/usr/local/bin/stackfort-api", "database", command)
 }
 
