@@ -869,7 +869,13 @@ func (runner *LinuxRunner) verifyConfiguration(ctx context.Context, source Sourc
 		if err := verifyFile(filepath.Join("/etc/systemd/system", name), []byte(units[name]), 0, 0, 0o644); err != nil {
 			return err
 		}
-		state, err := runner.capture(ctx, "/usr/bin/systemctl", "show", "--property=LoadState", "--value", name)
+		queryName := name
+		if name == "stackfort-update@.service" {
+			// A template cannot be loaded without an instance. Inspecting this
+			// fixed instance loads its definition but never starts an update.
+			queryName = "stackfort-update@0.0.0.service"
+		}
+		state, err := runner.capture(ctx, "/usr/bin/systemctl", "show", "--property=LoadState", "--value", queryName)
 		if err != nil || strings.TrimSpace(state) != "loaded" {
 			return fmt.Errorf("systemd did not load %s", name)
 		}
