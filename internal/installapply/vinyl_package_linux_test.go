@@ -44,8 +44,9 @@ func TestVinylRockyInstallEnablesEPELAndUsesExactRPMTransaction(t *testing.T) {
 	if err == nil || !changed || !strings.Contains(err.Error(), "simulated package install failure") {
 		t.Fatalf("changed=%t error=%v", changed, err)
 	}
-	if len(mutations) != 2 || mutations[0] != "/usr/bin/dnf install -y epel-release" ||
-		mutations[1] != "/usr/bin/rpm --upgrade --oldpackage --replacepkgs "+filepath.Join(source.Root, filepath.FromSlash(artifact.Path)) {
+	if len(mutations) != 3 || mutations[0] != "/usr/bin/dnf install -y epel-release" ||
+		mutations[1] != "/usr/bin/dnf install -y jemalloc" ||
+		mutations[2] != "/usr/bin/rpm --upgrade --oldpackage --replacepkgs "+filepath.Join(source.Root, filepath.FromSlash(artifact.Path)) {
 		t.Fatalf("mutations = %#v", mutations)
 	}
 }
@@ -69,8 +70,8 @@ func TestVinylUpdateTransitionDoesNotEraseRollbackPackageOnFailure(t *testing.T)
 		return nil
 	}
 	changed, err := runner.applyVinylPackage(t.Context(), source)
-	if err == nil || !changed || len(mutations) != 2 ||
-		mutations[1] != "/usr/bin/rpm --upgrade --oldpackage --replacepkgs "+filepath.Join(source.Root, filepath.FromSlash(artifact.Path)) {
+	if err == nil || !changed || len(mutations) != 3 ||
+		mutations[2] != "/usr/bin/rpm --upgrade --oldpackage --replacepkgs "+filepath.Join(source.Root, filepath.FromSlash(artifact.Path)) {
 		t.Fatalf("changed=%t mutations=%#v error=%v", changed, mutations, err)
 	}
 }
