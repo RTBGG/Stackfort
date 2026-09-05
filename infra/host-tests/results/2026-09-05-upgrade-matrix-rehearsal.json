@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "kind": "rehearsal",
+  "results": [
+    {
+      "from": "0.1.0-beta.1",
+      "to": "0.1.0-beta.2",
+      "image": "debian-13",
+      "architecture": "amd64",
+      "scenario": "success",
+      "sourceArchiveSHA256": "5d2616b59676b32fd461991b70d89cc411087b9eb3f4bb8798298081d41d6f4d",
+      "targetArchiveSHA256": "f0dd5cec7117bd701d0066050aa7fc2667e6630ca1c4ff414400b267f8e4c72f",
+      "status": "passed"
+    },
+    {
+      "from": "0.1.0-beta.1",
+      "to": "0.1.0-beta.2",
+      "image": "debian-13",
+      "architecture": "amd64",
+      "scenario": "health-rollback",
+      "sourceArchiveSHA256": "5d2616b59676b32fd461991b70d89cc411087b9eb3f4bb8798298081d41d6f4d",
+      "targetArchiveSHA256": "f0dd5cec7117bd701d0066050aa7fc2667e6630ca1c4ff414400b267f8e4c72f",
+      "status": "passed"
+    },
+    {
+      "from": "0.1.0-beta.1",
+      "to": "0.1.0-beta.2",
+      "image": "debian-13",
+      "architecture": "amd64",
+      "scenario": "interrupted-recovery",
+      "sourceArchiveSHA256": "5d2616b59676b32fd461991b70d89cc411087b9eb3f4bb8798298081d41d6f4d",
+      "targetArchiveSHA256": "f0dd5cec7117bd701d0066050aa7fc2667e6630ca1c4ff414400b267f8e4c72f",
+      "status": "passed"
+    },
+    {
+      "from": "0.1.0-beta.1",
+      "to": "0.1.0-beta.2",
+      "image": "rocky-10",
+      "architecture": "amd64",
+      "scenario": "success",
+      "sourceArchiveSHA256": "5d2616b59676b32fd461991b70d89cc411087b9eb3f4bb8798298081d41d6f4d",
+      "targetArchiveSHA256": "f0dd5cec7117bd701d0066050aa7fc2667e6630ca1c4ff414400b267f8e4c72f",
+      "status": "passed"
+    },
+    {
+      "from": "0.1.0-beta.1",
+      "to": "0.1.0-beta.2",
+      "image": "rocky-10",
+      "architecture": "amd64",
+      "scenario": "health-rollback",
+      "sourceArchiveSHA256": "5d2616b59676b32fd461991b70d89cc411087b9eb3f4bb8798298081d41d6f4d",
+      "targetArchiveSHA256": "f0dd5cec7117bd701d0066050aa7fc2667e6630ca1c4ff414400b267f8e4c72f",
+      "status": "passed"
+    },
+    {
+      "from": "0.1.0-beta.1",
+      "to": "0.1.0-beta.2",
+      "image": "rocky-10",
+      "architecture": "amd64",
+      "scenario": "interrupted-recovery",
+      "sourceArchiveSHA256": "5d2616b59676b32fd461991b70d89cc411087b9eb3f4bb8798298081d41d6f4d",
+      "targetArchiveSHA256": "f0dd5cec7117bd701d0066050aa7fc2667e6630ca1c4ff414400b267f8e4c72f",
+      "status": "passed"
+    },
+    {
+      "from": "0.1.0-beta.1",
+      "to": "0.1.0-beta.2",
+      "image": "ubuntu-26.04",
+      "architecture": "amd64",
+      "scenario": "success",
+      "sourceArchiveSHA256": "5d2616b59676b32fd461991b70d89cc411087b9eb3f4bb8798298081d41d6f4d",
+      "targetArchiveSHA256": "f0dd5cec7117bd701d0066050aa7fc2667e6630ca1c4ff414400b267f8e4c72f",
+      "status": "passed"
+    },
+    {
+      "from": "0.1.0-beta.1",
+      "to": "0.1.0-beta.2",
+      "image": "ubuntu-26.04",
+      "architecture": "amd64",
+      "scenario": "health-rollback",
+      "sourceArchiveSHA256": "5d2616b59676b32fd461991b70d89cc411087b9eb3f4bb8798298081d41d6f4d",
+      "targetArchiveSHA256": "f0dd5cec7117bd701d0066050aa7fc2667e6630ca1c4ff414400b267f8e4c72f",
+      "status": "passed"
+    },
+    {
+      "from": "0.1.0-beta.1",
+      "to": "0.1.0-beta.2",
+      "image": "ubuntu-26.04",
+      "architecture": "amd64",
+      "scenario": "interrupted-recovery",
+      "sourceArchiveSHA256": "5d2616b59676b32fd461991b70d89cc411087b9eb3f4bb8798298081d41d6f4d",
+      "targetArchiveSHA256": "f0dd5cec7117bd701d0066050aa7fc2667e6630ca1c4ff414400b267f8e4c72f",
+      "status": "passed"
+    }
+  ]
+}

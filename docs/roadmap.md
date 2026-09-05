@@ -183,7 +183,9 @@ and reboot recovery pass on Debian 13, Ubuntu 26.04, and Rocky Linux 10. See the
 - [x] Verified one-line and manual installers for clean hosts.
 - [x] Stable/beta GitHub Release channels and update checks.
 - [x] Staged update, migration, health check, and rollback.
-- Upgrade matrices from every supported prior release.
+- [x] Upgrade matrix generation, host qualification, and publication gates for
+  every supported prior release; published-release executions begin after the
+  first release exists.
 - Documentation, operations guide, security policy, contribution guide, and
   published benchmark methodology/results.
 - Complete English and German critical workflows.
@@ -224,6 +226,19 @@ recovery passed with the same test binary on Debian 13, Ubuntu 26.04, and Rocky
 Linux 10. See [ADR 0061](adr/0061-attested-health-gated-platform-updates.md),
 the [operator guide](staged-platform-updates.md), and the
 [qualification record](../infra/host-tests/results/2026-09-02-staged-update-transaction-hyper-v.md).
+
+The fifth item is complete as release infrastructure: an explicit support catalog
+generates every predecessor/distribution/scenario cell, and publication compares
+the catalog with the full GitHub release inventory and requires reviewed evidence
+for the exact rebuilt archive. All nine real-host rehearsal cells passed on the
+three supported distributions, alongside all 28 historical SQL schema prefixes.
+The rehearsal exposed and fixed systemd-template inspection, exact binary/web
+payload replacement, and Rocky's missing Vinyl runtime dependency. No releases
+have been published yet, so the support catalog remains empty and the recorded
+evidence is explicitly non-publishing rehearsal evidence. See
+[ADR 0062](adr/0062-exhaustive-artifact-bound-upgrade-matrices.md), the
+[operator guide](upgrade-matrix.md), and the
+[qualification record](../infra/host-tests/results/2026-09-05-upgrade-matrix-hyper-v.md).
 
 Exit gate: the success criteria in `product-spec.md` pass, followed by a limited
 public beta with an explicit support window.

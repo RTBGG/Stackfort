@@ -58,6 +58,10 @@ jobs:
         run: go vet ./...
       - name: Run race-enabled tests
         run: go test -race ./...
+      - name: Qualify root-owned update payload transitions
+        run: |
+          go test -race -c -o /tmp/stackfort-payload.test ./internal/installapply
+          sudo /tmp/stackfort-payload.test -test.v -test.run '^TestPayloadTransition' -test.timeout=2m
       - name: Exercise the agent Unix socket
         run: bash scripts/test-agent-smoke.sh
 

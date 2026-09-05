@@ -80,4 +80,6 @@ security decision and [update channels and checks](update-channels-and-checks.md
 for release eligibility. The persistent transaction's three-distribution
 [qualification record](../infra/host-tests/results/2026-09-02-staged-update-transaction-hyper-v.md)
 covers success, health-gated rollback, database restoration, and interruption
-recovery. Published-release-to-release matrices remain the next roadmap item.
+recovery. The [release upgrade matrix](upgrade-matrix.md) adds actual prior-source
+runner qualification, exhaustive predecessor coverage, artifact-bound publication
+evidence, and continuous historical-schema tests.

@@ -236,6 +236,13 @@ other images.
 
 ## GitHub runner boundary
 
+The [release upgrade matrix](../../docs/upgrade-matrix.md) uses
+`Test-StackfortUpgradeMatrixHyperV.ps1` to enumerate every supported predecessor
+and restore the dedicated clean checkpoints explicitly. The per-VM driver tests
+real release activation, health rollback, and subprocess interruption, and emits
+archive-bound evidence for the release publication gate. Local unpublished
+rehearsals are recorded separately and cannot satisfy that gate.
+
 `.github/workflows/host-validation.yml` targets self-hosted runners carrying
 the labels `ephemeral` and the exact distribution label. The runner must be
 registered for one job only and the entire VM must be destroyed after the job,

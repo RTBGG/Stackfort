@@ -186,6 +186,12 @@ jobs:
           SOURCE_DATE_EPOCH="$(git show -s --format=%ct "$COMMIT")"
           export SOURCE_DATE_EPOCH
           bash scripts/build-release.sh
+      - name: Enforce supported-predecessor upgrade evidence
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.release_policy.outputs.version }}
+        run: bash scripts/verify-upgrade-matrix.sh
       - name: Generate SPDX SBOM
         uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
         with:
