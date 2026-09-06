@@ -594,6 +594,7 @@ func (runner *LinuxRunner) applyPayload(source Source) (bool, error) {
 		{filepath.Join(source.Root, "bin", "stackfort-api"), "/usr/local/bin/stackfort-api"},
 		{filepath.Join(source.Root, "bin", "stackfort-agent"), "/usr/local/sbin/stackfort-agent"},
 		{filepath.Join(source.Root, "bin", "stackfort-updater"), "/usr/local/sbin/stackfort-updater"},
+		{filepath.Join(source.Root, "bin", "stackfort-installer"), "/usr/local/sbin/stackfort-installer"},
 		{filepath.Join(source.Root, "bin", "stackfort-gh"), "/usr/local/libexec/stackfort-gh"},
 		{filepath.Join(source.Root, "bin", "stackfort-trivy"), ociimage.ScannerExecutable},
 	} {
@@ -681,6 +682,7 @@ func (runner *LinuxRunner) verifyPayload(source Source) error {
 		{filepath.Join(source.Root, "bin", "stackfort-api"), "/usr/local/bin/stackfort-api", 0o755},
 		{filepath.Join(source.Root, "bin", "stackfort-agent"), "/usr/local/sbin/stackfort-agent", 0o755},
 		{filepath.Join(source.Root, "bin", "stackfort-updater"), "/usr/local/sbin/stackfort-updater", 0o755},
+		{filepath.Join(source.Root, "bin", "stackfort-installer"), "/usr/local/sbin/stackfort-installer", 0o755},
 		{filepath.Join(source.Root, "bin", "stackfort-gh"), "/usr/local/libexec/stackfort-gh", 0o755},
 		{filepath.Join(source.Root, "bin", "stackfort-trivy"), ociimage.ScannerExecutable, 0o755},
 	} {
@@ -1162,7 +1164,7 @@ func (runner *LinuxRunner) applyNGINX(ctx context.Context) (bool, error) {
 
 func (runner *LinuxRunner) applyServices(ctx context.Context) (bool, error) {
 	changed := false
-	for _, unit := range []string{"mariadb.service", "vinyl.service", "stackfort-agent.service", "stackfort-api.service", phpMyAdminUnit} {
+	for _, unit := range []string{"mariadb.service", "vinyl.service", "stackfort-agent.service", "stackfort-api.service", phpMyAdminUnit, "stackfort-panel-renew.timer"} {
 		wasActive := runner.commandSucceeds(ctx, "/usr/bin/systemctl", "is-active", "--quiet", unit)
 		wasEnabled := runner.commandSucceeds(ctx, "/usr/bin/systemctl", "is-enabled", "--quiet", unit)
 		if err := runner.run(ctx, nil, "/usr/bin/systemctl", "enable", "--now", unit); err != nil {
@@ -1174,7 +1176,7 @@ func (runner *LinuxRunner) applyServices(ctx context.Context) (bool, error) {
 }
 
 func (runner *LinuxRunner) verifyServices(ctx context.Context) error {
-	for _, unit := range []string{"mariadb.service", "vinyl.service", "stackfort-agent.service", "stackfort-api.service", phpMyAdminUnit} {
+	for _, unit := range []string{"mariadb.service", "vinyl.service", "stackfort-agent.service", "stackfort-api.service", phpMyAdminUnit, "stackfort-panel-renew.timer"} {
 		if !runner.commandSucceeds(ctx, "/usr/bin/systemctl", "is-active", "--quiet", unit) ||
 			!runner.commandSucceeds(ctx, "/usr/bin/systemctl", "is-enabled", "--quiet", unit) {
 			return fmt.Errorf("Stackfort service is not active and enabled: %s", unit)

@@ -162,6 +162,11 @@ certificate, and browser boundary.
 
 ## Installed security boundary
 
+After bootstrap, optionally configure a [custom panel hostname](panel-hostname.md)
+with automatic Let's Encrypt HTTPS on port 443. The installer also provides
+`/usr/local/sbin/stackfort-installer` for root-console management and enables
+the renewal timer; without an ACME panel configuration the timer makes no CA request.
+
 - API: locked `stackfort` user, loopback TCP 8080, private state, systemd
   sandbox, and AppArmor confinement on Debian/Ubuntu.
 - Agent: root-owned binary and service, authenticated Unix socket accepting

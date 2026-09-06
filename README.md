@@ -34,6 +34,10 @@ by this command. **No public release exists yet:** the installer cannot complete
 until matching release assets are published. See the
 [installation guide](docs/installer-installation.md) for prerequisites and options.
 
+After installation, [configure a panel subdomain](docs/panel-hostname.md) such as
+`https://panel.example.com/`, with automatic Let's Encrypt issuance and renewal.
+The initial IP-based HTTPS endpoint on port 8443 remains available as a fallback.
+
 ## At a glance
 
 | Area | Current state |

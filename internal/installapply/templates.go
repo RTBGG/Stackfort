@@ -19,6 +19,46 @@ func serviceUnits(distribution string) map[string]string {
 		apiSandbox = "AppArmorProfile=stackfort-api\n"
 	}
 	return map[string]string{
+		"stackfort-panel-renew.service": managedHeader + `[Unit]
+Description=Stackfort panel certificate renewal and interruption recovery
+After=network-online.target nginx.service
+Wants=network-online.target
+ConditionPathExists=/etc/nginx/stackfort/.stackfort-managed
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/local/sbin/stackfort-installer panel renew --yes --format=json
+TimeoutStartSec=5min
+Slice=stackfort-core.slice
+UMask=0077
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=full
+ReadWritePaths=/etc/nginx/stackfort /etc/stackfort/panel-tls /var/lib/stackfort-agent/acme-http01
+ProtectHome=yes
+ProtectClock=yes
+ProtectKernelLogs=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native
+`,
+		"stackfort-panel-renew.timer": managedHeader + `[Unit]
+Description=Check the Stackfort panel certificate twice daily
+
+[Timer]
+OnBootSec=10min
+OnCalendar=*-*-* 00,12:00:00
+RandomizedDelaySec=1h
+Persistent=yes
+
+[Install]
+WantedBy=timers.target
+`,
 		"stackfort.slice": managedHeader + `[Unit]
 Description=Stackfort service hierarchy
 `,

@@ -39,6 +39,9 @@ func run(ctx context.Context, arguments []string, stdout, stderr io.Writer, insp
 	if len(arguments) > 0 && arguments[0] == "install" {
 		return runInstall(ctx, arguments[1:], stdout, stderr)
 	}
+	if len(arguments) > 0 && arguments[0] == "panel" {
+		return runPanel(ctx, arguments[1:], stdout, stderr, nil)
+	}
 	if len(arguments) == 0 || arguments[0] != "preflight" {
 		writeUsage(stderr)
 		return exitError
@@ -83,6 +86,10 @@ func writeUsage(output io.Writer) {
 	_, _ = fmt.Fprintln(output, "usage: stackfort-installer preflight [--format=text|json]")
 	_, _ = fmt.Fprintln(output, "       stackfort-installer install --source-dir=/absolute/release/path --yes [--format=text|json]")
 	_, _ = fmt.Fprintln(output, "       stackfort-installer version")
+	_, _ = fmt.Fprintln(output, "       stackfort-installer panel configure --hostname=panel.example.com --certificate=/root/fullchain.pem --private-key=/root/privkey.pem --yes")
+	_, _ = fmt.Fprintln(output, "       stackfort-installer panel status | disable --yes | recover --yes")
+	_, _ = fmt.Fprintln(output, "       stackfort-installer panel issue --hostname=panel.example.com --email=admin@example.com --accept-terms --yes")
+	_, _ = fmt.Fprintln(output, "       stackfort-installer panel renew --yes")
 }
 
 func runInstall(ctx context.Context, arguments []string, stdout, stderr io.Writer) int {

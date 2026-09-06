@@ -19,8 +19,9 @@ installation-time hostname, loopback names/addresses, and the host's current IP
 addresses. The browser will not trust this certificate automatically. Verify
 that the address belongs to the intended server before accepting the warning.
 The certificate is transport protection for first setup, not proof of the
-server's public identity. A future panel-hostname workflow will replace it with
-a publicly trusted certificate.
+server's public identity. The [panel-hostname workflow](panel-hostname.md) adds
+a named port-443 origin with an automatically issued/renewed Let's Encrypt
+certificate (or an imported trusted certificate), keeping this fallback intact.
 
 Create the short-lived, single-use administrator capability over the already
 authenticated server console or SSH session:
@@ -44,6 +45,11 @@ The root-owned fixed configuration
 - applies TLS 1.2/1.3, disables session tickets, and uses a strict static-content
   CSP; and
 - accepts no user-selected path, upstream, directive, header, or port.
+
+The optional `20-hostname.conf` adds only a validated named management origin.
+It is separate from the fixed bootstrap file and tenant revision tree, so
+normal installer/updater reconciliation preserves it. See the
+[configuration, renewal and recovery guide](panel-hostname.md).
 
 The combined certificate/key PEM is an atomic root-owned mode-`0600` file at
 `/etc/stackfort/panel-tls/bootstrap.pem`. NGINX's root master reads it before

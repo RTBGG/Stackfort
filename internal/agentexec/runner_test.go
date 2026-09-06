@@ -313,6 +313,20 @@ func TestProductionProfilesUseFixedPathsAndTemplates(t *testing.T) {
 			executable string
 			arguments  []string
 			timeout    time.Duration
+		}{ProfileNGINXTestPanelCandidate, nil, "/usr/sbin/nginx", []string{"-t", "-q", "-c", "/etc/nginx/stackfort/panel-candidate.pending"}, accountMutationTimeout},
+		struct {
+			id         ProfileID
+			values     []string
+			executable string
+			arguments  []string
+			timeout    time.Duration
+		}{ProfileRestoreSELinuxPanelContext, nil, "/usr/sbin/restorecon", []string{"-R", "/etc/stackfort/panel-tls", "/etc/nginx/stackfort/panel-enabled"}, accountMutationTimeout},
+		struct {
+			id         ProfileID
+			values     []string
+			executable string
+			arguments  []string
+			timeout    time.Duration
 		}{
 			ProfileNGINXTestCandidate,
 			[]string{"019c1234-5678-7abc-8def-0123456789ab"},

@@ -187,6 +187,9 @@ func (recovery *linuxActivationRecovery) Complete() error {
 }
 
 func (workspace *linuxActivationWorkspace) Active(candidate activationCandidate) (activeRevision, error) {
+	if err := workspace.checkPanelReservation(candidate.content); err != nil {
+		return activeRevision{}, err
+	}
 	current, err := workspace.currentRevision()
 	if err != nil || current == "" || current != candidate.revisionID {
 		return activeRevision{revisionID: current}, err

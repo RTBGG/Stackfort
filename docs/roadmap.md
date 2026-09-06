@@ -271,6 +271,12 @@ workflow review, independent security audit, uninstall or support-window gates.
 
 ## Post-beta candidates
 
+Panel-hostname follow-up: root-console configuration now adds a named management
+origin on 443 while retaining 8443. Production Let's Encrypt HTTP-01 issuance,
+automatic renewal, trusted certificate import, tenant hostname reservation and
+durable rollback are implemented; see [panel hostname](panel-hostname.md).
+This does not close the remaining browser/manual-review or public-release gates.
+
 - SFTP/SSH-key management and constrained shell access.
 - Scheduled/remote encrypted backups.
 - DNS provider integrations and DNS-01.

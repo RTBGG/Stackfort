@@ -78,6 +78,8 @@ const (
 	ProfileNGINXVersion                     ProfileID = "nginx.version"
 	ProfileNGINXTestBaseline                ProfileID = "nginx.baseline-test"
 	ProfileNGINXTestCandidate               ProfileID = "nginx.candidate-test"
+	ProfileNGINXTestPanelCandidate          ProfileID = "nginx.panel-candidate-test"
+	ProfileRestoreSELinuxPanelContext       ProfileID = "nginx.panel-context-restore"
 	ProfileSystemdRestartNGINX              ProfileID = "nginx.systemd-restart"
 	ProfileSystemdReloadNGINX               ProfileID = "nginx.systemd-reload"
 	ProfileSystemdStopNGINX                 ProfileID = "nginx.systemd-stop"
@@ -284,6 +286,12 @@ func NewRunner() *Runner {
 			[]string{"-t", "-q", "-c", "/etc/nginx/stackfort/nginx.conf"},
 		)),
 		ProfileNGINXTestCandidate: mutationProfile("/usr/sbin/nginx", nginxCandidateResolver()),
+		ProfileNGINXTestPanelCandidate: mutationProfile("/usr/sbin/nginx", noValueResolver(
+			[]string{"-t", "-q", "-c", "/etc/nginx/stackfort/panel-candidate.pending"},
+		)),
+		ProfileRestoreSELinuxPanelContext: mutationProfile("/usr/sbin/restorecon", noValueResolver(
+			[]string{"-R", "/etc/stackfort/panel-tls", "/etc/nginx/stackfort/panel-enabled"},
+		)),
 		ProfileSystemdRestartNGINX: mutationProfile("/usr/bin/systemctl", noValueResolver(
 			[]string{"restart", "nginx.service"},
 		)),

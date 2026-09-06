@@ -64,6 +64,10 @@ jobs:
           sudo /tmp/stackfort-payload.test -test.v -test.run '^TestPayloadTransition' -test.timeout=2m
       - name: Exercise the agent Unix socket
         run: bash scripts/test-agent-smoke.sh
+      - name: Qualify root-owned panel hostname transactions
+        run: |
+          go test -race -c -o /tmp/stackfort-panel.test ./internal/hostnginx
+          sudo /tmp/stackfort-panel.test -test.v -test.run '^TestPanel' -test.timeout=2m
 
   web:
     name: Web

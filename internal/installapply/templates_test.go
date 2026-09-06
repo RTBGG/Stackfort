@@ -127,3 +127,20 @@ func TestLogRetentionTemplateIsBoundedAndReopensNGINX(t *testing.T) {
 		}
 	}
 }
+
+func TestPanelRenewalUnitsUseInstalledBinaryAndBoundedSchedule(t *testing.T) {
+	for _, distribution := range []string{"debian", "ubuntu", "rocky"} {
+		units := serviceUnits(distribution)
+		service := units["stackfort-panel-renew.service"]
+		for _, required := range []string{"User=root\n", "ExecStart=/usr/local/sbin/stackfort-installer panel renew --yes --format=json\n", "TimeoutStartSec=5min\n", "ProtectSystem=full\n", "UMask=0077\n", "ReadWritePaths=/etc/nginx/stackfort /etc/stackfort/panel-tls /var/lib/stackfort-agent/acme-http01\n"} {
+			if !strings.Contains(service, required) {
+				t.Errorf("renewal service missing %q", required)
+			}
+		}
+		for _, required := range []string{"OnCalendar=*-*-* 00,12:00:00\n", "RandomizedDelaySec=1h\n", "Persistent=yes\n", "WantedBy=timers.target\n"} {
+			if !strings.Contains(units["stackfort-panel-renew.timer"], required) {
+				t.Errorf("renewal timer missing %q", required)
+			}
+		}
+	}
+}
