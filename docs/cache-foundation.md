@@ -14,6 +14,9 @@ and WAF rejections may have no cache status and are outside those counters.
 The original Vinyl design and historical benchmark results follow; they are
 not retroactively measurements of the new managed FastCGI preset.
 
+See the [new three-OS qualification](../infra/host-tests/results/2026-09-06-native-fastcgi-cache.md)
+for current preset behavior and measured WAF-off/detection/blocking comparisons.
+
 K-013 and K-014 provide a closed, disabled-by-default full-page cache for PHP
 domains. NGINX remains the public TLS and Coraza edge; Vinyl Cache 9.0.1 is a
 private accelerator between that edge and a separate NGINX origin.

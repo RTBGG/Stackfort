@@ -1,0 +1,433 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-06",
+  "kind": "development-native-fastcgi-qualification",
+  "sourceCommit": "8df8fc2ea4cebb13ae8a154d8943c2392c36031b",
+  "buildNote": "Built from the working tree committed as sourceCommit; not a release archive or publication gate.",
+  "testBinarySHA256": "010c1ed5e0a1db033983dbb09b55d38cffc3d8a0db73a8d9e3184207c03f898f",
+  "go": "1.26.6",
+  "platform": "Hyper-V on Windows 11",
+  "processor": "Intel Core Ultra 7 270K Plus",
+  "guestVCPUs": 2,
+  "guestMemoryMiB": 4096,
+  "protocol": "HTTP/1.1 loopback, keep-alive, no TLS, compression or proxy",
+  "requests": 3000,
+  "concurrency": 8,
+  "warmupRequests": 32,
+  "results": [
+    {
+      "distribution": "debian-13",
+      "kernel": "6.12.107+deb13-cloud-amd64",
+      "filesystem": "ext4",
+      "nginxPackageVersion": "1.26.3-3+deb13u7",
+      "wafPackageSHA256": "13ac5ec7fd979ffb7712f5ab3c7061e16fa2001748268f8129150b2fc44fc182",
+      "metrics": [
+        {
+          "name": "cache-direct-waf-off",
+          "requests": 3000,
+          "concurrency": 8,
+          "durationMillis": 162,
+          "requestsPerSecond": 18455.70657183534,
+          "bytesPerSecond": 1273443.7534566384,
+          "p50Microseconds": 324,
+          "p95Microseconds": 750,
+          "p99Microseconds": 3483
+        },
+        {
+          "name": "cache-nginx-fastcgi-waf-off",
+          "requests": 3000,
+          "concurrency": 8,
+          "durationMillis": 45,
+          "requestsPerSecond": 66375.58024702557,
+          "bytesPerSecond": 4646290.61729179,
+          "p50Microseconds": 76,
+          "p95Microseconds": 262,
+          "p99Microseconds": 620
+        },
+        {
+          "name": "cache-vinyl-waf-off",
+          "requests": 3000,
+          "concurrency": 8,
+          "durationMillis": 124,
+          "requestsPerSecond": 24134.047255993017,
+          "bytesPerSecond": 1641115.213407525,
+          "p50Microseconds": 281,
+          "p95Microseconds": 645,
+          "p99Microseconds": 1127
+        },
+        {
+          "name": "php-cache-comparison",
+          "wafMode": "off",
+          "directRps": 18455.70657183534,
+          "nginxFastcgiCacheRps": 66375.58024702557,
+          "vinylRps": 24134.047255993017,
+          "vinylToFastcgiRatio": 0.36359828669180655,
+          "nginxFastcgiP99Microseconds": 620,
+          "vinylP99Microseconds": 1127
+        },
+        {
+          "name": "cache-direct-waf-detection",
+          "requests": 3000,
+          "concurrency": 8,
+          "durationMillis": 886,
+          "requestsPerSecond": 3384.873909480928,
+          "bytesPerSecond": 233556.29975418403,
+          "p50Microseconds": 1954,
+          "p95Microseconds": 5143,
+          "p99Microseconds": 8605
+        },
+        {
+          "name": "cache-nginx-fastcgi-waf-detection",
+          "requests": 3000,
+          "concurrency": 8,
+          "durationMillis": 693,
+          "requestsPerSecond": 4326.81252062258,
+          "bytesPerSecond": 302876.8764435806,
+          "p50Microseconds": 1553,
+          "p95Microseconds": 3785,
+          "p99Microseconds": 7402
+        },
+        {
+          "name": "cache-vinyl-waf-detection",
+          "requests": 3000,
+          "concurrency": 8,
+          "durationMillis": 853,
+          "requestsPerSecond": 3514.5086437863997,
+          "bytesPerSecond": 238986.5877774752,
+          "p50Microseconds": 2008,
+          "p95Microseconds": 5120,
+          "p99Microseconds": 8163
+        },
+        {
+          "name": "php-cache-waf-detection-comparison",
+          "wafMode": "detection_only",
+          "directRps": 3384.873909480928,
+          "nginxFastcgiCacheRps": 4326.81252062258,
+          "vinylRps": 3514.5086437863997,
+          "vinylToFastcgiRatio": 0.8122627516296225,
+          "nginxFastcgiP99Microseconds": 7402,
+          "vinylP99Microseconds": 8163
+        },
+        {
+          "name": "cache-direct-waf-blocking",
+          "requests": 3000,
+          "concurrency": 8,
+          "durationMillis": 813,
+          "requestsPerSecond": 3685.9320098215494,
+          "bytesPerSecond": 254329.3086776869,
+          "p50Microseconds": 1863,
+          "p95Microseconds": 5084,
+          "p99Microseconds": 8708
+        },
+        {
+          "name": "cache-nginx-fastcgi-waf-blocking",
+          "requests": 3000,
+          "concurrency": 8,
+          "durationMillis": 692,
+          "requestsPerSecond": 4333.315984662049,
+          "bytesPerSecond": 303332.11892634345,
+          "p50Microseconds": 1634,
+          "p95Microseconds": 3843,
+          "p99Microseconds": 6397
+        },
+        {
+          "name": "cache-vinyl-waf-blocking",
+          "requests": 3000,
+          "concurrency": 8,
+          "durationMillis": 822,
+          "requestsPerSecond": 3646.4771473618025,
+          "bytesPerSecond": 247960.44602060257,
+          "p50Microseconds": 2314,
+          "p95Microseconds": 5096,
+          "p99Microseconds": 8281
+        },
+        {
+          "name": "php-cache-waf-blocking-comparison",
+          "wafMode": "blocking_pl1",
+          "directRps": 3685.9320098215494,
+          "nginxFastcgiCacheRps": 4333.315984662049,
+          "vinylRps": 3646.4771473618025,
+          "vinylToFastcgiRatio": 0.8414980952851485,
+          "nginxFastcgiP99Microseconds": 6397,
+          "vinylP99Microseconds": 8281
+        }
+      ]
+    },
+    {
+      "distribution": "ubuntu-26.04",
+      "kernel": "7.0.0-29-generic",
+      "filesystem": "ext4",
+      "nginxPackageVersion": "1.28.3-2ubuntu1.10",
+      "wafPackageSHA256": "01864b1fb0dfa30750cc250ba98a2c81cec69a6029183d094d2da6b4d5dd309e",
+      "metrics": [
+        {
+          "name": "cache-direct-waf-off",
+          "requests": 3000,
+          "concurrency": 8,
+          "durationMillis": 131,
+          "requestsPerSecond": 22822.656909646106,
+          "bytesPerSecond": 1574763.3267655813,
+          "p50Microseconds": 277,
+          "p95Microseconds": 594,
+          "p99Microseconds": 1006
+        },
+        {
+          "name": "cache-nginx-fastcgi-waf-off",
+          "requests": 3000,
+          "concurrency": 8,
+          "durationMillis": 38,
+          "requestsPerSecond": 78287.26462705553,
+          "bytesPerSecond": 5480108.523893886,
+          "p50Microseconds": 64,
+          "p95Microseconds": 226,
+          "p99Microseconds": 606
+        },
+        {
+          "name": "cache-vinyl-waf-off",
+          "requests": 3000,
+          "concurrency": 8,
+          "durationMillis": 104,
+          "requestsPerSecond": 28845.23995129193,
+          "bytesPerSecond": 1961476.3166878512,
+          "p50Microseconds": 217,
+          "p95Microseconds": 516,
+          "p99Microseconds": 1524
+        },
+        {
+          "name": "php-cache-comparison",
+          "wafMode": "off",
+          "directRps": 22822.656909646106,
+          "nginxFastcgiCacheRps": 78287.26462705553,
+          "vinylRps": 28845.23995129193,
+          "vinylToFastcgiRatio": 0.3684537975455489,
+          "nginxFastcgiP99Microseconds": 606,
+          "vinylP99Microseconds": 1524
+        },
+        {
+          "name": "cache-direct-waf-detection",
+          "requests": 3000,
+          "concurrency": 8,
+          "durationMillis": 871,
+          "requestsPerSecond": 3441.988105455159,
+          "bytesPerSecond": 237497.17927640595,
+          "p50Microseconds": 1983,
+          "p95Microseconds": 4449,
+          "p99Microseconds": 7000
+        },
+        {
+          "name": "cache-nginx-fastcgi-waf-detection",
+          "requests": 3000,
+          "concurrency": 8,
+          "durationMillis": 686,
+          "requestsPerSecond": 4366.816384130881,
+          "bytesPerSecond": 305677.14688916167,
+          "p50Microseconds": 1579,
+          "p95Microseconds": 3749,
+          "p99Microseconds": 6599
+        },
+        {
+          "name": "cache-vinyl-waf-detection",
+          "requests": 3000,
+          "concurrency": 8,
+          "durationMillis": 797,
+          "requestsPerSecond": 3763.094869268635,
+          "bytesPerSecond": 255890.4511102672,
+          "p50Microseconds": 1836,
+          "p95Microseconds": 4174,
+          "p99Microseconds": 6138
+        },
+        {
+          "name": "php-cache-waf-detection-comparison",
+          "wafMode": "detection_only",
+          "directRps": 3441.988105455159,
+          "nginxFastcgiCacheRps": 4366.816384130881,
+          "vinylRps": 3763.094869268635,
+          "vinylToFastcgiRatio": 0.861747904707836,
+          "nginxFastcgiP99Microseconds": 6599,
+          "vinylP99Microseconds": 6138
+        },
+        {
+          "name": "cache-direct-waf-blocking",
+          "requests": 3000,
+          "concurrency": 8,
+          "durationMillis": 812,
+          "requestsPerSecond": 3690.741028386161,
+          "bytesPerSecond": 254661.13095864508,
+          "p50Microseconds": 1865,
+          "p95Microseconds": 4658,
+          "p99Microseconds": 8745
+        },
+        {
+          "name": "cache-nginx-fastcgi-waf-blocking",
+          "requests": 3000,
+          "concurrency": 8,
+          "durationMillis": 681,
+          "requestsPerSecond": 4404.888823417885,
+          "bytesPerSecond": 308342.2176392519,
+          "p50Microseconds": 1633,
+          "p95Microseconds": 4049,
+          "p99Microseconds": 6303
+        },
+        {
+          "name": "cache-vinyl-waf-blocking",
+          "requests": 3000,
+          "concurrency": 8,
+          "durationMillis": 811,
+          "requestsPerSecond": 3695.5215816785067,
+          "bytesPerSecond": 251295.46755413845,
+          "p50Microseconds": 1947,
+          "p95Microseconds": 4363,
+          "p99Microseconds": 7631
+        },
+        {
+          "name": "php-cache-waf-blocking-comparison",
+          "wafMode": "blocking_pl1",
+          "directRps": 3690.741028386161,
+          "nginxFastcgiCacheRps": 4404.888823417885,
+          "vinylRps": 3695.5215816785067,
+          "vinylToFastcgiRatio": 0.8389591042643026,
+          "nginxFastcgiP99Microseconds": 6303,
+          "vinylP99Microseconds": 7631
+        }
+      ]
+    },
+    {
+      "distribution": "rocky-10",
+      "kernel": "6.12.0-211.50.1.el10_2.x86_64",
+      "filesystem": "xfs",
+      "nginxPackageVersion": "2:1.26.3-6.el10_2.6",
+      "wafPackageSHA256": "81a29ec0b4721ad87b517ec378699dbe992a1fa41db4023ba20972c78bebf58e",
+      "metrics": [
+        {
+          "name": "cache-direct-waf-off",
+          "requests": 3000,
+          "concurrency": 8,
+          "durationMillis": 163,
+          "requestsPerSecond": 18330.408920261314,
+          "bytesPerSecond": 1264798.2154980307,
+          "p50Microseconds": 388,
+          "p95Microseconds": 735,
+          "p99Microseconds": 1325
+        },
+        {
+          "name": "cache-nginx-fastcgi-waf-off",
+          "requests": 3000,
+          "concurrency": 8,
+          "durationMillis": 46,
+          "requestsPerSecond": 64170.50531064407,
+          "bytesPerSecond": 4491935.371745085,
+          "p50Microseconds": 70,
+          "p95Microseconds": 236,
+          "p99Microseconds": 689
+        },
+        {
+          "name": "cache-vinyl-waf-off",
+          "requests": 3000,
+          "concurrency": 8,
+          "durationMillis": 144,
+          "requestsPerSecond": 20797.866327482123,
+          "bytesPerSecond": 1414254.9102687843,
+          "p50Microseconds": 337,
+          "p95Microseconds": 802,
+          "p99Microseconds": 1188
+        },
+        {
+          "name": "php-cache-comparison",
+          "wafMode": "off",
+          "directRps": 18330.408920261314,
+          "nginxFastcgiCacheRps": 64170.50531064407,
+          "vinylRps": 20797.866327482123,
+          "vinylToFastcgiRatio": 0.3241032032832122,
+          "nginxFastcgiP99Microseconds": 689,
+          "vinylP99Microseconds": 1188
+        },
+        {
+          "name": "cache-direct-waf-detection",
+          "requests": 3000,
+          "concurrency": 8,
+          "durationMillis": 942,
+          "requestsPerSecond": 3182.690390886417,
+          "bytesPerSecond": 219605.63697116278,
+          "p50Microseconds": 2430,
+          "p95Microseconds": 4856,
+          "p99Microseconds": 6811
+        },
+        {
+          "name": "cache-nginx-fastcgi-waf-detection",
+          "requests": 3000,
+          "concurrency": 8,
+          "durationMillis": 701,
+          "requestsPerSecond": 4277.924326076871,
+          "bytesPerSecond": 299454.7028253809,
+          "p50Microseconds": 1620,
+          "p95Microseconds": 4031,
+          "p99Microseconds": 7187
+        },
+        {
+          "name": "cache-vinyl-waf-detection",
+          "requests": 3000,
+          "concurrency": 8,
+          "durationMillis": 884,
+          "requestsPerSecond": 3393.3022170611703,
+          "bytesPerSecond": 230744.5507601596,
+          "p50Microseconds": 2744,
+          "p95Microseconds": 4968,
+          "p99Microseconds": 7680
+        },
+        {
+          "name": "php-cache-waf-detection-comparison",
+          "wafMode": "detection_only",
+          "directRps": 3182.690390886417,
+          "nginxFastcgiCacheRps": 4277.924326076871,
+          "vinylRps": 3393.3022170611703,
+          "vinylToFastcgiRatio": 0.7932123054109853,
+          "nginxFastcgiP99Microseconds": 7187,
+          "vinylP99Microseconds": 7680
+        },
+        {
+          "name": "cache-direct-waf-blocking",
+          "requests": 3000,
+          "concurrency": 8,
+          "durationMillis": 944,
+          "requestsPerSecond": 3174.7850780296826,
+          "bytesPerSecond": 219060.1703840481,
+          "p50Microseconds": 2100,
+          "p95Microseconds": 4839,
+          "p99Microseconds": 7732
+        },
+        {
+          "name": "cache-nginx-fastcgi-waf-blocking",
+          "requests": 3000,
+          "concurrency": 8,
+          "durationMillis": 713,
+          "requestsPerSecond": 4202.656571504541,
+          "bytesPerSecond": 294185.9600053179,
+          "p50Microseconds": 1643,
+          "p95Microseconds": 4152,
+          "p99Microseconds": 5635
+        },
+        {
+          "name": "cache-vinyl-waf-blocking",
+          "requests": 3000,
+          "concurrency": 8,
+          "durationMillis": 905,
+          "requestsPerSecond": 3312.062809641164,
+          "bytesPerSecond": 225220.27105559915,
+          "p50Microseconds": 2982,
+          "p95Microseconds": 4836,
+          "p99Microseconds": 7926
+        },
+        {
+          "name": "php-cache-waf-blocking-comparison",
+          "wafMode": "blocking_pl1",
+          "directRps": 3174.7850780296826,
+          "nginxFastcgiCacheRps": 4202.656571504541,
+          "vinylRps": 3312.062809641164,
+          "vinylToFastcgiRatio": 0.7880879042313595,
+          "nginxFastcgiP99Microseconds": 5635,
+          "vinylP99Microseconds": 7926
+        }
+      ]
+    }
+  ]
+}

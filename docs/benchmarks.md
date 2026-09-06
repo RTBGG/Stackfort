@@ -10,6 +10,7 @@ multi-tenant capacity, or performance of the latest untested commit.
 
 | Record | Workload and WAF state | Interpretation |
 | --- | --- | --- |
+| [Managed FastCGI cache, 2026-09-06](../infra/host-tests/results/2026-09-06-native-fastcgi-cache.md) | Selectable native preset versus direct PHP and Vinyl; all 3 WAF modes on all 3 distributions | Toggle, full-domain purge, isolation and WAF-before-warm-hit checks; short development baseline, not release qualification. |
 | [Static/API baseline, 2026-08-25](phase1-performance-baseline.md) | Static NGINX and API health, no WAF/cache/TLS, 3 distributions | Broad early regression floor; samples were only tens of milliseconds. |
 | [ModSecurity baseline, 2026-08-31](../infra/host-tests/results/2026-08-31-waf-runtime-hyper-v.md) | Static workload, off/detection/blocking, 3 distributions | Historical comparison, not the current WAF engine. |
 | [Coraza comparison, 2026-08-31](../infra/host-tests/results/2026-08-31-coraza-runtime-hyper-v.md) | Same WAF workload/profile, off/detection/blocking, 3 distributions | Enabled-mode throughput was more than twice the historical ModSecurity run; off-mode noise is recorded. |

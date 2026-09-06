@@ -262,6 +262,9 @@ one-time code display after session revocation. Automated browser/API tests cove
 secret cleanup, freshness errors, expiry, proof requirements and accessibility.
 PHP domains also gain opt-in NGINX FastCGI presets, toggle and whole-domain
 invalidation alongside Vinyl; see [ADR 0063](adr/0063-opt-in-domain-scoped-fastcgi-cache.md).
+The [three-OS qualification](../infra/host-tests/results/2026-09-06-native-fastcgi-cache.md)
+passed every WAF mode with the same test binary. Strict browser project checks
+now run against actual source files; 64 browser tests and all 29 schema prefixes pass.
 The README now exposes the HTTPS-only one-line installer with the explicit
 no-public-release warning. These changes do not complete the final manual
 workflow review, independent security audit, uninstall or support-window gates.
