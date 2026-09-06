@@ -105,6 +105,10 @@ patch --batch --forward --directory="$connector_source" -p1 <"$script_directory/
 
 go_binary="$go_root/bin/go"
 [[ -x "$go_binary" ]] || fail 'pinned Go toolchain is incomplete'
+# Set this BEFORE even `go version`: the caller may be in Stackfort's module,
+# whose Go directive is newer than the deliberately separate WAF toolchain.
+# Never let module-aware automatic switching replace the hash-verified binary.
+export GOTOOLCHAIN=local
 [[ "$($go_binary version)" == "go version go$(source_field go-toolchain 2) linux/amd64" ]] || fail 'pinned Go toolchain reports an unexpected version'
 grep -Fx 'module github.com/corazawaf/libcoraza' "$libcoraza_source/go.mod" >/dev/null || fail 'libcoraza module identity differs from the lock'
 grep -Fx 'go 1.25.0' "$libcoraza_source/go.mod" >/dev/null || fail 'libcoraza minimum Go version differs from the reviewed source'
@@ -113,7 +117,6 @@ grep -Fx 'module github.com/corazawaf/coraza/v3' "$coraza_source/go.mod" >/dev/n
 
 compiler_map="-ffile-prefix-map=$workspace=. -fdebug-prefix-map=$workspace=."
 export PATH="$go_root/bin:$PATH"
-export GOTOOLCHAIN=local
 export GOPROXY=https://proxy.golang.org
 export GOSUMDB=sum.golang.org
 export GOFLAGS='-trimpath -buildvcs=false -mod=readonly -ldflags=-buildid='
