@@ -32,16 +32,18 @@ import {
   type UpdateStatus,
 } from './api'
 import AuthView from './AuthView.vue'
+import MFARecoveryView from './MFARecoveryView.vue'
 import { isSupportedLocale } from './i18n'
 import { submitPHPMyAdminHandoff } from './phpmyadmin'
 
 type Health = 'loading' | 'healthy' | 'unavailable'
-type ApplicationState = 'checking' | 'bootstrap' | 'login' | 'authenticated' | 'fatal'
+type ApplicationState = 'checking' | 'bootstrap' | 'login' | 'authenticated' | 'mfa-recovery' | 'fatal'
 type ConsoleMode = 'administrator' | 'account'
 type PageKey = AdminPageKey | AccountPageKey
 
 const { locale, t } = useI18n()
 const applicationState = ref<ApplicationState>('checking')
+const recoveryCodes = ref<string[]>([])
 const bootstrapStatus = ref<BootstrapStatus | null>(null)
 const session = ref<Session | null>(null)
 const selfContext = ref<SelfServiceContext | null>(null)
@@ -757,6 +759,22 @@ async function logout() {
   })
 }
 
+function finishMFA(codes: string[]) {
+  clearAuthenticatedState()
+  recoveryCodes.value = [...codes]
+  errorCode.value = ''
+  noticeCode.value = ''
+  mobileNavigationOpen.value = false
+  applicationState.value = codes.length ? 'mfa-recovery' : 'login'
+  document.title = 'Stackfort'
+}
+
+function finishRecovery() {
+  recoveryCodes.value.fill('')
+  recoveryCodes.value = []
+  applicationState.value = 'login'
+}
+
 function openIdentityPage() {
   void selectPage(consoleMode.value === 'administrator' ? 'settings' : 'profile')
 }
@@ -784,6 +802,8 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+	recoveryCodes.value.fill('')
+	recoveryCodes.value = []
 	stopAccountOperationTracking()
 	stopPlatformUpdateTracking()
   navigationMedia?.removeEventListener('change', updateNarrowState)
@@ -795,6 +815,7 @@ onBeforeUnmount(() => {
   <main v-if="applicationState === 'checking'" class="loading-screen" tabindex="-1"><span class="loading-mark" aria-hidden="true"></span><p role="status">{{ t('common.initializing') }}</p></main>
   <main v-else-if="applicationState === 'fatal'" class="loading-screen"><section class="fatal-card" role="alert"><h1>{{ t('errors.initializationTitle') }}</h1><p>{{ t(`errors.${errorCode}`) }}</p><button class="primary-action" type="button" @click="applicationState = 'checking'; initialize()">{{ t('common.retry') }}</button></section></main>
   <AuthView v-else-if="applicationState === 'bootstrap' || applicationState === 'login'" :initial-mode="applicationState" :bootstrap-status="bootstrapStatus" @authenticated="acceptSession" />
+  <MFARecoveryView v-else-if="applicationState === 'mfa-recovery'" :codes="recoveryCodes" @done="finishRecovery" />
 
   <template v-else-if="session && selfContext">
     <a class="skip-link" href="#main-content" @click.prevent="focusMainContent">{{ t('accessibility.skipToContent') }}</a>
@@ -816,7 +837,7 @@ onBeforeUnmount(() => {
 
       <div class="site-frame" :inert="isNarrow && mobileNavigationOpen">
         <header class="topbar"><button ref="menuButton" class="mobile-menu" type="button" :aria-label="t('topbar.openMenu')" :aria-expanded="mobileNavigationOpen" aria-controls="primary-navigation" @click="openNavigation"><span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span></button><p class="context-label">{{ topbarContext }}</p><div class="topbar-actions"><div class="api-pill" :data-health="apiHealth" role="status" aria-live="polite"><span class="status-dot" aria-hidden="true"></span><span>{{ t('status.api') }}: {{ healthLabel }}</span></div><label class="language-select" for="language"><span>{{ t('topbar.language') }}</span><select id="language" :value="locale" @change="setLocale"><option value="en">{{ t('localeNames.en') }}</option><option value="de">{{ t('localeNames.de') }}</option></select></label></div></header>
-        <main id="main-content" ref="mainContent" class="main-content" tabindex="-1"><div class="page"><header class="page-heading"><p class="eyebrow">{{ consoleMode === 'administrator' ? t('overview.eyebrow') : t('account.eyebrow') }}</p><h1 ref="pageHeading" class="page-title" tabindex="-1">{{ activePageTitle }}</h1><p>{{ activePageDescription }}</p></header><AdminContent v-if="consoleMode === 'administrator'" :page="activeAdminPage" :session="session" :health="apiHealth" :build="build" :packages="packages" :accounts="accounts" :domains="domains" :waf-exceptions="wafExceptions" :operations="operations" :audit-events="auditEvents" :capabilities="capabilities" :update-status="updateStatus" :php-status="accountPHP" :acme-accounts="acmeAccounts" :loading="dataLoading" :action-busy="actionBusy" :error-code="errorCode" :notice-code="noticeCode" @refresh="refreshAdminData" @create-package="createPackage" @create-account="createAccount" @register-acme-account="registerACMEAccount" @select-account="loadDomains" @create-domain="createDomain" @domain-action="runDomainAction" @load-waf-exceptions="loadWAFExceptions" @create-waf-exception="createWAFException" @remove-waf-exception="removeWAFException" @update-policy="updatePolicy" @check-updates="checkUpdates" @apply-update="applyUpdate" @logout="logout" /><AccountContent v-else :page="activeAccountPage" :session="session" :accounts="selfContext.accounts" :selected-account-id="selectedOwnerAccountId" :domains="domains" :php-status="accountPHP" :database-workspace="databaseWorkspace" :database-credential="databaseCredential" :file-listing="fileListing" :operation="accountOperation" :certificate-history="certificateHistory" :certificate-history-loading-domain-id="certificateHistoryLoadingDomainId" :sessions="managedSessions" :health="apiHealth" :loading="dataLoading" :action-busy="actionBusy" :error-code="errorCode" :notice-code="noticeCode" @refresh="refreshAccountData" @select-account="selectOwnerAccount" @load-files="loadFiles" @create-domain="createDomain" @create-database="createDatabase" @reveal-database-credential="revealDatabaseCredential" @launch-php-my-admin="launchPHPMyAdmin" @rotate-database-credential="rotateDatabaseCredential" @delete-database-target="deleteDatabaseTarget" @dismiss-database-credential="databaseCredential = null" @update-domain="updateDomain" @domain-action="runDomainAction" @issue-certificate="issueCertificate" @load-certificate-history="loadCertificateHistory" @update-profile="updateProfile" @revoke-session="revokeManagedSession" @revoke-other-sessions="revokeOtherSessions" @logout="logout" /></div></main>
+        <main id="main-content" ref="mainContent" class="main-content" tabindex="-1"><div class="page"><header class="page-heading"><p class="eyebrow">{{ consoleMode === 'administrator' ? t('overview.eyebrow') : t('account.eyebrow') }}</p><h1 ref="pageHeading" class="page-title" tabindex="-1">{{ activePageTitle }}</h1><p>{{ activePageDescription }}</p></header><AdminContent v-if="consoleMode === 'administrator'" :page="activeAdminPage" :session="session" :health="apiHealth" :build="build" :packages="packages" :accounts="accounts" :domains="domains" :waf-exceptions="wafExceptions" :operations="operations" :audit-events="auditEvents" :capabilities="capabilities" :update-status="updateStatus" :php-status="accountPHP" :acme-accounts="acmeAccounts" :loading="dataLoading" :action-busy="actionBusy" :error-code="errorCode" :notice-code="noticeCode" @refresh="refreshAdminData" @create-package="createPackage" @create-account="createAccount" @register-acme-account="registerACMEAccount" @select-account="loadDomains" @create-domain="createDomain" @domain-action="runDomainAction" @load-waf-exceptions="loadWAFExceptions" @create-waf-exception="createWAFException" @remove-waf-exception="removeWAFException" @update-policy="updatePolicy" @check-updates="checkUpdates" @apply-update="applyUpdate" @mfa-changed="finishMFA" @logout="logout" /><AccountContent v-else :page="activeAccountPage" :session="session" :accounts="selfContext.accounts" :selected-account-id="selectedOwnerAccountId" :domains="domains" :php-status="accountPHP" :database-workspace="databaseWorkspace" :database-credential="databaseCredential" :file-listing="fileListing" :operation="accountOperation" :certificate-history="certificateHistory" :certificate-history-loading-domain-id="certificateHistoryLoadingDomainId" :sessions="managedSessions" :health="apiHealth" :loading="dataLoading" :action-busy="actionBusy" :error-code="errorCode" :notice-code="noticeCode" @refresh="refreshAccountData" @select-account="selectOwnerAccount" @load-files="loadFiles" @create-domain="createDomain" @create-database="createDatabase" @reveal-database-credential="revealDatabaseCredential" @launch-php-my-admin="launchPHPMyAdmin" @rotate-database-credential="rotateDatabaseCredential" @delete-database-target="deleteDatabaseTarget" @dismiss-database-credential="databaseCredential = null" @update-domain="updateDomain" @domain-action="runDomainAction" @issue-certificate="issueCertificate" @load-certificate-history="loadCertificateHistory" @update-profile="updateProfile" @revoke-session="revokeManagedSession" @revoke-other-sessions="revokeOtherSessions" @mfa-changed="finishMFA" @logout="logout" /></div></main>
       </div>
     </div>
   </template>

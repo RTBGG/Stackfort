@@ -97,9 +97,11 @@ stronger future claims, not measurements retroactively attributed to old runs.
 
 ## Current product decision
 
-Vinyl is implemented as an opt-in PHP cache. FastCGI cache is the evidence-based
-direction for a future managed preset, **not yet a selectable production
-feature**. PageSpeed/Cyclone remains an evaluation and is not a dependency.
+Vinyl and native NGINX FastCGI are selectable, disabled-by-default PHP caches.
+The current harness measures the actual native preset through the public edge,
+not the temporary FastCGI baseline used by historical results. See
+[ADR 0063](adr/0063-opt-in-domain-scoped-fastcgi-cache.md) for policy differences
+and resource limits. PageSpeed/Cyclone remains an evaluation and is not a dependency.
 The dated evaluation's performance and distribution/license constraints did
 not justify replacing Vinyl. See the [cache design](cache-foundation.md) and
 [ADR 0056](adr/0056-do-not-adopt-proprietary-mod-pagespeed-as-core-cache.md).

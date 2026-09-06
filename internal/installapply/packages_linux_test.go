@@ -120,4 +120,13 @@ func TestRockySELinuxContextsIncludeWritableWAFRuntime(t *testing.T) {
 	if !slices.Contains(stackfortSELinuxRestorePaths(), wafconfig.RuntimeRoot) {
 		t.Fatalf("SELinux restore paths omit %s", wafconfig.RuntimeRoot)
 	}
+	foundCache := false
+	for _, item := range stackfortSELinuxFileContexts() {
+		if item.expression == "/var/cache/stackfort-fastcgi(/.*)?" && item.kind == "httpd_cache_t" {
+			foundCache = true
+		}
+	}
+	if !foundCache || !slices.Contains(stackfortSELinuxRestorePaths(), "/var/cache/stackfort-fastcgi") {
+		t.Fatal("FastCGI runtime is not narrowly labelled")
+	}
 }

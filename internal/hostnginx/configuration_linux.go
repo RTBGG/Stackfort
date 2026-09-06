@@ -72,6 +72,10 @@ func (manager *linuxConfigurationManager) Prepare(spec nginxbaseline.Spec) (*con
 	if err := manager.validateAnchors(); err != nil {
 		return nil, err
 	}
+	cacheChanged, err := manager.cacheRuntime(spec, true)
+	if err != nil {
+		return nil, err
+	}
 	directories := []struct {
 		path string
 		mode fs.FileMode
@@ -106,7 +110,7 @@ func (manager *linuxConfigurationManager) Prepare(spec nginxbaseline.Spec) (*con
 	}
 
 	snapshots := make([]pathSnapshot, 0, len(directories)+len(files))
-	changed, dropInChanged := false, false
+	changed, dropInChanged := cacheChanged, false
 	rollback := func() error { return restoreSnapshots(snapshots) }
 	for _, directory := range directories {
 		path := manager.rooted(directory.path)

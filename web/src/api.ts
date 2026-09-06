@@ -143,7 +143,7 @@ export type Domain = {
   status: 'pending' | 'active' | 'suspended' | 'removed'
   canonicalMode: 'prefer_apex' | 'prefer_www' | 'serve_both'
   waf: { mode: 'off' | 'detection_only' | 'blocking_pl1' }
-  cache?: { preset: 'disabled' | 'respect_origin' | 'wordpress' }
+  cache?: { preset: 'disabled' | 'respect_origin' | 'wordpress' | 'fastcgi_respect_origin' | 'fastcgi_wordpress' }
   target: {
     id: string
     type: 'static' | 'php' | 'oci_application' | 'redirect'
@@ -608,7 +608,21 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return response.json() as Promise<T>
 }
 
+export type TOTPStatus = { enabled: boolean; factorId?: string; activatedAt?: string; recoveryCodesRemaining: number }
+export type TOTPEnrollment = { challengeId: string; secret: string; provisioningUri: string; expiresAt: string }
+export type TOTPActivation = { factorId: string; activatedAt: string; recoveryCodes: string[] }
+
 export const api = {
+  totpStatus: () => request<TOTPStatus>('/api/v1/mfa/totp'),
+  beginTOTP: (currentFactor: string) => request<TOTPEnrollment>('/api/v1/mfa/totp/setup', {
+    method: 'POST', body: { currentFactor }, csrf: true,
+  }),
+  confirmTOTP: (challengeId: string, code: string) => request<TOTPActivation>(
+    `/api/v1/mfa/totp/setup/${encodeURIComponent(challengeId)}/confirm`, { method: 'POST', body: { code }, csrf: true },
+  ),
+  disableTOTP: (currentFactor: string) => request<void>('/api/v1/mfa/totp', {
+    method: 'DELETE', body: { currentFactor }, csrf: true,
+  }),
   bootstrapStatus: () => request<BootstrapStatus>('/api/v1/bootstrap'),
   bootstrapAdministrator: (input: {
     token: string; email: string; displayName: string; password: string; locale: 'en' | 'de'

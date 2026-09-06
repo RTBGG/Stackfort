@@ -1,7 +1,8 @@
 # Web Interface
 
 The interface uses Vue 3, TypeScript, Vite, and Vue I18n. English is the source
-locale and German is complete for every release gate. No untranslated literal
+locale; both catalogs are checked, while the final manual EN/DE workflow review
+remains a pre-beta gate. No untranslated literal
 user-facing text should be introduced outside development-only screens.
 
 From this directory:
@@ -10,6 +11,14 @@ From this directory:
 npm ci
 npm run dev
 ```
+
+`npm run typecheck` explicitly checks both `tsconfig.app.json` and
+`tsconfig.node.json`. Do not run plain `vue-tsc --noEmit` against the empty
+solution configuration: it does not walk project references. Application source
+and Vue templates remain strict. `skipLibCheck` skips dependency declaration
+internals only: pinned vue-i18n 11.4.10 imports `GenericComponentInstance`, which
+pinned Vue 3.5.42 does not export. Remove that workaround after upstream type
+compatibility is restored; do not suppress application errors to work around it.
 
 The development server listens on `127.0.0.1:5173` and proxies `/api` to the
 local Stackfort API on `127.0.0.1:8080`. Run `npm run build` for type checking

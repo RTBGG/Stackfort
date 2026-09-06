@@ -102,6 +102,8 @@ try {
         'STACKFORT_QUALIFICATION cache-personalization-isolation=passed',
         'STACKFORT_QUALIFICATION cache-waf-order-and-exceptions=passed',
         'STACKFORT_QUALIFICATION cache-scoped-purge-and-metrics=passed',
+        'STACKFORT_QUALIFICATION native-fastcgi-policy-isolation-toggle-purge=passed',
+        'STACKFORT_QUALIFICATION native-fastcgi-waf-before-warm-hit=passed',
         '"name":"cache-direct-waf-off"',
         '"name":"cache-nginx-fastcgi-waf-off"',
         '"name":"cache-vinyl-waf-off"',

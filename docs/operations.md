@@ -47,13 +47,13 @@ capability is not a password-reset mechanism and cannot create a second first
 administrator. Log in afterwards; bootstrap does not create a login session.
 Keep tokens out of URLs, screenshots, logs, and issue reports.
 
-[TOTP enrollment/removal](totp-recovery-and-session-management.md) and single-use
-recovery codes are implemented in the authenticated API; browser MFA login is
-implemented, but a browser enrollment/settings flow is still missing. Do not
-assume there is an enable-MFA button in the current panel. Complete and qualify
-that EN/DE workflow before public beta. When testing API enrollment, save the
-returned recovery codes offline and verify a recovery login before relying on
-it. Factor changes revoke existing sessions. Review active sessions and revoke
+[TOTP setup, replacement and removal](totp-recovery-and-session-management.md)
+are available in administrator Settings and account Profile in English and German.
+Sign in again if the five-minute freshness window has expired. Add the manual
+key to a time-based authenticator, confirm its six-digit code, then save the
+one-time recovery codes offline before continuing to login. No external QR
+service receives the key. Factor changes revoke all existing sessions. Verify
+a recovery login before relying on it. Review active sessions and revoke
 unrecognized ones. There is no documented break-glass bypass for a lost password
 or for losing both the authenticator and all recovery codes.
 
@@ -140,16 +140,21 @@ a narrow, expiring administrator exception over disabling inspection globally;
 keep an explanation and test its scope. Coraza's connector is experimental,
 and response-body inspection is not enabled.
 
-PHP domains can opt into the closed Vinyl `respect_origin` or `wordpress`
-presets. Cookie/authorization-bearing and sensitive-path traffic bypasses the
+PHP domains can select disabled, Vinyl, or NGINX FastCGI in their page-cache
+settings, with respect-origin and anonymous-WordPress variants for each engine.
+Cookie/authorization-bearing and sensitive-path traffic bypasses the
 cache. Confirm this for the actual application, including login, cart, account,
 and tenant separation. Purge the intended domain/path after a content change
 when needed. WAF checks also run on cache hits when WAF is enabled.
 
-NGINX FastCGI cache is a **benchmark-proven future preset**, not currently a
-selectable production cache. PageSpeed/Cyclone is evaluation-only and is not
-installed. See [benchmark scope and results](benchmarks.md); do not paste
-benchmark configuration into managed production files.
+FastCGI additionally bypasses HEAD, query strings, request bodies and request
+cache overrides. Its purge clears the entire domain through a checked NGINX
+activation, not immediate file deletion; other domains remain unchanged. Cache
+files share a worker-owned 512 MiB cleanup target, not a hard per-account quota.
+Monitor server disk space. See [cache policy](adr/0063-opt-in-domain-scoped-fastcgi-cache.md).
+PageSpeed/Cyclone is evaluation-only and is not installed. See
+[benchmark scope and results](benchmarks.md); do not paste benchmark directives
+into managed files. Stackfort remains pre-beta regardless of cache choice.
 
 Keep NGINX, its Coraza module, and their native package revisions together.
 Do not independently replace the managed ABI-locked packages or turn off MAC

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { createI18n } from 'vue-i18n'
+import { identitySecurityMessages } from './identity-security-messages'
 
 export const supportedLocales = ['en', 'de'] as const
 export type SupportedLocale = (typeof supportedLocales)[number]
@@ -11,6 +12,7 @@ export function isSupportedLocale(value: unknown): value is SupportedLocale {
 
 export const messages = {
   en: {
+    identitySecurity: identitySecurityMessages.en,
     brand: { name: 'Stackfort', tagline: 'Secure hosting. Simple operations.' },
     localeNames: { en: 'English', de: 'Deutsch' },
     accessibility: { skipToContent: 'Skip to main content' },
@@ -122,8 +124,10 @@ export const messages = {
     },
     cache: {
       preset: 'Page cache', state: 'Cache: {preset}', disabled: 'Disabled',
-      respect_origin: 'Respect origin headers', wordpress: 'WordPress anonymous pages',
-      hint: 'Caching is available for PHP sites only. Authorization, every cookie, unsafe methods, sensitive paths, Set-Cookie, and private/no-store responses always bypass Vinyl.',
+      respect_origin: 'Vinyl — respect origin headers', wordpress: 'Vinyl — anonymous WordPress pages',
+      fastcgi_respect_origin: 'NGINX FastCGI — respect origin headers', fastcgi_wordpress: 'NGINX FastCGI — anonymous WordPress pages',
+      hint: 'Opt-in caching for PHP sites. Authorization, cookies, sensitive paths, Set-Cookie and private/no-store responses are not cached. FastCGI also bypasses HEAD and all query strings. Check your application before enabling anonymous-page caching.',
+      fastcgiPurgeHint: 'FastCGI clears the entire domain through a checked NGINX activation. Other domains are unaffected; old files expire in the background.',
       metrics: 'Cache metrics', managementFor: 'Cache management for {domain}', hits: 'Hits', misses: 'Misses',
       bypasses: 'Bypasses', hitRatio: 'Hit ratio', pathPrefix: 'Path prefix', purge: 'Queue purge',
       purgeHint: 'Use / for the entire domain or an exact leading path prefix. Purging is processed as an audited operation.',
@@ -436,6 +440,7 @@ export const messages = {
     },
   },
   de: {
+    identitySecurity: identitySecurityMessages.de,
     brand: { name: 'Stackfort', tagline: 'Sicheres Hosting. Einfache Verwaltung.' },
     localeNames: { en: 'English', de: 'Deutsch' },
     accessibility: { skipToContent: 'Zum Hauptinhalt springen' },
@@ -547,8 +552,10 @@ export const messages = {
     },
     cache: {
       preset: 'Seiten-Cache', state: 'Cache: {preset}', disabled: 'Deaktiviert',
-      respect_origin: 'Origin-Header beachten', wordpress: 'Anonyme WordPress-Seiten',
-      hint: 'Caching ist nur für PHP-Seiten verfügbar. Autorisierung, jedes Cookie, unsichere Methoden, sensible Pfade, Set-Cookie sowie private/no-store-Antworten umgehen Vinyl immer.',
+      respect_origin: 'Vinyl — Origin-Header beachten', wordpress: 'Vinyl — anonyme WordPress-Seiten',
+      fastcgi_respect_origin: 'NGINX FastCGI — Origin-Header beachten', fastcgi_wordpress: 'NGINX FastCGI — anonyme WordPress-Seiten',
+      hint: 'Optionaler Cache für PHP-Seiten. Autorisierung, Cookies, sensible Pfade, Set-Cookie und private/no-store-Antworten werden nicht gecacht. FastCGI umgeht zusätzlich HEAD und alle Querystrings. Prüfe deine Anwendung vor dem Aktivieren anonymer Seiten-Caches.',
+      fastcgiPurgeHint: 'FastCGI leert die gesamte Domain über eine geprüfte NGINX-Aktivierung. Andere Domains bleiben unverändert; alte Dateien laufen im Hintergrund ab.',
       metrics: 'Cache-Metriken', managementFor: 'Cache-Verwaltung für {domain}', hits: 'Treffer', misses: 'Fehltreffer',
       bypasses: 'Umgehungen', hitRatio: 'Trefferquote', pathPrefix: 'Pfadpräfix', purge: 'Bereinigung einstellen',
       purgeHint: 'Verwende / für die gesamte Domain oder ein exaktes führendes Pfadpräfix. Die Bereinigung läuft als auditierte Operation.',

@@ -1,4 +1,18 @@
-# Opt-in Vinyl Cache foundation
+# Opt-in PHP cache foundation
+
+Update, 2026-09-06: PHP domains now also offer native NGINX
+`fastcgi_respect_origin` and `fastcgi_wordpress` presets alongside disabled and
+Vinyl. They use the same typed domain editing API (`cachePreset`) and EN/DE
+selector. FastCGI never stacks with Vinyl. Its stricter query/HEAD bypass,
+server-owned generation, full-domain purge and shared soft disk bounds are
+specified in [ADR 0063](adr/0063-opt-in-domain-scoped-fastcgi-cache.md).
+Static/redirect/container targets cannot enable these PHP caches.
+
+Cache metrics still count only real HIT/MISS/BYPASS decisions. Requests for
+which native NGINX never attempts caching (for example POST), static responses
+and WAF rejections may have no cache status and are outside those counters.
+The original Vinyl design and historical benchmark results follow; they are
+not retroactively measurements of the new managed FastCGI preset.
 
 K-013 and K-014 provide a closed, disabled-by-default full-page cache for PHP
 domains. NGINX remains the public TLS and Coraza edge; Vinyl Cache 9.0.1 is a

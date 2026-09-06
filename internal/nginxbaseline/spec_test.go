@@ -64,6 +64,15 @@ func TestManagedAccessFormatDoesNotPersistRequestSecrets(t *testing.T) {
 	t.Parallel()
 	spec, _ := ForDistribution("debian")
 	content := Main(spec)
+	start := strings.Index(content, "log_format stackfort_redacted")
+	if start < 0 {
+		t.Fatal("managed log format is missing")
+	}
+	end := strings.Index(content[start:], ";")
+	if end < 0 {
+		t.Fatal("managed log format is missing")
+	}
+	content = content[start : start+end]
 	for _, required := range []string{"log_format stackfort_redacted escape=json", `"path":"$uri"`, `"duration":"$request_time"`} {
 		if !strings.Contains(content, required) {
 			t.Fatalf("managed log format omits %q:\n%s", required, content)

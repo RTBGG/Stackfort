@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/RTBGG/stackfort/internal/agentprotocol"
+	"github.com/RTBGG/stackfort/internal/cacheconfig"
 	"github.com/RTBGG/stackfort/internal/hostcapabilities"
 	"github.com/RTBGG/stackfort/internal/hostnginx"
 	"github.com/RTBGG/stackfort/internal/installpreflight"
@@ -70,6 +71,7 @@ func stackfortSELinuxFileContexts() []selinuxFileContext {
 		// collections therefore need the same narrow
 		// writable cache type as the distribution's native NGINX cache.
 		{"httpd_cache_t", wafconfig.RuntimeRoot + "(/.*)?"},
+		{"httpd_cache_t", cacheconfig.FastCGIDirectory + "(/.*)?"},
 	}
 }
 
@@ -80,6 +82,7 @@ func stackfortSELinuxRestorePaths() []string {
 		phpMyAdminConfigurationRoot, phpMyAdminBrokerRoot, phpMyAdminStateRoot,
 		"/var/log/stackfort/accounts",
 		phpruntime.ConfigurationRoot, phpruntime.RuntimeRoot, wafconfig.RuntimeRoot,
+		cacheconfig.FastCGIDirectory,
 	}
 }
 
@@ -572,7 +575,14 @@ func (runner *LinuxRunner) applyPayload(source Source) (bool, error) {
 		return false, err
 	}
 	directories := payloadDirectories(runner.distribution, uid, gid, pmaUID, pmaGID)
-	changed := false
+	nginxSpec, err := nginxbaseline.ForDistribution(runner.distribution)
+	if err != nil {
+		return false, err
+	}
+	changed, err := hostnginx.PrepareCacheRuntime(nginxSpec)
+	if err != nil {
+		return changed, err
+	}
 	for _, directory := range directories {
 		directoryChanged, err := ensureDirectory(directory)
 		if err != nil {
@@ -1072,6 +1082,9 @@ func hasSELinuxPortLabel(output, kind, protocol, port string) bool {
 func (runner *LinuxRunner) verifyNGINX(ctx context.Context) error {
 	spec, err := nginxbaseline.ForDistribution(runner.distribution)
 	if err != nil {
+		return err
+	}
+	if err := hostnginx.VerifyCacheRuntime(spec); err != nil {
 		return err
 	}
 	marker, err := os.ReadFile("/etc/nginx/stackfort/.stackfort-managed")

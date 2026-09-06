@@ -176,9 +176,9 @@ func (r *Repository) CreateDomain(ctx context.Context, params CreateDomainParams
 			return err
 		}
 		if _, err := executor.ExecContext(ctx, `
-			INSERT INTO domain_cache_policies (account_id, domain_id, preset, updated_at)
-			VALUES (?, ?, ?, ?)`,
-			string(params.AccountID), string(domainID), string(cachePreset), formatTime(now),
+			INSERT INTO domain_cache_policies (account_id, domain_id, preset, generation, updated_at)
+			VALUES (?, ?, ?, ?, ?)`,
+			string(params.AccountID), string(domainID), string(cachePreset), string(domainID), formatTime(now),
 		); err != nil {
 			return err
 		}
@@ -232,7 +232,7 @@ func (r *Repository) UpdateDomain(ctx context.Context, params UpdateDomainParams
 	if err := validateOptionalID(params.OperationID, "operationId"); err != nil {
 		return Domain{}, err
 	}
-	if params.Target == nil && params.CanonicalMode == nil && params.WAFMode == nil && params.CachePreset == nil {
+	if params.Target == nil && params.CanonicalMode == nil && params.WAFMode == nil && params.CachePreset == nil && !params.RotateCache {
 		return Domain{}, fmt.Errorf("%w: domain update contains no changes", ErrInvalidInput)
 	}
 	var canonicalMode *CanonicalMode
@@ -306,6 +306,10 @@ func (r *Repository) UpdateDomain(ctx context.Context, params UpdateDomainParams
 		}
 		if DomainStatus(status) == DomainRemoved {
 			return fmt.Errorf("%w: removed domain cannot be updated", ErrConflict)
+		}
+		if params.RotateCache && (!cacheconfig.IsFastCGI(CachePreset(currentCachePreset)) ||
+			params.Target != nil || params.CanonicalMode != nil || params.WAFMode != nil || params.CachePreset != nil) {
+			return fmt.Errorf("%w: FastCGI purge requires an unchanged FastCGI policy", ErrConflict)
 		}
 		name := NormalizedDomainName{Display: displayName, ASCII: asciiName}
 		var prepared *preparedDomainTarget
@@ -383,12 +387,14 @@ func (r *Repository) UpdateDomain(ctx context.Context, params UpdateDomainParams
 				return err
 			}
 		}
-		if cachePreset != nil {
+		// Every domain edit gets a fresh namespace, including disabling and
+		// re-enabling caching. Replay returns above before rotating again.
+		{
 			result, err := executor.ExecContext(ctx, `
 				UPDATE domain_cache_policies
-				SET preset = ?, updated_at = ?
+				SET preset = ?, generation = ?, updated_at = ?
 				WHERE account_id = ? AND domain_id = ?`,
-				string(*cachePreset), formatTime(now), string(params.AccountID), string(params.DomainID),
+				string(effectiveCachePreset), string(targetID), formatTime(now), string(params.AccountID), string(params.DomainID),
 			)
 			if err != nil {
 				return err
@@ -403,10 +409,12 @@ func (r *Repository) UpdateDomain(ctx context.Context, params UpdateDomainParams
 			return err
 		}
 		details := map[string]any{
-			"canonicalModeChanged": canonicalMode != nil,
-			"targetChanged":        prepared != nil,
-			"wafModeChanged":       wafMode != nil,
-			"cachePresetChanged":   cachePreset != nil,
+			"canonicalModeChanged":   canonicalMode != nil,
+			"targetChanged":          prepared != nil,
+			"wafModeChanged":         wafMode != nil,
+			"cachePresetChanged":     cachePreset != nil,
+			"cacheGenerationRotated": true,
+			"cachePurge":             params.RotateCache,
 		}
 		if wafMode != nil {
 			details["wafMode"] = *wafMode
@@ -734,7 +742,7 @@ func (r *Repository) GetDomain(ctx context.Context, accountID, domainID ID) (Dom
 				tls.names_json, tls.active_certificate_ref, tls.issuer,
 				tls.not_before, tls.expires_at, tls.next_renewal_at,
 				tls.last_error_code, tls.last_error_at, tls.updated_at,
-				waf.mode, waf.updated_at, cache.preset, cache.updated_at
+				waf.mode, waf.updated_at, cache.preset, cache.updated_at, cache.generation
 			FROM domains AS d
 			JOIN domain_targets AS t
 			  ON t.account_id = d.account_id AND t.domain_id = d.id AND t.superseded_at IS NULL
@@ -792,6 +800,7 @@ func (r *Repository) GetDomain(ctx context.Context, accountID, domainID ID) (Dom
 			&wafUpdated,
 			&cachePreset,
 			&cacheUpdated,
+			&result.Cache.Generation,
 		)
 	})
 	if err != nil {

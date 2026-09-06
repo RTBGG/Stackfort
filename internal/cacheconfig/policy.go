@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-// Package cacheconfig defines Stackfort's closed Vinyl Cache policy. Customer
+// Package cacheconfig defines Stackfort's closed cache policies. Customer
 // input selects an enum and safe purge scope; it never becomes VCL source.
 package cacheconfig
 
@@ -30,9 +30,11 @@ const (
 type Preset string
 
 const (
-	PresetDisabled      Preset = "disabled"
-	PresetRespectOrigin Preset = "respect_origin"
-	PresetWordPress     Preset = "wordpress"
+	PresetDisabled             Preset = "disabled"
+	PresetRespectOrigin        Preset = "respect_origin"
+	PresetWordPress            Preset = "wordpress"
+	PresetFastCGIRespectOrigin Preset = "fastcgi_respect_origin"
+	PresetFastCGIWordPress     Preset = "fastcgi_wordpress"
 )
 
 var purgePathPattern = regexp.MustCompile(`^/[A-Za-z0-9/_.~,!$&()+;=:@%-]{0,511}$`)
@@ -41,10 +43,14 @@ func NormalizePreset(value Preset) (Preset, error) {
 	if value == "" {
 		return PresetDisabled, nil
 	}
-	if value != PresetDisabled && value != PresetRespectOrigin && value != PresetWordPress {
+	if value != PresetDisabled && value != PresetRespectOrigin && value != PresetWordPress && !IsFastCGI(value) {
 		return "", errors.New("unsupported cache preset")
 	}
 	return value, nil
+}
+
+func IsFastCGI(value Preset) bool {
+	return value == PresetFastCGIRespectOrigin || value == PresetFastCGIWordPress
 }
 
 // NormalizePurgePath accepts only an exact path prefix. The caller appends a

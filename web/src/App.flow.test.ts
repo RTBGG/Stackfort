@@ -72,10 +72,43 @@ afterEach(() => {
   wrapper = null
   document.body.innerHTML = ''
   document.body.className = ''
+  vi.restoreAllMocks()
   vi.unstubAllGlobals()
 })
 
 describe('administrator entry flows', () => {
+  it('replaces the authenticated shell with a one-time recovery view after MFA setup', async () => {
+    vi.spyOn(document, 'cookie', 'get').mockReturnValue('__Host-sf-csrf=csrf-bound')
+    const fetchMock = vi.fn().mockImplementation((input: string | URL | Request) => {
+      const url = String(input)
+      const resource = authenticatedResource(url)
+      if (resource) return resource
+      if (url.endsWith('/bootstrap')) return response(200, { required: false })
+      if (url.endsWith('/session')) return response(200, sessionResponse())
+      if (url.endsWith('/sessions')) return response(200, { sessions: [] })
+      if (url.endsWith('/mfa/totp')) return response(200, { enabled: false, recoveryCodesRemaining: 0 })
+      if (url.endsWith('/mfa/totp/setup')) return response(201, { challengeId: 'challenge', secret: 'PRIVATESETUPKEY', expiresAt: new Date(Date.now() + 600_000).toISOString() })
+      if (url.endsWith('/setup/challenge/confirm')) return response(200, { factorId: 'factor', recoveryCodes: ['private-recovery-1', 'private-recovery-2'] })
+      return response(404, { code: 'resource_not_found' })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const application = mountApplication(); await flushPromises()
+    await application.get('.identity-summary').trigger('click'); await flushPromises()
+    await application.get('.identity-security form').trigger('submit'); await flushPromises()
+    await application.get('.identity-security input[inputmode="numeric"]').setValue('123456')
+    await application.get('.identity-security form').trigger('submit'); await flushPromises()
+    expect(application.get('h1').text()).toBe('Save your recovery codes')
+    expect(application.find('.identity-summary').exists()).toBe(false)
+    expect(application.text()).not.toContain('admin@example.test')
+    expect(application.html()).not.toContain('PRIVATESETUPKEY')
+    expect(application.get('button').attributes('disabled')).toBeDefined()
+    expect(JSON.stringify(localStorage)).not.toContain('private-recovery')
+    await application.get('input[type="checkbox"]').setValue(true)
+    await application.get('button').trigger('click'); await flushPromises()
+    expect(application.get('h1').text()).toBe('Sign in to Stackfort')
+    expect(application.html()).not.toContain('private-recovery')
+    expect(fetchMock.mock.calls.some((call) => String(call[0]).endsWith('/logout'))).toBe(false)
+  })
   it('validates and completes one-time administrator bootstrap', async () => {
     const fetchMock = vi.fn().mockImplementation((input: string | URL | Request, init?: RequestInit) => {
       const url = String(input)

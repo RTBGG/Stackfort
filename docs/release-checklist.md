@@ -14,8 +14,9 @@ releases or claim independent review from automated tests alone.
   authentication/recovery, account/domain/database/file/backup/application
   actions, destructive confirmations, errors, and updates. Retain accessibility
   and narrow-screen evidence as well as catalog/type checks.
-  In particular, MFA login exists but browser MFA enrollment/removal is not
-  implemented yet; the authenticated API alone does not close that workflow.
+  MFA setup/replacement/removal and recovery-code display now have EN/DE browser
+  flows and automated coverage; include real authenticator and narrow-screen
+  checks in the final review.
 - [ ] Implement and qualify active-installation uninstall on every supported
   distribution, as required by the product specification. Passive carrier
   removal tests do not cover removal of the active platform.
@@ -30,7 +31,8 @@ releases or claim independent review from automated tests alone.
   approval on 2026-09-06.
 - [ ] Review the [operations guide](operations.md), recovery exclusions,
   bootstrap-certificate boundary, and [benchmark caveats](benchmarks.md).
-  No database/full-host backup or FastCGI production preset is implied.
+  No database/full-host backup or general production-readiness claim is implied.
+  Include FastCGI's shared soft cache bounds and whole-domain purge limitation.
 
 ## For every candidate
 

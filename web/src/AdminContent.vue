@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
+import IdentitySecurity from './IdentitySecurity.vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { AdminPageKey } from './admin'
@@ -71,6 +72,7 @@ const emit = defineEmits<{
   checkUpdates: []
 	applyUpdate: [version: string]
   logout: []
+  mfaChanged: [recoveryCodes: string[]]
 }>()
 
 const { locale, t } = useI18n()
@@ -391,7 +393,7 @@ function removeWAFException(exception: DomainWAFException) {
       </form>
       <div class="resource-list">
         <article v-for="item in packages" :key="item.id" class="panel resource-card">
-          <header><div><h2>{{ item.name }}</h2><code>{{ item.slug }}</code></div><span class="state-badge" :data-state="item.hostReady ? item.status : 'pending'">{{ item.hostReady ? t(`states.${item.status}`) : t('states.provisioning') }}</span></header>
+          <header><div><h2>{{ item.name }}</h2><code>{{ item.slug }}</code></div><span class="state-badge" :data-state="item.status">{{ t(`states.${item.status}`) }}</span></header>
           <dl class="detail-list compact">
             <div><dt>{{ t('packages.domains') }}</dt><dd>{{ formatNumber(item.limits.maxDomains, activeLocale) }}</dd></div>
             <div><dt>{{ t('packages.databases') }}</dt><dd>{{ formatNumber(item.limits.maxDatabases, activeLocale) }}</dd></div>
@@ -536,6 +538,7 @@ function removeWAFException(exception: DomainWAFException) {
     </section>
 
     <div v-else class="management-grid">
+      <IdentitySecurity :key="session.sessionId" @changed="emit('mfaChanged', $event)" @logout="emit('logout')" />
       <section class="panel settings-panel">
         <div><p class="eyebrow">{{ t('settings.identity') }}</p><h2>{{ session.identity.displayName }}</h2><p>{{ session.identity.email }}</p></div>
         <dl class="detail-list"><div><dt>{{ t('settings.authenticationLevel') }}</dt><dd>{{ session.authenticationLevel }}</dd></div><div><dt>{{ t('settings.sessionExpires') }}</dt><dd>{{ displayDate(session.expiresAt) }}</dd></div><div><dt>{{ t('settings.locale') }}</dt><dd>{{ t(`localeNames.${activeLocale}`) }}</dd></div></dl>

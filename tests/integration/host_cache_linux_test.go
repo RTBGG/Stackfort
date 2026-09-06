@@ -5,6 +5,7 @@
 package integration_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,10 +13,8 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"os/user"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -24,7 +23,6 @@ import (
 	"github.com/RTBGG/stackfort/internal/cacheconfig"
 	"github.com/RTBGG/stackfort/internal/core"
 	"github.com/RTBGG/stackfort/internal/hostcache"
-	"github.com/RTBGG/stackfort/internal/hostcapabilities"
 	"github.com/RTBGG/stackfort/internal/hostfilesystem"
 	"github.com/RTBGG/stackfort/internal/hostidentity"
 	"github.com/RTBGG/stackfort/internal/hostingidentity"
@@ -33,11 +31,9 @@ import (
 	"github.com/RTBGG/stackfort/internal/hostnginx"
 	"github.com/RTBGG/stackfort/internal/hostphp"
 	"github.com/RTBGG/stackfort/internal/hostresources"
-	"github.com/RTBGG/stackfort/internal/nginxbaseline"
 	"github.com/RTBGG/stackfort/internal/nginxconfig"
 	"github.com/RTBGG/stackfort/internal/operations"
 	"github.com/RTBGG/stackfort/internal/phpruntime"
-	"github.com/RTBGG/stackfort/internal/wafconfig"
 )
 
 type cacheHTTPResult struct {
@@ -65,6 +61,7 @@ func TestDisposableHostVinylCacheSafetyWAFAndPerformance(t *testing.T) {
 	if os.Geteuid() != 0 {
 		t.Fatal("disposable host cache integration test must run as root")
 	}
+	prepareNativeFastCGIRuntime(t)
 	if _, err := hostnginx.NewReconciler().Reconcile(t.Context()); err != nil {
 		t.Fatalf("reconcile NGINX baseline: %v", err)
 	}
@@ -95,6 +92,23 @@ func TestDisposableHostVinylCacheSafetyWAFAndPerformance(t *testing.T) {
 	domainClient := &localDomainLifecycleClient{
 		test: t, filesystem: filesystem, nginx: hostnginx.NewActivator(), php: hostphp.NewReconciler(),
 	}
+	// Retire fixture services BEFORE identity cleanup, including failed tests.
+	t.Cleanup(func() {
+		_, err := hostnginx.NewActivator().Activate(context.Background(), hostnginx.ActivationSpec{
+			Identity: identity, RevisionID: mustUUIDv7(t), DesiredStateRevisionID: mustUUIDv7(t),
+			Domains: []nginxconfig.DomainSpec{}, Options: nginxconfig.DefaultOptions(),
+		})
+		if err != nil {
+			t.Errorf("cleanup cache fixture NGINX: %v", err)
+		}
+		_, err = domainClient.php.Reconcile(context.Background(), phpruntime.PoolSetSpec{
+			Identity: identity, Versions: []string{}, MaxChildren: phpruntime.DefaultMaxChildren,
+			MemoryLimitMiB: phpruntime.DefaultMemoryMiB, RetireAbsent: true,
+		})
+		if err != nil {
+			t.Errorf("cleanup cache fixture PHP: %v", err)
+		}
+	})
 	domainHandler, err := operations.NewDomainLifecycleHandler(repository, domainClient)
 	if err != nil {
 		t.Fatal(err)
@@ -116,6 +130,7 @@ func TestDisposableHostVinylCacheSafetyWAFAndPerformance(t *testing.T) {
 	secondHost := "cache-second-" + suffix + ".stackfort.test"
 	respectHost := "cache-origin-" + suffix + ".stackfort.test"
 	protectedHost := "cache-waf-" + suffix + ".stackfort.test"
+	fastCGIHost := "cache-fastcgi-" + suffix + ".stackfort.test"
 	phpVersion := nativePHPVersion(t)
 	off := core.WAFModeOff
 	detection := core.WAFModeDetectionOnly
@@ -123,10 +138,13 @@ func TestDisposableHostVinylCacheSafetyWAFAndPerformance(t *testing.T) {
 	disabled := core.CachePresetDisabled
 	wordpress := core.CachePresetWordPress
 	respectOrigin := core.CachePresetRespectOrigin
+	fastCGI := core.CachePresetFastCGIWordPress
+	fastCGIOrigin := core.CachePresetFastCGIRespectOrigin
+	serveBoth := core.CanonicalServeBoth
 	createPHP := func(key, host string, waf *core.WAFMode, cache *core.CachePreset) core.Operation {
 		operation := queueDisposableLifecycle(t, repository, account.ID, owner.ID, key,
 			operations.DomainLifecyclePayload{
-				Action: operations.DomainLifecycleCreate, Name: host,
+				Action: operations.DomainLifecycleCreate, Name: host, CanonicalMode: &serveBoth,
 				Target:  &core.DomainTargetSpec{Type: core.DomainTargetPHP, PHPVersion: phpVersion},
 				WAFMode: waf, CachePreset: cache,
 			})
@@ -136,8 +154,9 @@ func TestDisposableHostVinylCacheSafetyWAFAndPerformance(t *testing.T) {
 	directDomain := createPHP("vm-cache-direct", directHost, &off, &disabled)
 	vinylDomain := createPHP("vm-cache-vinyl", vinylHost, &off, &wordpress)
 	createPHP("vm-cache-second", secondHost, &off, &wordpress)
-	createPHP("vm-cache-origin", respectHost, &off, &respectOrigin)
+	respectDomain := createPHP("vm-cache-origin", respectHost, &off, &respectOrigin)
 	protectedDomain := createPHP("vm-cache-waf", protectedHost, &blocking, &wordpress)
+	fastCGIDomain := createPHP("vm-cache-fastcgi", fastCGIHost, &off, &fastCGI)
 
 	phpSource := `<?php
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
@@ -246,12 +265,97 @@ echo $_SERVER['HTTP_HOST'], '|', $path, '|', bin2hex(random_bytes(8)), "\n";
 		t.Fatalf("log-derived cache metrics = %#v / %v", metrics, err)
 	}
 
+	editCache := func(domainID core.ID, key string, preset core.CachePreset) {
+		op := queueDisposableLifecycle(t, repository, account.ID, owner.ID, key, operations.DomainLifecyclePayload{
+			Action: operations.DomainLifecycleEdit, DomainID: string(domainID), CachePreset: &preset,
+		})
+		runDisposableLifecycle(t, runner, repository, account.ID, op.ID)
+	}
+	editCache(respectDomain.ID, "vm-native-respect", fastCGIOrigin)
+	nativeFirst := requestCache(t, fastCGIHost, http.MethodGet, "/index.php", nil)
+	assertCacheDecision(t, nativeFirst, http.StatusOK, "MISS")
+	nativeHit := requestCache(t, fastCGIHost, http.MethodGet, "/index.php", nil)
+	assertCacheDecision(t, nativeHit, http.StatusOK, "HIT")
+	if nativeFirst.body != nativeHit.body || nativeHit.headers.Get("X-Content-Type-Options") != "nosniff" {
+		t.Fatal("native hit changed representation or lost security headers")
+	}
+	for _, headers := range []map[string]string{
+		{"Cookie": "session=private"}, {"Authorization": "Bearer private"},
+		{"Cache-Control": "no-cache"}, {"Pragma": "no-cache"},
+	} {
+		assertNeverCached(t, fastCGIHost, http.MethodGet, "/index.php", headers)
+	}
+	assertNeverCached(t, fastCGIHost, http.MethodGet, "/index.php?query=1", nil)
+	assertNeverCached(t, fastCGIHost, http.MethodGet, "/wp-admin/index.php", nil)
+	assertNeverCached(t, fastCGIHost, http.MethodGet, "/%69ndex.php", nil)
+	// NGINX does not enter its cache machinery for POST, so its status is
+	// empty (rather than BYPASS). Still prove that it never reuses a body.
+	postFirst := requestCache(t, fastCGIHost, http.MethodPost, "/index.php", nil)
+	postSecond := requestCache(t, fastCGIHost, http.MethodPost, "/index.php", nil)
+	assertCacheDecision(t, postFirst, http.StatusOK, "")
+	assertCacheDecision(t, postSecond, http.StatusOK, "")
+	if postFirst.body == postSecond.body {
+		t.Fatal("native POST reused a cached body")
+	}
+	assertCacheDecision(t, requestCache(t, fastCGIHost, http.MethodHead, "/index.php", nil), http.StatusOK, "BYPASS")
+	for range 2 {
+		assertCacheDecision(t, requestCacheWithBody(t, fastCGIHost, http.MethodGet, "/index.php", nil, strings.NewReader("private-body")), http.StatusOK, "BYPASS")
+	}
+	assertNeverStored(t, fastCGIHost, "/set-cookie.php")
+	assertNeverStored(t, fastCGIHost, "/private.php")
+	assertNeverStored(t, respectHost, "/no-expiry.php")
+	assertCacheDecision(t, requestCache(t, fastCGIHost, http.MethodGet, "/no-expiry.php", nil), http.StatusOK, "MISS")
+	assertCacheDecision(t, requestCache(t, fastCGIHost, http.MethodGet, "/no-expiry.php", nil), http.StatusOK, "HIT")
+	otherNative := requestCache(t, respectHost, http.MethodGet, "/index.php", nil)
+	assertCacheDecision(t, otherNative, http.StatusOK, "MISS")
+	assertCacheDecision(t, requestCache(t, respectHost, http.MethodGet, "/index.php", nil), http.StatusOK, "HIT")
+	if otherNative.body == nativeFirst.body || !strings.HasPrefix(otherNative.body, respectHost+"|") {
+		t.Fatal("native cross-domain cache key collision")
+	}
+	wwwNative := requestCache(t, "www."+fastCGIHost, http.MethodGet, "/index.php", nil)
+	assertCacheDecision(t, wwwNative, http.StatusOK, "MISS")
+	if !strings.HasPrefix(wwwNative.body, "www."+fastCGIHost+"|") {
+		t.Fatal("native apex/www cache key collision")
+	}
+	purgeNative := queueDisposableLifecycle(t, repository, account.ID, owner.ID, "vm-native-purge", operations.DomainLifecyclePayload{
+		Action: operations.DomainLifecyclePurgeFastCGI, DomainID: string(fastCGIDomain.ID),
+	})
+	runDisposableLifecycle(t, runner, repository, account.ID, purgeNative.ID)
+	freshNative := requestCache(t, fastCGIHost, http.MethodGet, "/index.php", nil)
+	assertCacheDecision(t, freshNative, http.StatusOK, "MISS")
+	if freshNative.body == nativeHit.body {
+		t.Fatal("native purge reused old generation")
+	}
+	assertCacheDecision(t, requestCache(t, respectHost, http.MethodGet, "/index.php", nil), http.StatusOK, "HIT")
+	editCache(fastCGIDomain.ID, "vm-native-disable", disabled)
+	uncached := requestCache(t, fastCGIHost, http.MethodGet, "/index.php", nil)
+	if uncached.status != http.StatusOK || uncached.decision != "" {
+		t.Fatal("native cache remained enabled")
+	}
+	editCache(fastCGIDomain.ID, "vm-native-reenable", fastCGI)
+	assertCacheDecision(t, requestCache(t, fastCGIHost, http.MethodGet, "/index.php", nil), http.StatusOK, "MISS")
+	nativeMetrics, err := manager.Metrics(t.Context(), agentprotocol.CacheMetricsRequest{Identity: identity, DomainASCII: fastCGIHost})
+	if err != nil || nativeMetrics.Hits == 0 || nativeMetrics.Misses == 0 || nativeMetrics.Bypasses == 0 {
+		t.Fatalf("native log metrics invalid: %#v / %v", nativeMetrics, err)
+	}
+	t.Log("STACKFORT_QUALIFICATION native-fastcgi-policy-isolation-toggle-purge=passed")
+
 	measureMode := func(name, label string, mode core.WAFMode) cachePerformanceComparison {
+		assertCacheDecision(t, requestCache(t, fastCGIHost, http.MethodGet, "/index.php", nil), http.StatusOK, "HIT")
+		attack := requestCache(t, fastCGIHost, http.MethodGet, "/index.php", map[string]string{"User-Agent": "sqlmap/1.0"})
+		if mode == core.WAFModeBlockingPL1 {
+			if attack.status != http.StatusForbidden {
+				t.Fatalf("WAF did not block scanner before warm native cache: %#v", attack)
+			}
+		} else {
+			assertCacheDecision(t, attack, http.StatusOK, "HIT")
+		}
 		directMetric := measureHTTPBaseline(t, "cache-direct-"+label,
-			"http://127.0.0.1/index.php?benchmark=direct-"+label, directHost, 3_000, 8)
-		fastCGIMetric := measureFastCGICacheBaseline(t, identity, phpVersion, mode, label)
+			"http://127.0.0.1/index.php", directHost, 3_000, 8)
+		fastCGIMetric := measureHTTPBaseline(t, "cache-nginx-fastcgi-"+label,
+			"http://127.0.0.1/index.php", fastCGIHost, 3_000, 8)
 		vinylMetric := measureHTTPBaseline(t, "cache-vinyl-"+label,
-			"http://127.0.0.1/index.php?benchmark=vinyl-"+label, vinylHost, 3_000, 8)
+			"http://127.0.0.1/index.php", vinylHost, 3_000, 8)
 		comparison := cachePerformanceComparison{
 			Name: name, WAFMode: string(mode), DirectRPS: directMetric.RequestsPerSecond,
 			NGINXFastCGICacheRPS: fastCGIMetric.RequestsPerSecond, VinylRPS: vinylMetric.RequestsPerSecond,
@@ -270,16 +374,23 @@ echo $_SERVER['HTTP_HOST'], '|', $path, '|', bin2hex(random_bytes(8)), "\n";
 		"vm-cache-direct-waf-detection", detection)
 	editPHPWAFMode(t, runner, repository, account.ID, owner.ID, vinylDomain.ID,
 		"vm-cache-vinyl-waf-detection", detection)
+	editPHPWAFMode(t, runner, repository, account.ID, owner.ID, fastCGIDomain.ID,
+		"vm-cache-native-waf-detection", detection)
+	assertCacheDecision(t, requestCache(t, fastCGIHost, http.MethodGet, "/index.php", nil), http.StatusOK, "MISS")
 	detectionComparison := measureMode("php-cache-waf-detection-comparison", "waf-detection", detection)
 	editPHPWAFMode(t, runner, repository, account.ID, owner.ID, directDomain.ID,
 		"vm-cache-direct-waf-blocking", blocking)
 	editPHPWAFMode(t, runner, repository, account.ID, owner.ID, vinylDomain.ID,
 		"vm-cache-vinyl-waf-blocking", blocking)
+	editPHPWAFMode(t, runner, repository, account.ID, owner.ID, fastCGIDomain.ID,
+		"vm-cache-native-waf-blocking", blocking)
+	assertCacheDecision(t, requestCache(t, fastCGIHost, http.MethodGet, "/index.php", nil), http.StatusOK, "MISS")
 	blockingComparison := measureMode("php-cache-waf-blocking-comparison", "waf-blocking", blocking)
 	if offComparison.WAFMode != string(off) || detectionComparison.WAFMode != string(detection) ||
 		blockingComparison.WAFMode != string(blocking) {
 		t.Fatal("cache performance matrix contains an unexpected WAF mode")
 	}
+	t.Log("STACKFORT_QUALIFICATION native-fastcgi-waf-before-warm-hit=passed")
 
 	retired, err := hostnginx.NewActivator().Activate(t.Context(), hostnginx.ActivationSpec{
 		Identity: identity, RevisionID: mustUUIDv7(t), DesiredStateRevisionID: mustUUIDv7(t),
@@ -463,145 +574,5 @@ func waitForDetectedWAFRuleIDs(
 			t.Fatalf("detection-only request produced no sanitized exception-eligible WAF event: %#v", response.Events)
 		}
 		time.Sleep(50 * time.Millisecond)
-	}
-}
-
-func measureFastCGICacheBaseline(
-	t *testing.T,
-	identity hostingidentity.Spec,
-	phpVersion string,
-	wafMode core.WAFMode,
-	label string,
-) httpBaselineMetric {
-	t.Helper()
-	socket, err := phpruntime.SocketPath(identity, phpVersion)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// /var/cache/nginx is root-only on Debian 13. /var/lib/nginx is the
-	// distribution-owned, worker-traversable and SELinux-labelled NGINX state
-	// root on every supported target.
-	cacheRoot := fmt.Sprintf("/var/lib/nginx/stackfort-benchmark-%d-%s", identity.UID, label)
-	configuration := "/etc/nginx/stackfort/global/90-cache-benchmark.conf"
-	if err := os.MkdirAll(cacheRoot, 0o750); err != nil {
-		t.Fatal(err)
-	}
-	platform := hostcapabilities.NewInspector().InspectPlatform()
-	baseline, err := nginxbaseline.ForDistribution(platform.DistributionID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	worker, err := user.Lookup(baseline.WorkerUser)
-	if err != nil {
-		t.Fatal(err)
-	}
-	workerUID, uidErr := strconv.Atoi(worker.Uid)
-	workerGID, gidErr := strconv.Atoi(worker.Gid)
-	if uidErr != nil || gidErr != nil || os.Chown(cacheRoot, workerUID, workerGID) != nil {
-		t.Fatalf("assign NGINX benchmark cache directory to %s", baseline.WorkerUser)
-	}
-	zone := "stackfort_benchmark_" + strings.ReplaceAll(label, "-", "_")
-	wafDirectives := ""
-	wafProfile, err := wafconfig.ProfilePath(wafMode)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if wafProfile != "" {
-		wafDirectives = fmt.Sprintf("    coraza on;\n    coraza_transaction_id $request_id;\n    coraza_rules_file %q;\n", wafProfile)
-	}
-	source := fmt.Sprintf(`fastcgi_cache_path %s levels=1:2 keys_zone=%s:8m inactive=5m use_temp_path=off;
-
-server {
-    listen 127.0.0.1:8008;
-    server_name cache-benchmark.stackfort.test;
-    root %s/public_html;
-    index index.php;
-%s
-
-    location / {
-        try_files $uri $uri/ /index.php?$query_string;
-    }
-
-    location ~ \.php$ {
-        try_files $uri =404;
-        include /etc/nginx/fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-        fastcgi_param HTTP_PROXY "";
-        fastcgi_pass unix:%s;
-        fastcgi_cache %s;
-        fastcgi_cache_methods GET HEAD;
-        fastcgi_cache_valid 200 2m;
-        fastcgi_cache_bypass $http_authorization $http_cookie;
-        fastcgi_no_cache $http_authorization $http_cookie $upstream_http_set_cookie;
-        add_header X-Stackfort-FastCGI-Cache $upstream_cache_status always;
-        add_header X-Stackfort-Benchmark-WAF %q always;
-    }
-}
-`, cacheRoot, zone, identity.HomeDirectory, wafDirectives, socket, zone, label)
-	if err := os.WriteFile(configuration, []byte(source), 0o640); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		_ = os.Remove(configuration)
-		_ = os.RemoveAll(cacheRoot)
-		_ = exec.Command("/usr/bin/systemctl", "reload", "nginx.service").Run()
-	})
-	if output, err := exec.Command("/usr/sbin/nginx", "-t").CombinedOutput(); err != nil {
-		t.Fatalf("validate NGINX FastCGI benchmark: %v: %s", err, output)
-	}
-	if output, err := exec.Command("/usr/bin/systemctl", "reload", "nginx.service").CombinedOutput(); err != nil {
-		t.Fatalf("activate NGINX FastCGI benchmark: %v: %s", err, output)
-	}
-	waitForFastCGIBenchmarkGeneration(t, label, wafMode)
-	return measureHTTPBaseline(t, "cache-nginx-fastcgi-"+label,
-		"http://127.0.0.1:8008/index.php?benchmark=fastcgi-"+label,
-		"cache-benchmark.stackfort.test", 3_000, 8)
-}
-
-func waitForFastCGIBenchmarkGeneration(t *testing.T, label string, wafMode core.WAFMode) {
-	t.Helper()
-	const host = "cache-benchmark.stackfort.test"
-	client := &http.Client{
-		Transport: &http.Transport{Proxy: nil, DisableKeepAlives: true, DisableCompression: true},
-		Timeout:   3 * time.Second,
-	}
-	requestOnce := func(path string) (int, string, error) {
-		request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://127.0.0.1:8008"+path, nil)
-		if err != nil {
-			return 0, "", err
-		}
-		request.Host = host
-		response, err := client.Do(request)
-		if err != nil {
-			return 0, "", err
-		}
-		defer response.Body.Close()
-		_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, 1<<20))
-		return response.StatusCode, response.Header.Get("X-Stackfort-Benchmark-WAF"), nil
-	}
-	deadline := time.Now().Add(5 * time.Second)
-	consecutive := 0
-	for consecutive < 8 && time.Now().Before(deadline) {
-		status, generation, err := requestOnce("/index.php?generation=" + label)
-		if err == nil && status == http.StatusOK && generation == label {
-			consecutive++
-		} else {
-			consecutive = 0
-		}
-		if consecutive < 8 {
-			time.Sleep(50 * time.Millisecond)
-		}
-	}
-	if consecutive != 8 {
-		t.Fatalf("NGINX FastCGI benchmark generation %q did not become exclusive", label)
-	}
-	wantAttackStatus := http.StatusOK
-	if wafMode == core.WAFModeBlockingPL1 {
-		wantAttackStatus = http.StatusForbidden
-	}
-	status, generation, err := requestOnce("/index.php?lookup=1%20OR%201=1&generation=" + label)
-	if err != nil || status != wantAttackStatus || generation != label {
-		t.Fatalf("NGINX FastCGI benchmark WAF probe = %d/%q/%v, want %d/%q",
-			status, generation, err, wantAttackStatus, label)
 	}
 }

@@ -3,11 +3,20 @@
 C-004 adds optional multi-factor authentication and identity-scoped session
 control without changing the deny-by-default authorization boundary from C-003.
 
-UI coverage: the browser supports the MFA login challenge. Enrollment,
-replacement, and removal currently have authenticated API endpoints but no
-browser settings flow; completing that critical EN/DE workflow remains a
-public-beta requirement. Do not confuse API test coverage with a finished
-operator-facing enrollment experience.
+UI coverage: English and German browser settings now support setup, replacement
+and removal as well as MFA login. Open administrator Settings or account Profile,
+use a sign-in from the last five minutes, enter the manual key in a time-based
+authenticator and confirm the new six-digit code. Replacement/removal require
+the current authenticator or a recovery code; removal also requires explicit
+acknowledgement. The UI clears setup secrets on cancellation, expiry or unmount.
+No secret is sent to a QR provider or stored in browser storage.
+
+Confirmation replaces the authenticated shell with a recovery-only view because
+the API has already revoked every session. Save those codes securely and
+acknowledge before returning to login. Leaving/reloading loses the display;
+the codes cannot be retrieved again. Component/API/application-flow tests cover
+these transitions and recovery-view accessibility. The broader Phase 6 manual
+EN/DE and narrow-screen review remains separate.
 
 ## Authentication profile
 

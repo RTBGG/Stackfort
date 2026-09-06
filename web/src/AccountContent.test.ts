@@ -32,6 +32,7 @@ const account: AccountWorkspace = {
 const domain: Domain = {
   id: 'domain-id', name: { display: 'example.test', ascii: 'example.test' }, status: 'active',
   canonicalMode: 'prefer_apex',
+  waf: { mode: 'off' },
   target: { id: 'target-id', type: 'static', documentRoot: { id: 'root-id', relativePath: 'public_html', referenceCount: 1 } },
   tls: { enabled: true, issuanceStatus: 'active', expiresAt: '2026-11-22T10:00:00Z' },
   createdAt: '2026-08-24T10:00:00Z', updatedAt: '2026-08-24T10:00:00Z',
@@ -78,6 +79,39 @@ afterEach(() => {
 })
 
 describe('account-owner content', () => {
+  it('selects FastCGI per PHP domain and offers only whole-domain purge', async () => {
+    const status = vi.spyOn(api, 'cacheStatus').mockResolvedValue({ preset: 'fastcgi_respect_origin', metrics: { domainAscii: domain.name.ascii, hits: 2, misses: 1, bypasses: 1, windowRecords: 4 } })
+    const purge = vi.spyOn(api, 'purgeCache').mockResolvedValue({ operationId: 'purge-op', domainId: domain.id, status: 'pending' })
+    const wrapper = mountContent('domains')
+    await wrapper.setProps({ domains: [{ ...domain, target: { ...domain.target, type: 'php', phpVersion: '8.4' }, cache: { preset: 'fastcgi_respect_origin' } }] })
+    await wrapper.findAll('button').find((button) => button.text().trim() === 'Edit')?.trigger('click')
+    const form = wrapper.get('form.inline-edit')
+    const selector = form.findAll('select').find((select) => select.find('option[value="fastcgi_wordpress"]').exists())!
+    expect(selector.element.value).toBe('fastcgi_respect_origin')
+    await selector.setValue('disabled')
+    await form.trigger('submit')
+    expect(wrapper.emitted('updateDomain')?.[0]?.[0]).toEqual(expect.objectContaining({ accountId: account.id, domainId: domain.id, cachePreset: 'disabled' }))
+    await selector.setValue('fastcgi_wordpress')
+    await form.trigger('submit')
+    expect(wrapper.emitted('updateDomain')?.[1]?.[0]).toEqual(expect.objectContaining({ cachePreset: 'fastcgi_wordpress' }))
+    await wrapper.findAll('button').find((button) => button.text().trim() === 'Cache metrics')?.trigger('click')
+    await flushPromises()
+    expect(status).toHaveBeenCalledWith(account.id, domain.id)
+    const cacheForm = wrapper.get('.certificate-history form')
+    expect(cacheForm.find('input').exists()).toBe(false)
+    expect(cacheForm.text()).toContain('entire domain')
+    await cacheForm.trigger('submit'); await flushPromises()
+    expect(purge).toHaveBeenCalledWith(account.id, domain.id, '/')
+    wrapper.unmount()
+  })
+
+  it('keeps identity MFA available without a hosting-account assignment', async () => {
+    vi.spyOn(api, 'totpStatus').mockResolvedValue({ enabled: false, recoveryCodesRemaining: 0 })
+    const wrapper = mountContent('profile')
+    await wrapper.setProps({ accounts: [], selectedAccountId: '' }); await flushPromises()
+    expect(wrapper.get('.identity-security').text()).toContain('Set up authenticator')
+    wrapper.unmount()
+  })
   it('creates a closed UTC scheduled-job definition without a command field', async () => {
     const job: ScheduledJob = {
       id: '019d413d-98f0-7abc-8def-0123456789ab', accountId: account.id, name: 'Refresh cache',

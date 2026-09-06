@@ -78,7 +78,7 @@ func (handler *CachePurgeHandler) Run(
 	if err != nil {
 		return nil, classifyDomainRepositoryFailure(err)
 	}
-	if domain.Cache.Preset == core.CachePresetDisabled {
+	if domain.Cache.Preset == core.CachePresetDisabled || cacheconfig.IsFastCGI(domain.Cache.Preset) {
 		return nil, &Failure{Code: "cache.purge_not_enabled"}
 	}
 	account, err := handler.repository.GetHostingAccount(ctx, *operation.AccountID)

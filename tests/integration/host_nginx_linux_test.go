@@ -698,6 +698,20 @@ func (client *localDomainLifecycleClient) ActivateNGINXSiteSpecs(
 	})
 	if err != nil && client.test != nil {
 		client.test.Logf("host NGINX activation error: %v", err)
+		// Keep diagnostic output in the disposable fixture, never in an API
+		// response. The activator correctly removes rejected candidate files.
+		if rendered, renderErr := nginxconfig.RenderSpecs(identity, domains, options); renderErr == nil {
+			platform := hostcapabilities.NewInspector().InspectPlatform()
+			if baseline, baselineErr := nginxbaseline.ForDistribution(platform.DistributionID); baselineErr == nil {
+				root := client.test.TempDir()
+				sitePath, mainPath := filepath.Join(root, "site.conf"), filepath.Join(root, "nginx.conf")
+				main := strings.Replace(nginxbaseline.Main(baseline), "include /etc/nginx/stackfort/sites-enabled/*.conf;", "include "+sitePath+";", 1)
+				if os.WriteFile(sitePath, rendered.Content, 0o600) == nil && os.WriteFile(mainPath, []byte(main), 0o600) == nil {
+					output, _ := exec.Command("/usr/sbin/nginx", "-t", "-c", mainPath).CombinedOutput()
+					client.test.Logf("disposable candidate diagnostics: %s", output)
+				}
+			}
+		}
 	}
 	return agentprotocol.NGINXActivationResponse{
 		Changed: result.Changed, ConfigurationTested: result.ConfigurationTested,

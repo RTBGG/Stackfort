@@ -25,7 +25,7 @@ import (
 
 const (
 	DomainLifecycleKind          = "domain.lifecycle.apply"
-	domainLifecycleSchemaVersion = 5
+	domainLifecycleSchemaVersion = 6
 	domainLifecycleMinimumSchema = 2
 )
 
@@ -39,6 +39,7 @@ const (
 	DomainLifecycleRemove             DomainLifecycleAction = "remove"
 	DomainLifecycleCreateWAFException DomainLifecycleAction = "waf_exception_create"
 	DomainLifecycleRemoveWAFException DomainLifecycleAction = "waf_exception_remove"
+	DomainLifecyclePurgeFastCGI       DomainLifecycleAction = "purge_fastcgi_cache"
 )
 
 type WAFExceptionIntent struct {
@@ -314,11 +315,12 @@ func (handler *DomainLifecycleHandler) applyMutation(
 			OperationID: &operation.ID, ActorID: operation.ActorID, RequestID: operation.RequestID,
 		})
 		return domainID, err
-	case DomainLifecycleEdit:
+	case DomainLifecycleEdit, DomainLifecyclePurgeFastCGI:
 		_, err := handler.repository.UpdateDomain(ctx, core.UpdateDomainParams{
 			AccountID: accountID, DomainID: domainID, CanonicalMode: payload.CanonicalMode,
 			Target: payload.Target, WAFMode: payload.WAFMode, CachePreset: payload.CachePreset, OperationID: &operation.ID,
-			ActorID: operation.ActorID, RequestID: operation.RequestID,
+			RotateCache: payload.Action == DomainLifecyclePurgeFastCGI,
+			ActorID:     operation.ActorID, RequestID: operation.RequestID,
 		})
 		return domainID, err
 	case DomainLifecycleSuspend:
@@ -519,6 +521,10 @@ func validateDomainLifecyclePayload(payload DomainLifecyclePayload) error {
 	if payload.SchemaVersion < 5 && payload.CachePreset != nil {
 		return errors.New("cache preset requires domain lifecycle schema 5")
 	}
+	if payload.SchemaVersion < 6 && (payload.Action == DomainLifecyclePurgeFastCGI ||
+		payload.CachePreset != nil && cacheconfig.IsFastCGI(*payload.CachePreset)) {
+		return errors.New("FastCGI cache requires domain lifecycle schema 6")
+	}
 	if payload.CachePreset != nil {
 		if _, err := cacheconfig.NormalizePreset(*payload.CachePreset); err != nil {
 			return errors.New("invalid cache preset")
@@ -540,7 +546,7 @@ func validateDomainLifecyclePayload(payload DomainLifecyclePayload) error {
 			payload.WAFException != nil || payload.WAFExceptionID != "" {
 			return errors.New("invalid domain edit payload")
 		}
-	case DomainLifecycleSuspend, DomainLifecycleResume, DomainLifecycleRemove:
+	case DomainLifecycleSuspend, DomainLifecycleResume, DomainLifecycleRemove, DomainLifecyclePurgeFastCGI:
 		if payload.DomainID == "" || payload.Name != "" || payload.CanonicalMode != nil || payload.Target != nil ||
 			payload.DisableTLS || payload.TLSMode != "" || payload.WAFMode != nil || payload.CachePreset != nil ||
 			payload.WAFException != nil || payload.WAFExceptionID != "" {

@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/RTBGG/stackfort/internal/cacheconfig"
+
 	"github.com/google/uuid"
 )
 
@@ -101,20 +103,21 @@ http {
 	    '{"timestamp":"$time_iso8601","client":"$remote_addr","host":"$host",'
 	    '"method":"$request_method","path":"$uri","status":$status,'
 	    '"bytes":$body_bytes_sent,"duration":"$request_time",'
-	    '"cache":"$upstream_http_x_stackfort_cache"}';
+	    '"cache":"$stackfort_cache_status"}';
 	access_log /var/log/nginx/access.log stackfort_redacted;
 
     sendfile on;
     tcp_nopush on;
     keepalive_timeout 65;
     server_tokens off;
+%s
 
     include /etc/nginx/stackfort/global/*.conf;
     include /etc/nginx/stackfort/default/*.conf;
     include /etc/nginx/stackfort/panel-enabled/*.conf;
     include %s;
 }
-`, spec.WorkerUser, sitesInclude)
+`, spec.WorkerUser, cacheconfig.FastCGIGlobal(), sitesInclude)
 }
 
 func SitesCurrentInclude() string {

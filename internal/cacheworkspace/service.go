@@ -108,12 +108,22 @@ func (service *Service) QueuePurge(ctx context.Context, command PurgeCommand) (c
 	payload, err := operations.NewCachePurgePayload(operations.CachePurgePayload{
 		DomainID: string(command.DomainID), PathPrefix: pathPrefix,
 	})
+	kind := operations.CachePurgeKind
+	if cacheconfig.IsFastCGI(domain.Cache.Preset) {
+		if pathPrefix != "/" {
+			return core.Operation{}, fmt.Errorf("%w: FastCGI cache supports whole-domain purge only", core.ErrInvalidInput)
+		}
+		kind = operations.DomainLifecycleKind
+		payload, err = operations.NewDomainLifecyclePayload(operations.DomainLifecyclePayload{
+			Action: operations.DomainLifecyclePurgeFastCGI, DomainID: string(command.DomainID),
+		})
+	}
 	if err != nil {
 		return core.Operation{}, core.ErrInvalidInput
 	}
 	actorID := command.Subject.IdentityID()
 	return service.repository.CreateOperation(ctx, core.CreateOperationParams{
-		AccountID: &command.AccountID, ActorID: &actorID, Kind: operations.CachePurgeKind,
+		AccountID: &command.AccountID, ActorID: &actorID, Kind: kind,
 		RetryClass: core.RetrySafe, RequestID: command.RequestID, IdempotencyKey: command.IdempotencyKey,
 		Payload: payload, MaxAttempts: 3,
 	})

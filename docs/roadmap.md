@@ -246,7 +246,7 @@ operators and contributors to installation, [operations](operations.md),
 [contribution guidance](../CONTRIBUTING.md), and the
 [benchmark methodology/results](benchmarks.md). The review corrected stale
 update/bootstrap instructions and distinguishes file-only backups, updater
-rollback, and full-host recovery. It also labels FastCGI as benchmark-only,
+rollback, and full-host recovery. At that point it labelled FastCGI as benchmark-only,
 records current support limits, and adds offline path/anchor checks to CI.
 Private vulnerability reporting was enabled with owner approval on 2026-09-06.
 The [release checklist](release-checklist.md) keeps final EN/DE workflow review,
@@ -255,6 +255,16 @@ the support-window decision explicit; this documentation work publishes no beta.
 
 Exit gate: the success criteria in `product-spec.md` pass, followed by a limited
 public beta with an explicit support window.
+
+Workflow follow-up (2026-09-06): administrator Settings and account Profile now
+include EN/DE TOTP setup, replacement, confirmed removal and a recovery-only
+one-time code display after session revocation. Automated browser/API tests cover
+secret cleanup, freshness errors, expiry, proof requirements and accessibility.
+PHP domains also gain opt-in NGINX FastCGI presets, toggle and whole-domain
+invalidation alongside Vinyl; see [ADR 0063](adr/0063-opt-in-domain-scoped-fastcgi-cache.md).
+The README now exposes the HTTPS-only one-line installer with the explicit
+no-public-release warning. These changes do not complete the final manual
+workflow review, independent security audit, uninstall or support-window gates.
 
 ## Post-beta candidates
 

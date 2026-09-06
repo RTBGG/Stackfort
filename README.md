@@ -20,6 +20,20 @@ the web interface itself a privileged system process.
 [Roadmap](docs/roadmap.md) · [Security policy](SECURITY.md) ·
 [Contributing](CONTRIBUTING.md)
 
+## Install
+
+For a **fresh, disposable** Debian 13, Ubuntu 26.04 or Rocky Linux 10 server:
+
+```sh
+curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/RTBGG/stackfort/main/packaging/installer/install.sh | sudo bash
+```
+
+[Inspect the installer](https://raw.githubusercontent.com/RTBGG/stackfort/main/packaging/installer/install.sh)
+before running it as root. HTTPS-only transport and TLS 1.2 or newer are required
+by this command. **No public release exists yet:** the installer cannot complete
+until matching release assets are published. See the
+[installation guide](docs/installer-installation.md) for prerequisites and options.
+
 ## At a glance
 
 | Area | Current state |
@@ -74,7 +88,7 @@ personalized applications bypass it by default.
 | Panel state | SQLite in WAL mode |
 | Edge and origin server | NGINX |
 | PHP runtime | One PHP-FPM pool per hosting account |
-| Optional page cache | Vinyl Cache 9.x; FastCGI cache is currently benchmark-only |
+| Optional page cache | Per-domain Vinyl Cache 9.x or NGINX FastCGI cache; disabled by default |
 | Web application firewall | Coraza 3, coraza-nginx, and OWASP Core Rule Set |
 | Managed SQL service | MariaDB |
 | Container runtime | Rootless Podman with health-gated systemd Quadlets |
@@ -90,8 +104,8 @@ personalized applications bypass it by default.
 - Single-use first-administrator bootstrap with no default password.
 - Argon2id login, persistent rate limits, strict cookies, CSRF protection,
   session rotation, and server-side expiry.
-- TOTP/recovery API and browser MFA login; browser enrollment/settings remain
-  to be completed. Identity-scoped session revocation is implemented.
+- Browser TOTP setup, replacement, removal and MFA login, with one-time
+  recovery-code display and identity-wide session revocation.
 - Deny-by-default platform and account authorization with freshness checks for
   sensitive operations.
 - Stable per-account Unix identities, project quotas, systemd slices, and

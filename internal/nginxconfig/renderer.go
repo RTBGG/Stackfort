@@ -68,6 +68,7 @@ type DomainSpec struct {
 	WAFMode          core.WAFMode              `json:"wafMode,omitempty"`
 	WAFExceptions    []WAFExceptionSpec        `json:"wafExceptions"`
 	CachePreset      core.CachePreset          `json:"cachePreset,omitempty"`
+	CacheGeneration  string                    `json:"cacheGeneration,omitempty"`
 	Target           TargetSpec                `json:"target"`
 }
 
@@ -217,7 +218,7 @@ func RenderAccount(
 	for _, item := range prepared {
 		if item.upstreamPort != 0 {
 			writeOCIApplicationDomain(&output, item, headers)
-		} else if item.cachePreset != core.CachePresetDisabled {
+		} else if item.cachePreset != core.CachePresetDisabled && !cacheconfig.IsFastCGI(item.cachePreset) {
 			writeCachedDomain(&output, item, headers)
 		} else if item.redirect == nil {
 			writeStaticDomain(&output, item, headers)
@@ -260,6 +261,7 @@ func SpecsFromDomains(
 			WAFMode:          domain.WAF.Mode,
 			WAFExceptions:    make([]WAFExceptionSpec, 0, len(domain.WAF.Exceptions)),
 			CachePreset:      domain.Cache.Preset,
+			CacheGeneration:  string(domain.Cache.Generation),
 			Target:           TargetSpec{Type: domain.Target.Type},
 		}
 		for _, exception := range domain.WAF.Exceptions {
@@ -308,7 +310,7 @@ func RenderSpecs(
 			AccountID: accountID, Name: domain.Name, Status: domain.Status,
 			CanonicalMode: domain.CanonicalMode,
 			WAF:           core.DomainWAFPolicy{Mode: domain.WAFMode},
-			Cache:         core.DomainCachePolicy{Preset: domain.CachePreset},
+			Cache:         core.DomainCachePolicy{Preset: domain.CachePreset, Generation: core.ID(domain.CacheGeneration)},
 			Target:        core.DomainTarget{Type: domain.Target.Type},
 		}
 		item.WAF.Exceptions = make([]core.DomainWAFException, 0, len(domain.WAFExceptions))
@@ -459,6 +461,11 @@ func prepareDomain(identity hostingidentity.Spec, domain core.Domain,
 	cachePreset, err := cacheconfig.NormalizePreset(domain.Cache.Preset)
 	if err != nil || cachePreset != core.CachePresetDisabled && domain.Target.Type != core.DomainTargetPHP {
 		return preparedDomain{}, false, ErrInvalidSpec
+	}
+	if cacheconfig.IsFastCGI(cachePreset) {
+		if _, err := core.ParseID(string(domain.Cache.Generation)); err != nil {
+			return preparedDomain{}, false, ErrInvalidSpec
+		}
 	}
 	item := preparedDomain{
 		domain: domain, base: name.ASCII, http01: http01, certificateID: certificateID,
@@ -820,6 +827,9 @@ func writeStaticDomain(output *bytes.Buffer, item preparedDomain, headers []rend
 		output.WriteString("    index index.php index.html;\n")
 	}
 	writeHeaders(output, headers, item.activationVariable)
+	if cacheconfig.IsFastCGI(item.cachePreset) {
+		output.WriteString("    add_header X-Stackfort-Cache $upstream_cache_status always;\n")
+	}
 	if item.http01 && item.certificateID == "" {
 		writeHTTP01Location(output, item.wafProfile != "")
 	}
@@ -831,6 +841,9 @@ func writeStaticDomain(output *bytes.Buffer, item preparedDomain, headers []rend
 	output.WriteString("\n    location ~ \\.php$ {\n        try_files $uri =404;\n")
 	output.WriteString("        include /etc/nginx/fastcgi_params;\n")
 	output.WriteString("        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n")
+	if cacheconfig.IsFastCGI(item.cachePreset) {
+		writeFastCGICache(output, item)
+	}
 	output.WriteString("        fastcgi_param HTTP_PROXY \"\";\n        fastcgi_pass ")
 	output.WriteString(quoteLiteral("unix:" + item.phpSocket))
 	output.WriteString(";\n    }\n}\n\n")

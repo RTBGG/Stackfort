@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
+import IdentitySecurity from './IdentitySecurity.vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { AccountPageKey } from './account'
@@ -77,6 +78,7 @@ const emit = defineEmits<{
   revokeSession: [sessionId: string]
   revokeOtherSessions: []
   logout: []
+  mfaChanged: [recoveryCodes: string[]]
 }>()
 
 const { locale, t } = useI18n()
@@ -294,6 +296,10 @@ function domainCachePreset(domain: Domain): NonNullable<Domain['cache']>['preset
   return domain.cache?.preset ?? 'disabled'
 }
 
+function isFastCGICache(domain: Domain): boolean {
+  return domainCachePreset(domain) === 'fastcgi_respect_origin' || domainCachePreset(domain) === 'fastcgi_wordpress'
+}
+
 function cacheHitRatio(status: CacheStatus): number {
 	const decisions = status.metrics.hits + status.metrics.misses
 	return decisions === 0 ? 0 : status.metrics.hits / decisions
@@ -320,7 +326,7 @@ async function purgeDomainCache(domain: Domain) {
 	cacheBusyDomainId.value = domain.id
 	cacheFeedback[domain.id] = ''
 	try {
-		await api.purgeCache(account.id, domain.id, cachePathPrefix[domain.id] || '/')
+		await api.purgeCache(account.id, domain.id, isFastCGICache(domain) ? '/' : (cachePathPrefix[domain.id] || '/'))
 		cacheFeedback[domain.id] = 'queued'
 	} catch {
 		cacheFeedback[domain.id] = 'failed'
@@ -521,7 +527,7 @@ async function waitForScheduledJob(accountId: string, operationId: string) {
 		if (selectedAccount.value?.id !== accountId) return
 		try {
 			const operation = await api.scheduledJobOperation(accountId, operationId)
-			if (!accountOperationTerminal(operation.status)) continue
+			if (operation.status !== 'succeeded' && operation.status !== 'failed' && operation.status !== 'cancelled') continue
 			await loadScheduledJobs()
 			scheduledJobFailed.value = operation.status !== 'succeeded'
 			scheduledJobFeedback.value = operation.status === 'succeeded' ? t('jobs.applied') : t('jobs.operationFailed')
@@ -1251,6 +1257,8 @@ function revokeManagedSession(item: ManagedSession) {
       </button>
     </div>
 
+    <IdentitySecurity v-if="page === 'profile'" :key="session.sessionId" @changed="emit('mfaChanged', $event)" @logout="emit('logout')" />
+
     <div v-if="accounts.length === 0" class="panel empty-state owner-empty">
       <span class="empty-icon" aria-hidden="true">◇</span>
       <strong>{{ t('account.noAccounts') }}</strong>
@@ -1327,7 +1335,7 @@ function revokeManagedSession(item: ManagedSession) {
             <label v-if="domainForm.rootMode === 'custom'"><span>{{ t('domains.documentRoot') }}</span><input v-model="domainForm.documentRoot" required spellcheck="false" :disabled="!canManageDomains"></label>
             <label class="check-field"><input v-model="domainForm.tls" type="checkbox" :disabled="!canManageDomains"><span>{{ t('domains.enableTLS') }}</span></label>
             <label><span>{{ t('domains.wafMode') }}</span><select v-model="domainForm.wafMode" :disabled="!canManageDomains"><option value="off">{{ t('waf.off') }}</option><option value="detection_only">{{ t('waf.detection_only') }}</option><option value="blocking_pl1">{{ t('waf.blocking_pl1') }}</option></select><small>{{ t('waf.hint') }}</small></label>
-            <label><span>{{ t('cache.preset') }}</span><select v-model="domainForm.cachePreset" :disabled="!canManageDomains || domainForm.targetType !== 'php'"><option value="disabled">{{ t('cache.disabled') }}</option><option value="respect_origin">{{ t('cache.respect_origin') }}</option><option value="wordpress">{{ t('cache.wordpress') }}</option></select><small>{{ t('cache.hint') }}</small></label>
+            <label><span>{{ t('cache.preset') }}</span><select v-model="domainForm.cachePreset" :disabled="!canManageDomains || domainForm.targetType !== 'php'"><option value="disabled">{{ t('cache.disabled') }}</option><option value="respect_origin">{{ t('cache.respect_origin') }}</option><option value="wordpress">{{ t('cache.wordpress') }}</option><option value="fastcgi_respect_origin">{{ t('cache.fastcgi_respect_origin') }}</option><option value="fastcgi_wordpress">{{ t('cache.fastcgi_wordpress') }}</option></select><small>{{ t('cache.hint') }}</small></label>
             <button class="primary-action" type="submit" :disabled="actionBusy || !canCreateDomain">{{ t('domains.createAction') }}</button>
           </form>
           <div class="resource-list">
@@ -1349,7 +1357,7 @@ function revokeManagedSession(item: ManagedSession) {
                 <label><span>{{ t('domains.rootMode') }}</span><select v-model="editForm.rootMode"><option value="default">{{ t('domains.defaultRoot') }}</option><option value="custom">{{ t('domains.customRoot') }}</option></select></label>
                 <label v-if="editForm.rootMode === 'custom'"><span>{{ t('domains.documentRoot') }}</span><input v-model="editForm.documentRoot" required spellcheck="false"></label>
                 <label><span>{{ t('domains.wafMode') }}</span><select v-model="editForm.wafMode"><option value="off">{{ t('waf.off') }}</option><option value="detection_only">{{ t('waf.detection_only') }}</option><option value="blocking_pl1">{{ t('waf.blocking_pl1') }}</option></select><small>{{ t('waf.hint') }}</small></label>
-                <label><span>{{ t('cache.preset') }}</span><select v-model="editForm.cachePreset" :disabled="editForm.targetType !== 'php'"><option value="disabled">{{ t('cache.disabled') }}</option><option value="respect_origin">{{ t('cache.respect_origin') }}</option><option value="wordpress">{{ t('cache.wordpress') }}</option></select><small>{{ t('cache.hint') }}</small></label>
+                <label><span>{{ t('cache.preset') }}</span><select v-model="editForm.cachePreset" :disabled="editForm.targetType !== 'php'"><option value="disabled">{{ t('cache.disabled') }}</option><option value="respect_origin">{{ t('cache.respect_origin') }}</option><option value="wordpress">{{ t('cache.wordpress') }}</option><option value="fastcgi_respect_origin">{{ t('cache.fastcgi_respect_origin') }}</option><option value="fastcgi_wordpress">{{ t('cache.fastcgi_wordpress') }}</option></select><small>{{ t('cache.hint') }}</small></label>
                 <div class="card-actions"><button class="text-action" type="button" @click="editingDomainId = ''">{{ t('common.cancel') }}</button><button class="primary-action" type="submit" :disabled="actionBusy || !canSubmitEdit">{{ t('common.save') }}</button></div>
               </form>
               <div v-else class="card-actions">
@@ -1363,13 +1371,14 @@ function revokeManagedSession(item: ManagedSession) {
               </div>
               <section v-if="cacheStatusByDomain[domain.id]" class="certificate-history" :aria-label="t('cache.managementFor', { domain: domain.name.display })">
                 <dl class="detail-list compact">
-                  <div><dt>{{ t('cache.hits') }}</dt><dd>{{ formatNumber(cacheStatusByDomain[domain.id].metrics.hits, activeLocale) }}</dd></div>
-                  <div><dt>{{ t('cache.misses') }}</dt><dd>{{ formatNumber(cacheStatusByDomain[domain.id].metrics.misses, activeLocale) }}</dd></div>
-                  <div><dt>{{ t('cache.bypasses') }}</dt><dd>{{ formatNumber(cacheStatusByDomain[domain.id].metrics.bypasses, activeLocale) }}</dd></div>
-                  <div><dt>{{ t('cache.hitRatio') }}</dt><dd>{{ formatPercent(cacheHitRatio(cacheStatusByDomain[domain.id]), activeLocale) }}</dd></div>
+                  <div><dt>{{ t('cache.hits') }}</dt><dd>{{ formatNumber(cacheStatusByDomain[domain.id]!.metrics.hits, activeLocale) }}</dd></div>
+                  <div><dt>{{ t('cache.misses') }}</dt><dd>{{ formatNumber(cacheStatusByDomain[domain.id]!.metrics.misses, activeLocale) }}</dd></div>
+                  <div><dt>{{ t('cache.bypasses') }}</dt><dd>{{ formatNumber(cacheStatusByDomain[domain.id]!.metrics.bypasses, activeLocale) }}</dd></div>
+                  <div><dt>{{ t('cache.hitRatio') }}</dt><dd>{{ formatPercent(cacheHitRatio(cacheStatusByDomain[domain.id]!), activeLocale) }}</dd></div>
                 </dl>
                 <form v-if="canManageDomains" class="inline-edit" @submit.prevent="purgeDomainCache(domain)">
-                  <label><span>{{ t('cache.pathPrefix') }}</span><input v-model="cachePathPrefix[domain.id]" required maxlength="512" pattern="/.*" placeholder="/" spellcheck="false"><small>{{ t('cache.purgeHint') }}</small></label>
+                  <label v-if="!isFastCGICache(domain)"><span>{{ t('cache.pathPrefix') }}</span><input v-model="cachePathPrefix[domain.id]" required maxlength="512" pattern="/.*" placeholder="/" spellcheck="false"><small>{{ t('cache.purgeHint') }}</small></label>
+                  <p v-else class="form-hint">{{ t('cache.fastcgiPurgeHint') }}</p>
                   <button class="secondary-action" type="submit" :disabled="Boolean(cacheBusyDomainId)">{{ t('cache.purge') }}</button>
                 </form>
                 <p v-if="cacheFeedback[domain.id]" class="inline-feedback" :class="{ error: cacheFeedback[domain.id] === 'failed' }" role="status">{{ t(`cache.${cacheFeedback[domain.id]}`) }}</p>

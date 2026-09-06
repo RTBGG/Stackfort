@@ -1813,14 +1813,17 @@ type DomainWAFPolicy struct {
 type CachePreset = cacheconfig.Preset
 
 const (
-	CachePresetDisabled      = cacheconfig.PresetDisabled
-	CachePresetRespectOrigin = cacheconfig.PresetRespectOrigin
-	CachePresetWordPress     = cacheconfig.PresetWordPress
+	CachePresetDisabled             = cacheconfig.PresetDisabled
+	CachePresetRespectOrigin        = cacheconfig.PresetRespectOrigin
+	CachePresetWordPress            = cacheconfig.PresetWordPress
+	CachePresetFastCGIRespectOrigin = cacheconfig.PresetFastCGIRespectOrigin
+	CachePresetFastCGIWordPress     = cacheconfig.PresetFastCGIWordPress
 )
 
 type DomainCachePolicy struct {
-	Preset    CachePreset
-	UpdatedAt time.Time
+	Preset     CachePreset
+	Generation ID
+	UpdatedAt  time.Time
 }
 
 type DomainWAFException struct {
@@ -1880,9 +1883,12 @@ type UpdateDomainParams struct {
 	Target        *DomainTargetSpec
 	WAFMode       *WAFMode
 	CachePreset   *CachePreset
-	OperationID   *ID
-	ActorID       *ID
-	RequestID     string
+	// RotateCache is server-only intent: invalidate this FastCGI domain through
+	// the ordinary replay-safe NGINX activation, never arbitrary file deletion.
+	RotateCache bool
+	OperationID *ID
+	ActorID     *ID
+	RequestID   string
 }
 
 type ChangeDomainStatusParams struct {

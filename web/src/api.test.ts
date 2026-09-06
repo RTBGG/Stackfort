@@ -10,6 +10,23 @@ afterEach(() => {
 })
 
 describe('browser API client', () => {
+  it('keeps MFA secrets in CSRF-bound request bodies and encodes challenge IDs', async () => {
+    vi.spyOn(document, 'cookie', 'get').mockReturnValue('__Host-sf-csrf=csrf-bound')
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 204 } as Response)
+    vi.stubGlobal('fetch', fetchMock)
+    await api.beginTOTP('private-old-proof')
+    await api.confirmTOTP('challenge/id', '123456')
+    await api.disableTOTP('private-removal-proof')
+    expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
+      '/api/v1/mfa/totp/setup', '/api/v1/mfa/totp/setup/challenge%2Fid/confirm', '/api/v1/mfa/totp',
+    ])
+    for (const [, request] of fetchMock.mock.calls as [string, RequestInit][]) {
+      expect((request.headers as Headers).get('X-CSRF-Token')).toBe('csrf-bound')
+      expect(request.credentials).toBe('same-origin')
+    }
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1].body))).toEqual({ code: '123456' })
+    expect(fetchMock.mock.calls[2]?.[1].method).toBe('DELETE')
+  })
   it('binds domain mutations to CSRF and idempotency without leaking route-only fields', async () => {
     vi.spyOn(document, 'cookie', 'get').mockReturnValue('__Host-sf-csrf=csrf-bound')
     const fetchMock = vi.fn().mockResolvedValue({
@@ -22,7 +39,7 @@ describe('browser API client', () => {
     await api.createDomain('account/id', {
       name: 'example.test', canonicalMode: 'serve_both',
 		target: { type: 'static', rootMode: 'default' }, disableTls: false, tlsMode: 'acme',
-		wafMode: 'detection_only',
+		wafMode: 'detection_only', cachePreset: 'disabled',
     })
 
     const [url, request] = fetchMock.mock.calls[0] as [string, RequestInit]
@@ -35,7 +52,7 @@ describe('browser API client', () => {
     expect(JSON.parse(String(request.body))).toEqual({
       name: 'example.test', canonicalMode: 'serve_both',
 		target: { type: 'static', rootMode: 'default' }, disableTls: false, tlsMode: 'acme',
-		wafMode: 'detection_only',
+		wafMode: 'detection_only', cachePreset: 'disabled',
     })
   })
 
@@ -44,7 +61,7 @@ describe('browser API client', () => {
       ok: false, status: 403,
       json: () => Promise.resolve({ code: 'permission_denied', message: 'internal English detail' }),
     } as Response))
-    await expect(api.packages()).rejects.toEqual(expect.objectContaining<ApiError>({
+    await expect(api.packages()).rejects.toEqual(expect.objectContaining<Partial<ApiError>>({
       status: 403,
       code: 'permission_denied',
     }))
@@ -61,7 +78,7 @@ describe('browser API client', () => {
     await api.updateDomain('account/id', 'domain/id', {
       canonicalMode: 'prefer_apex',
       target: { type: 'php', rootMode: 'custom', documentRoot: 'sites/example', phpVersion: '8.4' },
-		wafMode: 'blocking_pl1',
+		wafMode: 'blocking_pl1', cachePreset: 'disabled',
     })
 
     const [url, request] = fetchMock.mock.calls[0] as [string, RequestInit]
@@ -70,7 +87,7 @@ describe('browser API client', () => {
     expect(JSON.parse(String(request.body))).toEqual({
       canonicalMode: 'prefer_apex',
       target: { type: 'php', rootMode: 'custom', documentRoot: 'sites/example', phpVersion: '8.4' },
-		wafMode: 'blocking_pl1',
+		wafMode: 'blocking_pl1', cachePreset: 'disabled',
     })
   })
 
