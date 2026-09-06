@@ -12,8 +12,9 @@ symbolic link or permit group writes or access by other users. Newly created
 directories use mode `0750` and the database uses `0600`.
 
 The implementation pins the CGo-free `modernc.org/sqlite` driver at `v1.56.0`.
-It embeds SQLite 3.53.3 and supports the project's Linux amd64 and arm64 release
-targets without a C toolchain. Startup enforces SQLite 3.51.3 or newer because
+It embeds SQLite 3.53.3 and supports Linux amd64 and arm64 cross-builds without
+a C toolchain. Public non-development releases remain amd64-only until native
+components qualify. Startup enforces SQLite 3.51.3 or newer because
 that is the first mainline release containing the WAL-reset race fix.
 
 Every physical connection receives these settings:
@@ -89,9 +90,12 @@ atomically and refuses to overwrite an existing destination.
 
 Do not copy only the live `.db` file: a WAL database's `-wal` file can contain
 committed state. Use the backup primitive. Automated tests reopen the produced
-snapshot and verify persisted content. A privileged, staged service-level
-restore workflow and its public API will be added with the backup manager; the
-foundation deliberately does not replace a database while it is open.
+snapshot and verify persisted content. The [staged updater](staged-platform-updates.md)
+uses a separate root-owned consistent snapshot for transaction rollback with
+services quiesced. There is no general public control-plane backup/restore API
+or CLI; the account backup manager contains files only. Do not treat the store
+primitive as an operator-facing backup command or replace an open database.
+See [backup and disaster-recovery boundaries](operations.md#backups-and-disaster-recovery).
 
 Backups containing encrypted TOTP records must be paired with a protected copy
 of the host `master.key`. Do not place that key inside the SQLite snapshot or a

@@ -84,6 +84,10 @@ jobs:
           package-manager-cache: false
       - name: Install locked dependencies
         run: npm ci
+      - name: Check documentation links
+        run: |
+          node --test ../scripts/check-docs.test.mjs
+          node ../scripts/check-docs.mjs
       - name: Check types
         run: npm run typecheck
       - name: Reject untranslated critical UI literals

@@ -8,6 +8,9 @@ cd "$repository_root"
 
 export GOTOOLCHAIN=local
 
+node --test scripts/check-docs.test.mjs
+node scripts/check-docs.mjs
+
 mapfile -d '' -t go_files < <(find cmd internal -type f -name '*.go' -print0)
 format_diff="$(gofmt -d "${go_files[@]}")"
 if [[ -n "$format_diff" ]]; then

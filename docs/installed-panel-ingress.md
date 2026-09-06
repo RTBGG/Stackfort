@@ -75,7 +75,7 @@ server-controlled.
 ## Validation
 
 The installer verifies the generated bundle, exact panel configuration,
-vendor `nginx -t`, HTTPS static response, and HTTPS-proxied API health. The
+vendor `nginx -t`, HTTPS static response, and HTTPS-proxied API health.
 The same release archive passed the disposable installer/no-op/Phase 1 suite
 on Debian 13, Ubuntu 26.04 LTS, and Rocky Linux 10.2 with the installed
 management endpoint. Frontend tests cover the fixed ACME request, pending-state

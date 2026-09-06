@@ -73,10 +73,12 @@ The administrator shell now provides:
   stable/beta policy, automatic-check schedule, manual checks, and bounded
   failure state.
 
-The update view performs bounded release discovery but no download or host
-mutation. Policy changes are recent-authenticated and audited. Local provenance
-verification, staging, health verification, activation, migrations, and rollback
-remain assigned to the functional-updater milestone.
+Discovery itself performs no download or host mutation. Policy changes are
+recent-authenticated and audited. The update view now also offers explicit
+administrator-triggered activation of the accepted candidate through the
+separate [staged updater](staged-platform-updates.md), with provenance checks,
+SQLite snapshot/migration, health verification, and exact rollback. Automatic
+checks never authorize installation.
 
 ## Verification
 

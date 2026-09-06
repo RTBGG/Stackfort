@@ -3,6 +3,12 @@
 C-004 adds optional multi-factor authentication and identity-scoped session
 control without changing the deny-by-default authorization boundary from C-003.
 
+UI coverage: the browser supports the MFA login challenge. Enrollment,
+replacement, and removal currently have authenticated API endpoints but no
+browser settings flow; completing that critical EN/DE workflow remains a
+public-beta requirement. Do not confuse API test coverage with a finished
+operator-facing enrollment experience.
+
 ## Authentication profile
 
 Stackfort generates a unique 160-bit TOTP secret and uses the widely supported

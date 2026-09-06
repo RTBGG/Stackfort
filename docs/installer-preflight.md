@@ -14,8 +14,8 @@ go build -o stackfort-installer ./cmd/stackfort-installer
 ./stackfort-installer preflight --format=json
 ```
 
-The release build also emits a standalone versioned Linux binary for each
-architecture and includes the binary in the complete release archive. I-002
+Release builds include the installer in the complete release archive; public
+non-development releases are amd64-only until native arm64 qualification. I-002
 adds the separately inspectable, checksum-verified download and journaled apply
 workflow; unreleased binaries must stay on disposable hosts.
 
@@ -23,7 +23,7 @@ The command has three stable exit classes:
 
 | Exit | Meaning |
 | --- | --- |
-| `0` | Every required check passed; the fresh host is ready for the future apply stage. |
+| `0` | Every required check passed; the fresh host is ready for the install stage. |
 | `1` | Invocation, report generation, or output failed. |
 | `2` | Inspection completed, but at least one actionable host check blocked installation. |
 
@@ -96,4 +96,5 @@ The compiled preflight also returns ready on clean Debian 13, Ubuntu 26.04, and
 Rocky Linux 10 Hyper-V guests before their package-preparation and destructive
 host test phases. The I-003 qualification retained this gate before the
 complete fresh-host installer and destructive Phase 1 suite on all three
-guests; upgrade matrices remain a later release-phase gate.
+guests. Cross-version release qualification is now covered by the separate
+[upgrade matrix](upgrade-matrix.md); preflight is not an installed-host repair tool.

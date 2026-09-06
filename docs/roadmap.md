@@ -186,7 +186,7 @@ and reboot recovery pass on Debian 13, Ubuntu 26.04, and Rocky Linux 10. See the
 - [x] Upgrade matrix generation, host qualification, and publication gates for
   every supported prior release; published-release executions begin after the
   first release exists.
-- Documentation, operations guide, security policy, contribution guide, and
+- [x] Documentation, operations guide, security policy, contribution guide, and
   published benchmark methodology/results.
 - Complete English and German critical workflows.
 
@@ -239,6 +239,19 @@ evidence is explicitly non-publishing rehearsal evidence. See
 [ADR 0062](adr/0062-exhaustive-artifact-bound-upgrade-matrices.md), the
 [operator guide](upgrade-matrix.md), and the
 [qualification record](../infra/host-tests/results/2026-09-05-upgrade-matrix-hyper-v.md).
+
+The sixth item is complete: the [documentation index](README.md) now routes
+operators and contributors to installation, [operations](operations.md),
+[troubleshooting](troubleshooting.md), [security reporting](../SECURITY.md),
+[contribution guidance](../CONTRIBUTING.md), and the
+[benchmark methodology/results](benchmarks.md). The review corrected stale
+update/bootstrap instructions and distinguishes file-only backups, updater
+rollback, and full-host recovery. It also labels FastCGI as benchmark-only,
+records current support limits, and adds offline path/anchor checks to CI.
+Private vulnerability reporting was enabled with owner approval on 2026-09-06.
+The [release checklist](release-checklist.md) keeps final EN/DE workflow review,
+independent security review, product-spec gaps (including full uninstall), and
+the support-window decision explicit; this documentation work publishes no beta.
 
 Exit gate: the success criteria in `product-spec.md` pass, followed by a limited
 public beta with an explicit support window.

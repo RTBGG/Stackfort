@@ -7,7 +7,7 @@ Stackfort currently pins:
 - npm 12.0.2 and exact frontend packages through `web/package.json` and
   `web/package-lock.json`.
 
-Use a disposable development machine. Do not run the host agent or future
+Use a disposable development machine. Do not run the host agent or
 installers on a server containing valuable data.
 
 ## Complete verification
@@ -15,7 +15,7 @@ installers on a server containing valuable data.
 On Linux, the repository-level verification runs formatting, static analysis,
 race-enabled Go tests, an actual Unix-socket agent smoke test, locked frontend
 installation, type checking, tests, a production build, dependency audit, and
-the immutable GitHub Action reference check:
+the immutable GitHub Action reference check, and offline documentation links:
 
 ```sh
 bash scripts/verify.sh
@@ -30,21 +30,28 @@ web checks, but it does not replace the Linux agent/runtime gates.
 ```sh
 go test ./...
 go vet ./...
-go run ./cmd/stackfort-api
+STACKFORT_STATE_PATH="$PWD/work/stackfort.db" go run ./cmd/stackfort-api
 ```
 
 The API binds to `127.0.0.1:8080`. Override it only for local development:
 
 ```sh
-STACKFORT_API_ADDRESS=127.0.0.1:18080 go run ./cmd/stackfort-api
+STACKFORT_STATE_PATH="$PWD/work/stackfort.db" \
+  STACKFORT_API_ADDRESS=127.0.0.1:18080 go run ./cmd/stackfort-api
 ```
 
-Linux panel state defaults to `/var/lib/stackfort/stackfort.db`. An unprivileged
-development run can select a private absolute local path:
+Linux panel state defaults to `/var/lib/stackfort/stackfort.db`; select the
+private local path above for an unprivileged development run. Keep using that
+same path for the server and bootstrap commands. PowerShell equivalent:
 
-```sh
-STACKFORT_STATE_PATH="$PWD/work/stackfort.db" go run ./cmd/stackfort-api
+```powershell
+$env:STACKFORT_STATE_PATH = Join-Path (Get-Location).Path 'work\stackfort.db'
+go run ./cmd/stackfort-api
 ```
+
+Without an override, Windows uses `Stackfort/stackfort.db` beneath the current
+user's configuration directory. Do not run the development API as root to
+work around Linux directory permissions.
 
 The startup sequence opens the database, verifies the SQLite version and
 integrity, enables WAL, and applies checksum-locked migrations before binding
@@ -59,7 +66,7 @@ Current public endpoints:
 - `POST /api/v1/login`
 - `POST /api/v1/login/mfa`
 
-Current authenticated endpoints:
+Selected authenticated endpoints (feature references document the full surface):
 
 - `GET /api/v1/session`
 - `POST /api/v1/logout`
@@ -104,7 +111,7 @@ Login accepts JSON only. Production browser sessions always use `Secure`
 host-only cookies, so a plain-HTTP local browser will not retain them. Use an
 HTTPS development proxy when testing cookie behavior; do not weaken the cookie
 flags. The CSRF cookie must be copied to `X-CSRF-Token` for logout and every
-future unsafe authenticated request. See
+unsafe authenticated request. See
 [`docs/password-authentication-and-sessions.md`](docs/password-authentication-and-sessions.md).
 
 TOTP requires the external 256-bit host master key. By default the API creates
@@ -133,20 +140,15 @@ curl --unix-socket "$agent_dir/agent.sock" http://localhost/v1/health
 ```
 
 Production builds always use `/run/stackfort/agent.sock`; there is no runtime
-socket-path input for the privileged process. The development process currently
-provides health plus the typed `protocol.handshake`,
-`host.capabilities.inspect`, `hosting.identity.reconcile`,
-`hosting.identity.delete`, `hosting.filesystem.reconcile`, and
-`hosting.document-root.ensure`, plus managed NGINX baseline/activation RPCs.
-G-001/G-002 add typed HTTP-01 and fixed-path certificate-staging RPCs; the
-managed PHP slice adds typed account-pool reconciliation and bounded read-only
-pool inspection. K-001 adds metadata-only managed file listing; K-002 keeps
-file bytes on a separate bounded stream and reads them in an account-credential
-helper rather than in the privileged parent.
+socket-path input for the privileged process. The unprivileged smoke run checks
+health and transport. Production typed RPCs cover capabilities, account
+provisioning/resources, hosting/TLS/PHP, files and backups, databases, WAF/cache,
+OCI lifecycle, and update start/status. A local smoke run is not authorization
+to exercise those privileged operations.
 The mutation operations remain privileged and must only be exercised by the
 disposable host harness. The Linux smoke build
 injects only its disposable socket path and expected numeric peer UID/GID; the
-production default resolves the `stackfort-api` service identity. Do not add
+production default resolves the `stackfort` service identity. Do not add
 arbitrary command execution, shell-string parameters, arbitrary environments,
 or caller-selected paths to the agent protocol. See
 [`docs/local-agent-protocol.md`](docs/local-agent-protocol.md).
@@ -252,7 +254,10 @@ POST  /api/v1/admin/updates/apply
 The scheduler wakes every 15 minutes but makes a network request only when the
 durable six-hour policy (or one-hour failure retry) is due. Tests must replace
 the internal endpoint/client with a local server; automated tests must not call
-GitHub. Functional updating is deliberately absent at this milestone.
+GitHub. Explicit functional updating is implemented separately from discovery;
+see [staged updates](docs/staged-platform-updates.md) and the
+[exhaustive upgrade matrix](docs/upgrade-matrix.md). Unpublished development
+and rehearsal builds are not eligible published-release upgrade sources.
 
 The WAF and Vinyl package directories must each contain their three native
 packages and adjacent `*.release.json` records produced on the locked Debian
@@ -270,3 +275,19 @@ archives.
 Windows can run the API and web interface and can cross-build the Linux agent.
 Agent runtime, Unix socket permissions, race detection, and systemd hardening
 must be verified on Linux CI and disposable supported-distribution machines.
+
+## Documentation checks
+
+```sh
+node --test scripts/check-docs.test.mjs
+node scripts/check-docs.mjs
+```
+
+This dependency-free, offline check reads tracked and non-ignored new Markdown
+files. It verifies repository-relative inline/image links, reference-link
+destinations, HTML `href`/`src`, case-sensitive paths, and Markdown ATX heading
+fragments, ignoring fenced/inline code and HTML comments. It is not a full
+Markdown renderer, external URL availability check, or command executor.
+Keep documentation links in these supported forms; review command semantics,
+status claims, and visual readability separately. See
+[Contributing](CONTRIBUTING.md) and the [documentation index](docs/README.md).

@@ -2,6 +2,12 @@
 
 Status: Draft 0.1
 
+This is a threat model and control specification, not a claim that every target
+control is implemented or independently audited. Feature references and the
+[roadmap](roadmap.md) identify current coverage. Vulnerability reporting and
+version support are defined in the [security policy](../SECURITY.md); practical
+recovery limits are in the [operations guide](operations.md).
+
 ## 1. Assets
 
 The system protects:
@@ -353,6 +359,13 @@ than adopting them. See [Account systemd slices and cgroup-v2 limits](account-re
   units, or silently overwrite unrelated resources.
 - Restore tests are part of release qualification.
 
+Current implementation: the account backup manager provides authenticated local
+**file-only** snapshots and portable, unencrypted payload transfer. Consistent
+customer database dumps, remote encryption, scheduled backups, and durable
+power-loss recovery for multi-tree account restore are deferred. The updater's
+SQLite rollback snapshot is a separate control-plane transaction facility,
+not a full-host backup. See [local file backups](local-file-backup-foundation.md).
+
 ### 4.11 Updates and dependencies
 
 - Immutable releases, checksums, provenance attestations, and SBOMs.
@@ -409,9 +422,11 @@ source information, action, target, account, request/operation ID, result, and a
 sanitized change summary.
 
 Events never include passwords, tokens, secret values, complete request bodies,
-or database contents. Entries form an append-only hash chain and are exported or
-checkpointed so a privileged local attacker cannot silently rewrite history
-without detection. Audit retention is distinct from application log retention.
+or database contents. Entries form an append-only hash chain. External export
+or independently retained checkpoints are still required to detect removal of
+the newest tail or a privileged rewrite of local state; the local chain alone
+does not provide that guarantee. Audit retention is distinct from application
+log retention.
 
 ## 6. Security release gates
 

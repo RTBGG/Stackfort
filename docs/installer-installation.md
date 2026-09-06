@@ -5,6 +5,12 @@ Rocky Linux 10 `amd64` host after the read-only preflight passes. The project is
 still pre-beta: do not use an unreleased build on a server containing valuable
 data.
 
+No public release has been published yet. The commands below document the
+release installation routes; do not expect illustrative `0.1.0` assets to
+exist. Select an exact version from the
+[release list](https://github.com/RTBGG/Stackfort/releases) when available.
+Use the [operations guide](operations.md) for first setup and ongoing checks.
+
 ## Before installation
 
 The host must satisfy the complete [preflight contract](installer-preflight.md),
@@ -15,7 +21,7 @@ files, symlinked destinations, and unmanaged configuration conflicts.
 
 ## GitHub bootstrap
 
-The short convenience command is:
+Once a stable release exists, the short convenience command is:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -fsSL \
@@ -23,8 +29,10 @@ curl --proto '=https' --tlsv1.2 -fsSL \
   sudo bash
 ```
 
-For a reviewable and version-pinned invocation, download the bootstrap first,
-inspect it, then select an exact release:
+For a reviewable invocation, download the bootstrap first, inspect it, then
+select an exact release (replace the illustrative version). To pin the
+bootstrap itself, replace `main` in its URL with a reviewed full commit SHA;
+`STACKFORT_VERSION` pins the release payload, not the branch-hosted script:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -fSLo stackfort-install.sh \
@@ -32,6 +40,10 @@ curl --proto '=https' --tlsv1.2 -fSLo stackfort-install.sh \
 less stackfort-install.sh
 sudo env STACKFORT_VERSION=0.1.0 bash stackfort-install.sh
 ```
+
+For a beta-only release, explicitly use its version, such as `0.1.0-beta.1`;
+the default `latest` lookup does not select prereleases. The example versions
+are not release announcements.
 
 The bootstrap accepts semantic versions only, downloads the matching `amd64`
 archive and `SHA256SUMS` from the versioned GitHub Release, verifies the exact
@@ -54,7 +66,7 @@ is deliberately set. The complete nine-cell evidence is recorded in the
 
 ### Native release package
 
-GitHub Releases provide a `stackfort-release` DEB for Debian/Ubuntu and an RPM
+Published releases will provide a `stackfort-release` DEB for Debian/Ubuntu and an RPM
 for Rocky Linux. Download the matching package together with `SHA256SUMS`, then
 verify the exact filename before installing it:
 
@@ -121,8 +133,11 @@ A successful second run performs verification only and returns:
 
 The fresh-host installer intentionally refuses another source digest or
 version. Installing a newer carrier package does not bypass that fence.
-Functional updates, automatic update checks, repair, rollback across versions,
-and uninstall are separate roadmap work.
+Use the separate [staged updater](staged-platform-updates.md) for verified
+cross-version activation and transaction rollback. [Automatic update checks](update-channels-and-checks.md)
+are implemented and enabled by default; automatic installation is not.
+General repair, arbitrary downgrades, and uninstall are not provided by the
+fresh-host command or by removing a passive carrier.
 
 ## First browser access
 

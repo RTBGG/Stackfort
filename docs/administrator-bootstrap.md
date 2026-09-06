@@ -10,7 +10,7 @@ Run the command as the operating-system identity that can access Stackfort's
 private state database:
 
 ```sh
-stackfort-api bootstrap create
+sudo -u stackfort -- /usr/local/bin/stackfort-api bootstrap create
 ```
 
 The command prints a 256-bit URL-safe token once, its UTC expiry, and no other
@@ -19,14 +19,15 @@ from one minute through one hour or deliberately invalidate an outstanding
 capability:
 
 ```sh
-stackfort-api bootstrap create --ttl=10m
-stackfort-api bootstrap create --replace
+sudo -u stackfort -- /usr/local/bin/stackfort-api bootstrap create --ttl=10m
+sudo -u stackfort -- /usr/local/bin/stackfort-api bootstrap create --replace
 ```
 
 Do not place the generated token in command arguments, URLs, screenshots, issue
-reports, or shell scripts. The future installer/UI handoff must keep it in the
-URL fragment or another channel that does not enter proxy request logs; that UI
-work is separate from C-001.
+reports, or shell scripts. Enter it only in the installed HTTPS panel's
+bootstrap form; the form submits it in a bounded JSON body, never in a URL.
+For an unprivileged development checkout, use the same private state path for
+the server and command as shown in [DEVELOPMENT.md](../DEVELOPMENT.md).
 
 ## API
 
@@ -44,7 +45,8 @@ It never returns a capability or digest. `POST /api/v1/bootstrap` accepts one
 bounded JSON object containing `token`, `email`, `displayName`, `password`, and
 an `en` or `de` locale. Unknown fields, trailing JSON values, and bodies above
 4 KiB are rejected. Successful creation returns non-secret identity fields and
-does not create a browser session; login and cookie sessions belong to C-002.
+does not create a browser session; log in afterwards through the separate
+[password/session flow](password-authentication-and-sessions.md).
 
 The API currently derives the source from its direct TCP peer and deliberately
 does not trust `Forwarded`, `X-Forwarded-For`, or similar client-supplied

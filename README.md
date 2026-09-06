@@ -13,10 +13,12 @@ the web interface itself a privileged system process.
 
 > [!WARNING]
 > Stackfort is under active development. Phase 6 is in progress, and the
-> project is not ready for production servers or valuable data.
+> project is not ready for production servers or valuable data. No public
+> release is available yet; installation examples require published assets.
 
-[Roadmap](docs/roadmap.md) · [Architecture](docs/architecture.md) ·
-[Security model](docs/security.md) · [Development guide](DEVELOPMENT.md)
+[Documentation](docs/README.md) · [Operations](docs/operations.md) ·
+[Roadmap](docs/roadmap.md) · [Security policy](SECURITY.md) ·
+[Contributing](CONTRIBUTING.md)
 
 ## At a glance
 
@@ -72,7 +74,7 @@ personalized applications bypass it by default.
 | Panel state | SQLite in WAL mode |
 | Edge and origin server | NGINX |
 | PHP runtime | One PHP-FPM pool per hosting account |
-| Optional page cache | Vinyl Cache 9.x or NGINX FastCGI cache |
+| Optional page cache | Vinyl Cache 9.x; FastCGI cache is currently benchmark-only |
 | Web application firewall | Coraza 3, coraza-nginx, and OWASP Core Rule Set |
 | Managed SQL service | MariaDB |
 | Container runtime | Rootless Podman with health-gated systemd Quadlets |
@@ -88,7 +90,8 @@ personalized applications bypass it by default.
 - Single-use first-administrator bootstrap with no default password.
 - Argon2id login, persistent rate limits, strict cookies, CSRF protection,
   session rotation, and server-side expiry.
-- TOTP MFA, one-time recovery codes, and identity-scoped session revocation.
+- TOTP/recovery API and browser MFA login; browser enrollment/settings remain
+  to be completed. Identity-scoped session revocation is implemented.
 - Deny-by-default platform and account authorization with freshness checks for
   sensitive operations.
 - Stable per-account Unix identities, project quotas, systemd slices, and
@@ -105,7 +108,7 @@ personalized applications bypass it by default.
 - The installer provides Podman/netavark rootless dependencies while masking
   rootful and user engine API units.
 - Every account receives deterministic, non-overlapping subordinate UID/GID
-  mappings plus symlink-resistant storage, runtime, and future Quadlet paths.
+  mappings plus symlink-resistant storage, runtime, and Quadlet paths.
 - Digest pulls and closed Containerfile builds now run rootlessly under fixed
   CPU, memory, storage-output, process, network, time, and log bounds.
 - Checksum-pinned Trivy scans the OCI archive before an immutable deployed
@@ -148,11 +151,13 @@ personalized applications bypass it by default.
 
 Coraza more than doubled WAF-enabled throughput compared with the earlier
 ModSecurity workload on every supported guest. Vinyl Cache remains opt-in:
-NGINX FastCGI cache is currently the recommended production direction because
+NGINX FastCGI cache is the recommended direction for a future managed preset because
 it delivered substantially higher PHP-cache throughput in qualification. A
 separate mod_pagespeed 1.15/Cyclone evaluation improved the tiny fixture's
 client resource shape, but was slower than both full-page caches and cannot be
-a free cross-platform dependency under its current license/package matrix.
+a free cross-platform dependency under the evaluated license/package matrix.
+These are small local-VM comparisons, not production capacity claims; see the
+[methodology and limitations](docs/benchmarks.md).
 
 [Coraza benchmark](infra/host-tests/results/2026-08-31-coraza-runtime-hyper-v.md) ·
 [Cache design](docs/cache-foundation.md) ·
@@ -175,6 +180,9 @@ a free cross-platform dependency under its current license/package matrix.
 - Root-owned local file backups with authenticated manifests, full verification,
   and staged document-root or visible-account restore.
 
+File backups exclude databases, TLS, and control-plane state. They are not a
+complete account or server recovery bundle; see [backup coverage](docs/operations.md#backups-and-disaster-recovery).
+
 </details>
 
 <details>
@@ -196,6 +204,9 @@ a free cross-platform dependency under its current license/package matrix.
   exact prior-release rollback; automatic installation remains disabled.
 - One identical release archive qualified on Debian 13, Ubuntu 26.04, and Rocky
   Linux 10 using disposable Hyper-V guests.
+- Exhaustive predecessor/OS/recovery upgrade gates with artifact-bound evidence;
+  the [current nine-cell rehearsal](infra/host-tests/results/2026-09-05-upgrade-matrix-hyper-v.md)
+  is not published-release evidence.
 
 See the [Phase 1 qualification](docs/phase1-qualification.md),
 [security review](docs/phase1-security-review.md), and
@@ -207,13 +218,11 @@ See the [Phase 1 qualification](docs/phase1-qualification.md),
 
 | Topic | Start here |
 | --- | --- |
-| Scope and planning | [Product specification](docs/product-spec.md), [roadmap](docs/roadmap.md), [MVP backlog](docs/mvp-backlog.md) |
-| Architecture and security | [Architecture](docs/architecture.md), [security model](docs/security.md), [ADRs](docs/adr) |
-| Accounts and hosting | [Administrator flows](docs/administrator-phase1-flows.md), [account-owner flows](docs/account-owner-phase1-flows.md), [PHP controls](docs/account-php-controls.md) |
-| Databases | [MariaDB lifecycle](docs/account-database-lifecycle.md), [phpMyAdmin sign-on](docs/phpmyadmin-signon.md) |
-| Installation and qualification | [Installation](docs/installer-installation.md), [installer preflight](docs/installer-preflight.md), [panel ingress](docs/installed-panel-ingress.md), [qualification](docs/phase1-qualification.md) |
-| Releases and updates | [Update channels and checks](docs/update-channels-and-checks.md), [staged platform updates](docs/staged-platform-updates.md), [ADR 0060](docs/adr/0060-immutable-stable-beta-release-discovery.md), [ADR 0061](docs/adr/0061-attested-health-gated-platform-updates.md) |
-| Research and performance | [Research notes](docs/research-notes.md), [performance baseline](docs/phase1-performance-baseline.md), [cache results](infra/host-tests/results/2026-08-31-vinyl-cache-hyper-v.md), [PageSpeed evaluation](infra/host-tests/results/2026-09-01-mod-pagespeed-nginx-evaluation.md) |
+| Install and operate | [Installation](docs/installer-installation.md), [operations](docs/operations.md), [troubleshooting](docs/troubleshooting.md) |
+| Features and design | [Documentation index](docs/README.md), [architecture](docs/architecture.md), [security model](docs/security.md) |
+| Updates and releases | [Update checks](docs/update-channels-and-checks.md), [staged updates](docs/staged-platform-updates.md), [release checklist](docs/release-checklist.md) |
+| Performance evidence | [Methodology, results, and reproduction](docs/benchmarks.md) |
+| Contribute or report | [Development](DEVELOPMENT.md), [contributing](CONTRIBUTING.md), [private security reporting](SECURITY.md) |
 
 <details>
 <summary><strong>Repository layout</strong></summary>
@@ -234,11 +243,12 @@ tests                   Integration, end-to-end, and performance suites
 ## Development
 
 Requirements and all verification commands are in [DEVELOPMENT.md](DEVELOPMENT.md).
-For the shortest local start, use two terminals:
+For a local Linux/macOS start, use two terminals (Windows PowerShell examples
+are in the development guide):
 
 ```sh
 # Terminal 1
-go run ./cmd/stackfort-api
+STACKFORT_STATE_PATH="$PWD/work/stackfort.db" go run ./cmd/stackfort-api
 ```
 
 ```sh
@@ -249,8 +259,9 @@ npm run dev
 ```
 
 The API listens on `127.0.0.1:8080` and the web development server on
-`127.0.0.1:5173` by default. The Linux-only host agent should use a development
-socket outside production paths.
+`127.0.0.1:5173` by default. This starts the UI/API for development; real browser
+login needs an HTTPS front end because session cookies are always `Secure`.
+The Linux-only host agent should use a development socket outside production paths.
 
 ## Safety
 
