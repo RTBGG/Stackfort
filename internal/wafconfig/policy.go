@@ -16,6 +16,9 @@ const (
 	CorazaNGINXVersion = "0.20.0"
 	GoToolchainVersion = "1.25.12"
 	CRSVersion         = "4.25.1"
+	// ConnectorPatchSHA256 pins the privacy-preserving connector patch shipped
+	// by the native package builder, independently of the upstream version.
+	ConnectorPatchSHA256 = "feb37f0d5781c5767c3826b097e7a5d0e636168b698b18dd553af27f77cee280"
 
 	ConfigurationRoot = "/etc/nginx/stackfort/coraza"
 	EnginePath        = ConfigurationRoot + "/engine.conf"

@@ -67,6 +67,7 @@ if [[ -f "$policy_file" ]]; then
   [[ "$(policy_version LibCorazaVersion)" == "$(locked_version libcoraza)" ]] || fail 'libcoraza lock differs from wafconfig policy'
   [[ "$(policy_version CorazaVersion)" == "$(locked_version coraza)" ]] || fail 'Coraza lock differs from wafconfig policy'
   [[ "$(policy_version CorazaNGINXVersion)" == "$(locked_version coraza-nginx)" ]] || fail 'coraza-nginx lock differs from wafconfig policy'
+  [[ "$(policy_version ConnectorPatchSHA256)" == "$(awk 'NF == 2 { print $1 }' "$patches_lock")" ]] || fail 'connector patch lock differs from wafconfig policy'
   [[ "$(policy_version GoToolchainVersion)" == "$(locked_version go-toolchain)" ]] || fail 'Go toolchain lock differs from wafconfig policy'
   [[ "$(policy_version CRSVersion)" == "$(locked_version owasp-crs)" ]] || fail 'OWASP CRS lock differs from wafconfig policy'
 fi

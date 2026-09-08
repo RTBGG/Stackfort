@@ -5,6 +5,7 @@ package installapply
 import (
 	"fmt"
 	"runtime"
+	"sort"
 
 	"github.com/RTBGG/stackfort/internal/hostinglogs"
 )
@@ -12,6 +13,21 @@ import (
 const managedHeader = "# Managed by Stackfort. Do not edit.\n"
 
 const selinuxNGINXPanelPolicyPath = "/etc/stackfort/stackfort-nginx-panel.te"
+
+// Use the rendered inventory for both installation and verification so newly
+// added units cannot exist only as templates and be omitted from the host.
+func serviceUnitNames(distribution string) []string {
+	units := serviceUnits(distribution)
+	if distribution == "rocky" {
+		delete(units, "stackfort-firewall.service")
+	}
+	names := make([]string, 0, len(units))
+	for name := range units {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
 
 func serviceUnits(distribution string) map[string]string {
 	apiSandbox := ""

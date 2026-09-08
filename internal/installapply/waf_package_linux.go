@@ -48,11 +48,12 @@ type wafQualificationManifest struct {
 		NGINXWorker         string `json:"nginxWorker"`
 	} `json:"target"`
 	Components struct {
-		Coraza      string `json:"coraza"`
-		LibCoraza   string `json:"libCoraza"`
-		CorazaNGINX string `json:"corazaNGINX"`
-		OWASPCRS    string `json:"owaspCRS"`
-		GoToolchain string `json:"goToolchain"`
+		Coraza               string `json:"coraza"`
+		LibCoraza            string `json:"libCoraza"`
+		CorazaNGINX          string `json:"corazaNGINX"`
+		ConnectorPatchSHA256 string `json:"connectorPatchSHA256"`
+		OWASPCRS             string `json:"owaspCRS"`
+		GoToolchain          string `json:"goToolchain"`
 	} `json:"components"`
 	Runtime struct {
 		LibraryDirectory string `json:"libraryDirectory"`
@@ -254,6 +255,10 @@ func readWAFQualificationManifest() (wafQualificationManifest, error) {
 	if err != nil {
 		return wafQualificationManifest{}, errors.New("read installed WAF qualification manifest")
 	}
+	return decodeWAFQualificationManifest(content)
+}
+
+func decodeWAFQualificationManifest(content []byte) (wafQualificationManifest, error) {
 	var manifest wafQualificationManifest
 	decoder := json.NewDecoder(strings.NewReader(string(content)))
 	decoder.DisallowUnknownFields()
@@ -282,6 +287,7 @@ func validateWAFQualification(manifest wafQualificationManifest, artifact releas
 		manifest.Target.PackageFormat != artifact.Format || manifest.Target.NGINXPackageVersion != artifact.NGINXPackageVersion ||
 		manifest.Target.NGINXWorker != wanted.worker || manifest.Components.Coraza != artifact.CorazaVersion ||
 		manifest.Components.LibCoraza != artifact.LibCorazaVersion || manifest.Components.CorazaNGINX != artifact.CorazaNGINXVersion ||
+		manifest.Components.ConnectorPatchSHA256 != wafconfig.ConnectorPatchSHA256 ||
 		manifest.Components.OWASPCRS != artifact.OWASPCRSVersion || manifest.Components.GoToolchain != wafconfig.GoToolchainVersion ||
 		manifest.Runtime.LibraryDirectory != wantedLibrary ||
 		manifest.Runtime.ModuleDirectory != wanted.moduleDirectory || manifest.Runtime.LoaderPath != wanted.loaderPath {

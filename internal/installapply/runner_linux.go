@@ -805,9 +805,8 @@ func (runner *LinuxRunner) applyConfiguration(ctx context.Context, source Source
 	}
 	changed = changed || panelTLSChanged
 	units := serviceUnits(runner.distribution)
-	names := []string{"stackfort.slice", "stackfort-core.slice", "stackfort-accounts.slice", "stackfort-agent.service", "stackfort-api.service", "stackfort-update@.service", phpMyAdminUnit}
+	names := serviceUnitNames(runner.distribution)
 	if runner.distribution != "rocky" {
-		names = append(names, "stackfort-firewall.service")
 		fileChanged, err := reconcileFile("/etc/stackfort/firewall.nft", []byte(nftablesFile()), 0, gid, 0o640, true)
 		if err != nil {
 			return false, err
@@ -896,7 +895,7 @@ func (runner *LinuxRunner) verifyConfiguration(ctx context.Context, source Sourc
 		}
 	}
 	units := serviceUnits(runner.distribution)
-	for _, name := range []string{"stackfort.slice", "stackfort-core.slice", "stackfort-accounts.slice", "stackfort-agent.service", "stackfort-api.service", "stackfort-update@.service", phpMyAdminUnit} {
+	for _, name := range serviceUnitNames(runner.distribution) {
 		if err := verifyFile(filepath.Join("/etc/systemd/system", name), []byte(units[name]), 0, 0, 0o644); err != nil {
 			return err
 		}
@@ -912,10 +911,6 @@ func (runner *LinuxRunner) verifyConfiguration(ctx context.Context, source Sourc
 		}
 	}
 	if runner.distribution != "rocky" {
-		if err := verifyFile("/etc/systemd/system/stackfort-firewall.service",
-			[]byte(units["stackfort-firewall.service"]), 0, 0, 0o644); err != nil {
-			return err
-		}
 		if err := verifyFile("/etc/stackfort/firewall.nft", []byte(nftablesFile()), 0, gid, 0o640); err != nil {
 			return err
 		}

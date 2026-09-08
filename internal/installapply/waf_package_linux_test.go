@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -19,6 +20,68 @@ import (
 	"github.com/RTBGG/stackfort/internal/releaseartifacts"
 	"github.com/RTBGG/stackfort/internal/wafconfig"
 )
+
+// This is the shape emitted by packaging/waf/build-bundle.sh, including the
+// connector patch digest that an actual CI-built native package must carry.
+const builtWAFQualificationFixture = `{
+  "schema": 1,
+  "target": {
+    "os": "ubuntu", "versionPrefix": "26.04", "architecture": "amd64",
+    "packageFormat": "deb", "nginxSourceVersion": "1.28.3",
+    "nginxPackageVersion": "1.28.3-2ubuntu1.10", "nginxWorker": "www-data"
+  },
+  "components": {
+    "coraza": "3.7.0", "libCoraza": "1.7.0", "corazaNGINX": "0.20.0",
+    "connectorPatchSHA256": "feb37f0d5781c5767c3826b097e7a5d0e636168b698b18dd553af27f77cee280",
+    "owaspCRS": "4.25.1", "goToolchain": "1.25.12"
+  },
+  "runtime": {
+    "libraryDirectory": "/usr/lib/stackfort/coraza-1.7.0/lib",
+    "moduleDirectory": "/usr/lib/nginx/modules",
+    "loaderPath": "/etc/nginx/modules-enabled/50-stackfort-coraza.conf"
+  }
+}`
+
+func TestWAFQualificationAcceptsBuiltManifestAndPinsConnectorPatch(t *testing.T) {
+	t.Parallel()
+	manifest, err := decodeWAFQualificationManifest([]byte(builtWAFQualificationFixture))
+	if err != nil {
+		t.Fatal("CI package manifest cannot be decoded", err)
+	}
+	artifact := testInstallerWAFArtifact("ubuntu", "26.04", "deb", "waf.deb", "1.7.0+nginx0.20.0+crs4.25.1-1", "1.28.3-2ubuntu1.10")
+	if _, err := validateWAFQualification(manifest, artifact); err != nil {
+		t.Fatal("CI package manifest does not satisfy the runtime contract", err)
+	}
+	for _, digest := range []string{"", strings.Repeat("a", 64), strings.ToUpper(wafconfig.ConnectorPatchSHA256)} {
+		manifest.Components.ConnectorPatchSHA256 = digest
+		encoded, err := json.Marshal(manifest)
+		if err != nil {
+			t.Fatal(err)
+		}
+		decoded, err := decodeWAFQualificationManifest(encoded)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := validateWAFQualification(decoded, artifact); err == nil {
+			t.Fatalf("accepted unpinned connector patch %q", digest)
+		}
+	}
+}
+
+func TestWAFQualificationDecoderRemainsStrict(t *testing.T) {
+	t.Parallel()
+	for _, content := range []string{
+		builtWAFQualificationFixture + `{}`,
+		strings.Replace(builtWAFQualificationFixture, `"schema": 1`, `"schema": 1, "unknown": true`, 1),
+		strings.Replace(builtWAFQualificationFixture, `"coraza":`, `"unknown": "value", "coraza":`, 1),
+		strings.Replace(builtWAFQualificationFixture, `"schema": 1`, `"schema": "1"`, 1),
+		`{`,
+	} {
+		if _, err := decodeWAFQualificationManifest([]byte(content)); err == nil {
+			t.Fatal("accepted malformed, unknown or trailing manifest data")
+		}
+	}
+}
 
 func TestWAFPackageInstallFailureRollsBackPartialDebianPackage(t *testing.T) {
 	t.Parallel()

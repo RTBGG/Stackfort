@@ -3,9 +3,31 @@
 package installapply
 
 import (
+	"slices"
 	"strings"
 	"testing"
 )
+
+func TestInstalledServiceInventoryIncludesRenewalUnits(t *testing.T) {
+	t.Parallel()
+	for _, distribution := range []string{"debian", "ubuntu", "rocky"} {
+		names := serviceUnitNames(distribution)
+		if !slices.IsSorted(names) || len(slices.Compact(slices.Clone(names))) != len(names) {
+			t.Fatal("unit installation inventory must be deterministic and unique")
+		}
+		for _, required := range []string{"stackfort-panel-renew.service", "stackfort-panel-renew.timer"} {
+			if !slices.Contains(names, required) {
+				t.Fatalf("%s installation omits %s", distribution, required)
+			}
+		}
+		for name, content := range serviceUnits(distribution) {
+			wanted := distribution != "rocky" || name != "stackfort-firewall.service"
+			if content == "" || slices.Contains(names, name) != wanted {
+				t.Fatalf("%s installation/template inventory disagrees for %s", distribution, name)
+			}
+		}
+	}
+}
 
 func TestServiceUnitsContainRequiredSandboxAndOwnershipContract(t *testing.T) {
 	t.Parallel()

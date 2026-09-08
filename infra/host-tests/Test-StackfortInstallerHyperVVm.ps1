@@ -21,6 +21,7 @@ param(
     [ValidateSet('archive', 'bootstrap', 'native')]
     [string] $InstallMethod = 'archive',
     [string] $NativePackagePath,
+    [string] $ArchiveDirectory,
     [TimeSpan] $StartupTimeout = [TimeSpan]::FromMinutes(5),
     [switch] $SkipBuild,
     [switch] $RunPhase1Suite
@@ -176,13 +177,19 @@ if ($RunPhase1Suite) {
 
 $bundle = "stackfort-$Version-linux-amd64"
 $archiveName = "$bundle.tar.gz"
-$archivePath = Join-Path (Join-Path $repositoryRoot 'dist') $archiveName
+if ([string]::IsNullOrWhiteSpace($ArchiveDirectory)) {
+    $ArchiveDirectory = Join-Path $repositoryRoot 'dist'
+} elseif (-not $SkipBuild) {
+    throw 'An explicit candidate ArchiveDirectory requires -SkipBuild.'
+}
+$ArchiveDirectory = (Resolve-Path -LiteralPath $ArchiveDirectory).Path
+$archivePath = Join-Path $ArchiveDirectory $archiveName
 if (-not (Test-Path -LiteralPath $archivePath -PathType Leaf)) {
     throw "Release archive not found: $archivePath"
 }
 $archiveHash = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash.ToLowerInvariant()
 $remoteArchive = "/tmp/$archiveName"
-$checksumPath = Join-Path (Join-Path $repositoryRoot 'dist') 'SHA256SUMS'
+$checksumPath = Join-Path $ArchiveDirectory 'SHA256SUMS'
 $bootstrapPath = Join-Path $repositoryRoot 'packaging\installer\install.sh'
 $remoteChecksums = '/tmp/stackfort-SHA256SUMS'
 $remoteBootstrap = '/tmp/stackfort-install.sh'
@@ -362,6 +369,13 @@ sudo stat -Lc '%a %U:%G' /etc/nginx/stackfort/panel-enabled/00-panel.conf | grep
 sudo stat -Lc '%a %U:%G' /usr/share/stackfort/web/index.html | grep -qx '644 root:root'
 sudo systemctl is-active --quiet stackfort-agent.service stackfort-api.service stackfort-phpmyadmin.service nginx.service mariadb.service vinyl.service
 sudo systemctl is-enabled --quiet stackfort-agent.service stackfort-api.service stackfort-phpmyadmin.service nginx.service mariadb.service vinyl.service
+sudo stat -Lc '%a %U:%G' /usr/local/sbin/stackfort-installer | grep -qx '755 root:root'
+sudo systemctl is-active --quiet stackfort-panel-renew.timer
+sudo systemctl is-enabled --quiet stackfort-panel-renew.timer
+sudo /usr/local/sbin/stackfort-installer panel status --format=json | grep -q '"enabled":false'
+sudo systemctl start stackfort-panel-renew.service
+sudo systemctl show --property=Result --value stackfort-panel-renew.service | grep -qx success
+sudo test ! -e /etc/stackfort/panel-tls/acme-account.pem
 sudo test -x /usr/bin/mariadb
 $wafPackageCheck
 $vinylPackageCheck
@@ -466,6 +480,7 @@ if ($RunPhase1Suite) {
     Firewall = 'passed'
     MandatoryAccessControl = 'passed'
     ServiceHealth = 'passed'
+    PanelRenewalTimerNoop = 'passed'
     WAFNativePackage = 'passed'
     VinylNativePackage = 'passed'
     Phase1DomainLifecycle = $phase1Status
