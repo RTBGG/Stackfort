@@ -1,0 +1,463 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-08",
+  "version": "0.1.0-beta.3",
+  "sourceCommit": "5282946bec1f865de7222128a6a5d0d8a656f34c",
+  "publication": "unpublished workflow_dispatch candidate; not public-beta qualification",
+  "checkpoint": "stackfort-installer-ready-20260824",
+  "hypervisor": "Windows 11 Hyper-V",
+  "guestVirtualCPUs": 2,
+  "guestStartupMemoryGiB": 4,
+  "originalArtifact": {
+    "id": 10039391940,
+    "name": "stackfort-0.1.0-beta.3",
+    "digest": "sha256:69eaef3e3013e4d66684f0f1f822ca4718407f140101b4e17dd34e8ae4f80b4c",
+    "size_in_bytes": 311727204,
+    "expires_at": "2026-10-08T03:09:42Z",
+    "workflow_run": {
+      "id": 34182191221,
+      "repository_id": 1352407195,
+      "head_repository_id": 1352407195,
+      "head_branch": "main",
+      "head_sha": "5282946bec1f865de7222128a6a5d0d8a656f34c"
+    }
+  },
+  "assets": [
+    {
+      "name": "SHA256SUMS",
+      "sizeBytes": 703,
+      "sha256": "355b9d4da5d01019748e3fa9f6f0f12be4ad92fe3bf03e4996bc45e9a913b429"
+    },
+    {
+      "name": "stackfort-0.1.0-beta.3-linux-amd64.tar.gz",
+      "sizeBytes": 117210432,
+      "sha256": "3bf0987612d902df1e5fd2f159235d65f1f13a2f19a4f673e84befa170bd0df0"
+    },
+    {
+      "name": "stackfort-installer-0.1.0-beta.3-linux-amd64",
+      "sizeBytes": 12136574,
+      "sha256": "11bf099d1c37848f7eb3685873c68b992a1225ed03f7bb55e88d930fbbd63a77"
+    },
+    {
+      "name": "stackfort-0.1.0-beta.3.spdx.json",
+      "sizeBytes": 26724,
+      "sha256": "2278ed23a42bc4dc550ae90b58962f743784d5f9f94d2dfba17e3a456355ed6a"
+    },
+    {
+      "name": "stackfort-release_0.1.0~beta.3-1_amd64.deb",
+      "sizeBytes": 74057616,
+      "sha256": "abf4c26237f77fc9de5492d5e50b46dc9b0e306c2f812c02f1e43f9fca226e20"
+    },
+    {
+      "name": "stackfort-release_0.1.0~beta.3-1_amd64.deb.release.json",
+      "sizeBytes": 444,
+      "sha256": "ad1e5243f8ab14d80e7e72527a07fd84d7d7c8a49f6c0805730468b977fa2582"
+    },
+    {
+      "name": "stackfort-release_0.1.0~beta.3-1_amd64.deb.sha256",
+      "sizeBytes": 109,
+      "sha256": "2154149bcb985a9c983fb21dfcbd0e992b720e853a38072423cc840ec5321b10"
+    },
+    {
+      "name": "stackfort-release-0.1.0~beta.3-1.sf1.x86_64.rpm",
+      "sizeBytes": 116765866,
+      "sha256": "03bddbc0a131defd50f0bfc50f4500332038efca539540bca9108c1dec83480d"
+    },
+    {
+      "name": "stackfort-release-0.1.0~beta.3-1.sf1.x86_64.rpm.release.json",
+      "sizeBytes": 454,
+      "sha256": "ba78ab4133ec685febe4f55d56b33ce9effc3b39aee2f7718309b028d6c3b7b6"
+    },
+    {
+      "name": "stackfort-release-0.1.0~beta.3-1.sf1.x86_64.rpm.sha256",
+      "sizeBytes": 114,
+      "sha256": "3c6fdeaf0f73f13605b17713b1a8e65d824194ee44153b8cf55a6f48d13d8276"
+    }
+  ],
+  "runs": [
+    {
+      "id": 34182191221,
+      "name": "Release artifacts",
+      "head_sha": "5282946bec1f865de7222128a6a5d0d8a656f34c",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/RTBGG/Stackfort/actions/runs/34182191221"
+    },
+    {
+      "id": 34182174724,
+      "name": "CI",
+      "head_sha": "5282946bec1f865de7222128a6a5d0d8a656f34c",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/RTBGG/Stackfort/actions/runs/34182174724"
+    },
+    {
+      "id": 34182174787,
+      "name": "Security",
+      "head_sha": "5282946bec1f865de7222128a6a5d0d8a656f34c",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/RTBGG/Stackfort/actions/runs/34182174787"
+    }
+  ],
+  "provenance": {
+    "result": "passed",
+    "verifier": "bundled stackfort-gh attestation verify",
+    "repository": "RTBGG/Stackfort",
+    "sourceRef": "refs/heads/main",
+    "sourceDigest": "5282946bec1f865de7222128a6a5d0d8a656f34c",
+    "signerWorkflow": "RTBGG/Stackfort/.github/workflows/release.yml",
+    "denySelfHostedRunners": true,
+    "subjectsMatched": 10
+  },
+  "testBinaries": [
+    {
+      "name": "panel-hostnginx-beta3.test",
+      "go": "1.26.6",
+      "target": "linux/amd64",
+      "cgoEnabled": false,
+      "sha256": "c60b3b23d2b2c69d5a021d441a5f195a3c1df1813138db0a6ec1ae3028256b97"
+    },
+    {
+      "name": "panel-candidate-integration-beta3.test",
+      "go": "1.26.6",
+      "target": "linux/amd64",
+      "cgoEnabled": false,
+      "sha256": "67c1aff9f244ac0802b94254764a88520150c12262cd69dbbeb2aaab61a13cab"
+    }
+  ],
+  "matrix": [
+    {
+      "imageId": "debian-13",
+      "installer": {
+        "VMName": "stackfort-debian-13",
+        "ImageId": "debian-13",
+        "IPv4": "172.23.71.82",
+        "ReleaseVersion": "0.1.0-beta.3",
+        "InstallMethod": "native",
+        "ReadOnlyPreflight": "passed",
+        "FirstInstall": "passed",
+        "JournalResumeContract": "passed",
+        "NoOpRerun": "passed",
+        "FileMetadata": "passed",
+        "SystemdSandbox": "passed",
+        "Firewall": "passed",
+        "MandatoryAccessControl": "passed",
+        "ServiceHealth": "passed",
+        "PanelRenewalTimerNoop": "passed",
+        "WAFNativePackage": "passed",
+        "VinylNativePackage": "passed",
+        "Phase1DomainLifecycle": "not-run",
+        "Phase1AccountIsolation": "not-run",
+        "Phase2PHPAccountPools": "not-run",
+        "Phase2MariaDBLifecycle": "not-run",
+        "Phase2PHPMyAdminSignon": "passed",
+        "Phase1InjectedRecovery": "not-run",
+        "Phase1PrivateAcmeLifecycle": "not-run",
+        "Phase1PerformanceBaseline": "not-run"
+      },
+      "panelTests": [
+        "TestPanelConfigureRotateNoopDisableAndReservation",
+        "TestPanelFailedValidationAndHealthRestorePriorConfiguration",
+        "TestPanelInterruptedTransactionRecoversAndBlocksTenantActivation",
+        "TestPanelRejectsUnsafeInputFiles",
+        "TestPanelRefusesExistingTenantHostAndAlias",
+        "TestPanelAutomaticIssuanceRenewalAndNoop",
+        "TestPanelACMEFailureCleansTokensAndPreservesFallback",
+        "TestPanelACMETransportRejectsUnapprovedOriginsAndBoundsBodies",
+        "TestPanelDisposableLiveNGINX"
+      ],
+      "integrationTests": [
+        "TestDisposableHostVinylCacheSafetyWAFAndPerformance",
+        "TestDisposableHostStaticDomainLifecycleAndWorkerAccess",
+        "TestDisposableHostOCIDeploymentLifecycle",
+        "TestDisposableHostProjectQuotaAndAccountIsolation",
+        "TestDisposableHostPrivateACMETLSLifecycleOverAgentRPC",
+        "TestDisposableHostWAFRuntimeAndPerformance"
+      ],
+      "environment": [
+        "Linux 6.12.101+deb13-cloud-amd64",
+        "PRETTY_NAME=\"Debian GNU/Linux 13 (trixie)\"",
+        "NAME=\"Debian GNU/Linux\"",
+        "VERSION_ID=\"13\"",
+        "VERSION=\"13 (trixie)\"",
+        "VERSION_CODENAME=trixie",
+        "DEBIAN_VERSION_FULL=13.6",
+        "ID=debian",
+        "HOME_URL=\"https://www.debian.org/\"",
+        "SUPPORT_URL=\"https://www.debian.org/support\"",
+        "BUG_REPORT_URL=\"https://bugs.debian.org/\"",
+        "ext4 rw,relatime,prjquota",
+        "{\"enabled\":false,\"certificateExpiresAt\":\"0001-01-01T00:00:00Z\",\"recoveryRequired\":false,\"autoRenew\":false}",
+        "active",
+        "enabled",
+        "Result=success",
+        "Yes",
+        "catatonit\t0.2.1-2+b13",
+        "dbus-user-session\t1.16.2-2",
+        "nginx\t1.26.3-3+deb13u7",
+        "podman\t5.4.2+ds1-2+b2"
+      ]
+    },
+    {
+      "imageId": "ubuntu-26.04",
+      "installer": {
+        "VMName": "stackfort-ubuntu-26-04-v2",
+        "ImageId": "ubuntu-26.04",
+        "IPv4": "172.23.75.214",
+        "ReleaseVersion": "0.1.0-beta.3",
+        "InstallMethod": "native",
+        "ReadOnlyPreflight": "passed",
+        "FirstInstall": "passed",
+        "JournalResumeContract": "passed",
+        "NoOpRerun": "passed",
+        "FileMetadata": "passed",
+        "SystemdSandbox": "passed",
+        "Firewall": "passed",
+        "MandatoryAccessControl": "passed",
+        "ServiceHealth": "passed",
+        "PanelRenewalTimerNoop": "passed",
+        "WAFNativePackage": "passed",
+        "VinylNativePackage": "passed",
+        "Phase1DomainLifecycle": "not-run",
+        "Phase1AccountIsolation": "not-run",
+        "Phase2PHPAccountPools": "not-run",
+        "Phase2MariaDBLifecycle": "not-run",
+        "Phase2PHPMyAdminSignon": "passed",
+        "Phase1InjectedRecovery": "not-run",
+        "Phase1PrivateAcmeLifecycle": "not-run",
+        "Phase1PerformanceBaseline": "not-run"
+      },
+      "panelTests": [
+        "TestPanelConfigureRotateNoopDisableAndReservation",
+        "TestPanelFailedValidationAndHealthRestorePriorConfiguration",
+        "TestPanelInterruptedTransactionRecoversAndBlocksTenantActivation",
+        "TestPanelRejectsUnsafeInputFiles",
+        "TestPanelRefusesExistingTenantHostAndAlias",
+        "TestPanelAutomaticIssuanceRenewalAndNoop",
+        "TestPanelACMEFailureCleansTokensAndPreservesFallback",
+        "TestPanelACMETransportRejectsUnapprovedOriginsAndBoundsBodies",
+        "TestPanelDisposableLiveNGINX"
+      ],
+      "integrationTests": [
+        "TestDisposableHostVinylCacheSafetyWAFAndPerformance",
+        "TestDisposableHostStaticDomainLifecycleAndWorkerAccess",
+        "TestDisposableHostOCIDeploymentLifecycle",
+        "TestDisposableHostProjectQuotaAndAccountIsolation",
+        "TestDisposableHostPrivateACMETLSLifecycleOverAgentRPC",
+        "TestDisposableHostWAFRuntimeAndPerformance"
+      ],
+      "environment": [
+        "Linux 7.0.0-31-generic",
+        "PRETTY_NAME=\"Ubuntu 26.04 LTS\"",
+        "NAME=\"Ubuntu\"",
+        "VERSION_ID=\"26.04\"",
+        "VERSION=\"26.04 LTS (Resolute Raccoon)\"",
+        "VERSION_CODENAME=resolute",
+        "ID=ubuntu",
+        "ID_LIKE=debian",
+        "HOME_URL=\"https://www.ubuntu.com/\"",
+        "SUPPORT_URL=\"https://help.ubuntu.com/\"",
+        "BUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"",
+        "PRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"",
+        "UBUNTU_CODENAME=resolute",
+        "LOGO=ubuntu-logo",
+        "ext4 rw,relatime,prjquota",
+        "{\"enabled\":false,\"certificateExpiresAt\":\"0001-01-01T00:00:00Z\",\"recoveryRequired\":false,\"autoRenew\":false}",
+        "active",
+        "enabled",
+        "Result=success",
+        "Yes",
+        "catatonit\t0.2.1-2build1",
+        "dbus-user-session\t1.16.2-2ubuntu4",
+        "nginx\t1.28.3-2ubuntu1.10",
+        "podman\t5.7.0+ds2-3build1"
+      ]
+    },
+    {
+      "imageId": "rocky-10",
+      "installer": {
+        "VMName": "stackfort-rocky-10",
+        "ImageId": "rocky-10",
+        "IPv4": "172.23.66.200",
+        "ReleaseVersion": "0.1.0-beta.3",
+        "InstallMethod": "native",
+        "ReadOnlyPreflight": "passed",
+        "FirstInstall": "passed",
+        "JournalResumeContract": "passed",
+        "NoOpRerun": "passed",
+        "FileMetadata": "passed",
+        "SystemdSandbox": "passed",
+        "Firewall": "passed",
+        "MandatoryAccessControl": "passed",
+        "ServiceHealth": "passed",
+        "PanelRenewalTimerNoop": "passed",
+        "WAFNativePackage": "passed",
+        "VinylNativePackage": "passed",
+        "Phase1DomainLifecycle": "not-run",
+        "Phase1AccountIsolation": "not-run",
+        "Phase2PHPAccountPools": "not-run",
+        "Phase2MariaDBLifecycle": "not-run",
+        "Phase2PHPMyAdminSignon": "passed",
+        "Phase1InjectedRecovery": "not-run",
+        "Phase1PrivateAcmeLifecycle": "not-run",
+        "Phase1PerformanceBaseline": "not-run"
+      },
+      "panelTests": [
+        "TestPanelConfigureRotateNoopDisableAndReservation",
+        "TestPanelFailedValidationAndHealthRestorePriorConfiguration",
+        "TestPanelInterruptedTransactionRecoversAndBlocksTenantActivation",
+        "TestPanelRejectsUnsafeInputFiles",
+        "TestPanelRefusesExistingTenantHostAndAlias",
+        "TestPanelAutomaticIssuanceRenewalAndNoop",
+        "TestPanelACMEFailureCleansTokensAndPreservesFallback",
+        "TestPanelACMETransportRejectsUnapprovedOriginsAndBoundsBodies",
+        "TestPanelDisposableLiveNGINX"
+      ],
+      "integrationTests": [
+        "TestDisposableHostVinylCacheSafetyWAFAndPerformance",
+        "TestDisposableHostStaticDomainLifecycleAndWorkerAccess",
+        "TestDisposableHostOCIDeploymentLifecycle",
+        "TestDisposableHostProjectQuotaAndAccountIsolation",
+        "TestDisposableHostPrivateACMETLSLifecycleOverAgentRPC",
+        "TestDisposableHostWAFRuntimeAndPerformance"
+      ],
+      "environment": [
+        "Linux 6.12.0-211.16.1.el10_2.0.1.x86_64",
+        "NAME=\"Rocky Linux\"",
+        "VERSION=\"10.2 (Red Quartz)\"",
+        "RELEASE_TYPE=\"stable\"",
+        "ID=\"rocky\"",
+        "ID_LIKE=\"rhel centos fedora\"",
+        "VERSION_ID=\"10.2\"",
+        "PLATFORM_ID=\"platform:el10\"",
+        "PRETTY_NAME=\"Rocky Linux 10.2 (Red Quartz)\"",
+        "ANSI_COLOR=\"0;32\"",
+        "LOGO=\"fedora-logo-icon\"",
+        "CPE_NAME=\"cpe:/o:rocky:rocky:10::baseos\"",
+        "HOME_URL=\"https://rockylinux.org/\"",
+        "VENDOR_NAME=\"RESF\"",
+        "VENDOR_URL=\"https://resf.org/\"",
+        "BUG_REPORT_URL=\"https://bugs.rockylinux.org/\"",
+        "SUPPORT_END=\"2035-05-31\"",
+        "ROCKY_SUPPORT_PRODUCT=\"Rocky-Linux-10\"",
+        "ROCKY_SUPPORT_PRODUCT_VERSION=\"10.2\"",
+        "REDHAT_SUPPORT_PRODUCT=\"Rocky Linux\"",
+        "REDHAT_SUPPORT_PRODUCT_VERSION=\"10.2\"",
+        "xfs rw,relatime,seclabel,attr2,inode64,logbufs=8,logbsize=32k,prjquota",
+        "{\"enabled\":false,\"certificateExpiresAt\":\"0001-01-01T00:00:00Z\",\"recoveryRequired\":false,\"autoRenew\":false}",
+        "active",
+        "enabled",
+        "Result=success",
+        "Enforcing",
+        "nginx-1.26.3-6.el10_2.6.x86_64",
+        "catatonit-0.2.1-1.el10.x86_64",
+        "podman-5.8.2-5.el10_2.x86_64"
+      ]
+    }
+  ],
+  "localEvidenceDigests": [
+    {
+      "name": "build-attestation.jsonl",
+      "sha256": "b929c9d6a8e15726f53381bb35e2bc1912ab13908b2fadffe5c73e45178d8344"
+    },
+    {
+      "name": "debian-13-environment.log",
+      "sha256": "02df3598cbe87bc3e74cb2043d949a20dc1ef8da74ca0c9d33da351a17887a25"
+    },
+    {
+      "name": "debian-13-install.json",
+      "sha256": "0174b8efdfa386d360606479a0884c7105158c98343dc1da01821291cbe59afb"
+    },
+    {
+      "name": "debian-13-install.log",
+      "sha256": "14ac09f9ffb8924a384be3f680fa94cb586093a163fa68c3a0eb08f92e3c5429"
+    },
+    {
+      "name": "debian-13-panel.log",
+      "sha256": "419893480a48316dfcd9a27864c86d7862587656305afe92a23e3814b440c652"
+    },
+    {
+      "name": "debian-13-regression.log",
+      "sha256": "8979b1bd84fc062e5c4c24cfd9f39c01628b02db7de982012948f02721849a97"
+    },
+    {
+      "name": "rocky-10-environment.log",
+      "sha256": "733b4c26f7d28e72b908cce352e52166162d13733b324c2a60073a16f64e174b"
+    },
+    {
+      "name": "rocky-10-install.json",
+      "sha256": "8fa6cff53390b50e7f978fcedce91d470e816320f914cf73a3a84637d75805d8"
+    },
+    {
+      "name": "rocky-10-install.log",
+      "sha256": "8045ece958e2079cb60e667983c55b431a20d87dfa56879975232c72c2cd4f40"
+    },
+    {
+      "name": "rocky-10-panel.log",
+      "sha256": "97a906a121eea6d2397cde9ad9e305570424f5f74ceb3445d0a6118b5808c08f"
+    },
+    {
+      "name": "rocky-10-regression.log",
+      "sha256": "57516e2d747326898b0d08f51766ac2c93814a08236189baec82e00fcb042d67"
+    },
+    {
+      "name": "ubuntu-26.04-environment.log",
+      "sha256": "b7ffcc7e8399d34a5622783e48a4f25d6ceedbed2ebca935ef9203e66b1d3e8d"
+    },
+    {
+      "name": "ubuntu-26.04-install-package-lock-failed.log",
+      "sha256": "101cbff20df3149d3a68e02c97dead8d3a6b2f137f4a8a92a0f3aa8d01c51492"
+    },
+    {
+      "name": "ubuntu-26.04-install.json",
+      "sha256": "670ad118eb96a64369570c97c2ef92beb5625c3d73e7bb93f5e9722f39938a27"
+    },
+    {
+      "name": "ubuntu-26.04-install.log",
+      "sha256": "218da18ed3235d4989ed6994870e108716b3b1f93b601db8ed0f71fc6961768c"
+    },
+    {
+      "name": "ubuntu-26.04-package-lock-journal.json",
+      "sha256": "a940fb4377980ea32c915be7a7dc5ac8dc78818a1873f3b91a41f3e19dcfd26e"
+    },
+    {
+      "name": "ubuntu-26.04-package-maintenance-complete.log",
+      "sha256": "a666ca6f988f0504ff7be4ef9d3078aa27cdc1ce78e768ecbab7bd7ccdb11a43"
+    },
+    {
+      "name": "ubuntu-26.04-package-maintenance.log",
+      "sha256": "c93d78757c9d501940735d46d59b0d3435a759169e5ab13c7fe71a8be7280b45"
+    },
+    {
+      "name": "ubuntu-26.04-panel.log",
+      "sha256": "1cb769d31f4721d255d20a44e610178ff30a3697cb14656a306bb9cca1e90f10"
+    },
+    {
+      "name": "ubuntu-26.04-regression.log",
+      "sha256": "9b413e708c7020ff98605fbf3ed9f5c70af7c4694941ad41365468ef620beddd"
+    },
+    {
+      "name": "verified-provenance.json",
+      "sha256": "b178a1b0ab0308bc1e448ea965d6788d40697dd0dee8a17e1245a07e3822a661"
+    }
+  ],
+  "excludedFailure": {
+    "image": "ubuntu-26.04",
+    "cause": "unattended-upgrades held the dpkg frontend lock beyond the 120-second installer bound",
+    "action": "preserved failure log/journal; restored clean checkpoint; completed OS package maintenance, checked dpkg audit and rebooted before unchanged candidate retest",
+    "maintenanceObservation": "D-Bus clients disconnected during OS upgrades; final service results and package database were independently checked after completion",
+    "securityUpdatesDisabled": false,
+    "packageChanged": false
+  },
+  "limitations": [
+    "No real public Lets Encrypt issuance for user DNS",
+    "No public tag/release or updater-tag-policy relaxation",
+    "No full published-predecessor upgrade or reboot qualification in this matrix",
+    "Concurrent-VM incidental throughput is not a controlled new performance benchmark",
+    "Manual EN/DE review, independent audit, uninstall and support-window gates remain open"
+  ]
+}

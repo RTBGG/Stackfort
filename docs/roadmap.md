@@ -269,13 +269,16 @@ The README now exposes the HTTPS-only one-line installer with the explicit
 no-public-release warning. These changes do not complete the final manual
 workflow review, independent security audit, uninstall or support-window gates.
 
-## Post-beta candidates
-
 Panel-hostname follow-up: root-console configuration now adds a named management
 origin on 443 while retaining 8443. Production Let's Encrypt HTTP-01 issuance,
 automatic renewal, trusted certificate import, tenant hostname reservation and
 durable rollback are implemented; see [panel hostname](panel-hostname.md).
+The exact unpublished `0.1.0-beta.3` candidate passed native installation,
+panel/private-CA and selected hosting regressions on all three supported
+distributions; see the [artifact-bound evidence](../infra/host-tests/results/2026-09-08-panel-hostname-candidate.md).
 This does not close the remaining browser/manual-review or public-release gates.
+
+## Post-beta candidates
 
 - SFTP/SSH-key management and constrained shell access.
 - Scheduled/remote encrypted backups.

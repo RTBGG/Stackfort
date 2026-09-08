@@ -116,6 +116,11 @@ before a panel change can proceed. Lock contention fails instead of waiting.
   renewal decisions, conflicts and rollback. They do not constitute live public
   CA issuance for your DNS name, full release qualification or an independent audit.
 
+The unpublished `0.1.0-beta.3` candidate passed native installer, panel and
+selected hosting regressions on Debian 13, Ubuntu 26.04 and Rocky Linux 10;
+see the [artifact-bound qualification](../infra/host-tests/results/2026-09-08-panel-hostname-candidate.md).
+No public release or tag was created by that qualification.
+
 See [installed ingress](installed-panel-ingress.md),
 [installation](installer-installation.md) and
 [ADR 0064](adr/0064-root-managed-panel-hostname-and-acme.md).
