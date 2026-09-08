@@ -3,10 +3,30 @@
 package hostingoci
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/RTBGG/stackfort/internal/hostingidentity"
 )
+
+func TestStorageSELinuxPolicyIsAccountPrivate(t *testing.T) {
+	t.Parallel()
+	spec, err := ForIdentity(testIdentity(t, hostingidentity.MinimumID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pattern := regexp.MustCompile("^(?:" + StorageSELinuxPattern + ")$")
+	for _, path := range []string{spec.StorageRoot, spec.StorageRoot + "/storage/overlay/layer/diff/bin/sh"} {
+		if !pattern.MatchString(path) {
+			t.Fatalf("private storage not covered: %s", path)
+		}
+	}
+	for _, path := range []string{spec.Identity.HomeDirectory, spec.Identity.HomeDirectory + "/public_html", spec.StorageRoot + "-other", "/home/test/.local/share/containers", hostingidentity.ManagedAccountsRoot + "/other/.local/share/containers"} {
+		if pattern.MatchString(path) {
+			t.Fatalf("policy escaped private storage: %s", path)
+		}
+	}
+}
 
 func TestRuntimeSpecIsDeterministicAndNonOverlapping(t *testing.T) {
 	t.Parallel()

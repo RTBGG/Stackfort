@@ -388,13 +388,13 @@ func distroPackages(distribution string) []string {
 	switch distribution {
 	case "debian":
 		return []string{"acl", "apparmor", "apparmor-utils", "ca-certificates", "curl", "nginx", "nftables", "php8.4-fpm", "quota",
-			"aardvark-dns", "fuse-overlayfs", "netavark", "passt", "podman", "slirp4netns", "uidmap"}
+			"aardvark-dns", "catatonit", "dbus-user-session", "fuse-overlayfs", "netavark", "passt", "podman", "slirp4netns", "uidmap"}
 	case "ubuntu":
 		return []string{"acl", "apparmor", "apparmor-utils", "ca-certificates", "curl", "nginx", "nftables", "php8.5-fpm", "quota",
-			"aardvark-dns", "fuse-overlayfs", "netavark", "passt", "podman", "slirp4netns", "uidmap"}
+			"aardvark-dns", "catatonit", "dbus-user-session", "fuse-overlayfs", "netavark", "passt", "podman", "slirp4netns", "uidmap"}
 	case "rocky":
 		return []string{"acl", "ca-certificates", "curl", "firewalld", "nginx", "php-fpm", "policycoreutils-python-utils", "quota",
-			"aardvark-dns", "fuse-overlayfs", "netavark", "passt", "podman", "shadow-utils-subid", "slirp4netns"}
+			"aardvark-dns", "catatonit", "fuse-overlayfs", "netavark", "passt", "podman", "shadow-utils-subid", "slirp4netns"}
 	default:
 		return []string{}
 	}

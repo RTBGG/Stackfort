@@ -20,6 +20,9 @@ const (
 	SubordinateIDCount uint32 = 65_536
 	MaximumRuntimeUID  uint32 = hostingidentity.MaximumID
 	QuadletUsersRoot          = "/etc/containers/systemd/users"
+	// Only the canonical account-private container tree receives this policy.
+	StorageSELinuxPattern = hostingidentity.ManagedAccountsRoot + `/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/\.local/share/containers(/.*)?`
+	StorageSELinuxContext = "system_u:object_r:container_file_t:s0"
 )
 
 var ErrInvalidSpec = errors.New("invalid hosting OCI runtime specification")

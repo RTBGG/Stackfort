@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/RTBGG/stackfort/internal/hostingoci"
 	"github.com/RTBGG/stackfort/internal/wafconfig"
 )
 
@@ -23,12 +24,28 @@ func TestRockyPackagesIncludeSELinuxModuleToolchain(t *testing.T) {
 	}
 }
 
+func TestRockyContainerStorageHasNarrowPersistentType(t *testing.T) {
+	t.Parallel()
+	wanted := selinuxFileContext{"container_file_t", hostingoci.StorageSELinuxPattern}
+	if !slices.Contains(stackfortSELinuxFileContexts(), wanted) {
+		t.Fatal("private OCI storage lacks a persistent container type")
+	}
+	for _, path := range stackfortSELinuxRestorePaths() {
+		if strings.HasPrefix(path, "/srv/hosting") {
+			t.Fatal("installer must not recursively relabel existing tenant data")
+		}
+	}
+}
+
 func TestInstallerPackagesSelectNativePHPRuntime(t *testing.T) {
 	t.Parallel()
 	for distribution, runtimePackage := range map[string]string{
 		"debian": "php8.4-fpm", "ubuntu": "php8.5-fpm", "rocky": "php-fpm",
 	} {
 		packages := " " + strings.Join(installerPackages(distribution), " ") + " "
+		if distribution != "rocky" && !strings.Contains(packages, " dbus-user-session ") {
+			t.Fatalf("%s package plan lacks the systemd user bus", distribution)
+		}
 		if !strings.Contains(packages, " "+runtimePackage+" ") {
 			t.Fatalf("%s packages lack %s: %s", distribution, runtimePackage, packages)
 		}
@@ -38,7 +55,7 @@ func TestInstallerPackagesSelectNativePHPRuntime(t *testing.T) {
 		if !strings.Contains(packages, " logrotate ") {
 			t.Fatalf("%s package plan lacks deterministic log retention: %s", distribution, packages)
 		}
-		for _, runtimePackage := range []string{"podman", "netavark", "aardvark-dns", "passt", "slirp4netns", "fuse-overlayfs"} {
+		for _, runtimePackage := range []string{"podman", "catatonit", "netavark", "aardvark-dns", "passt", "slirp4netns", "fuse-overlayfs"} {
 			if !strings.Contains(packages, " "+runtimePackage+" ") {
 				t.Fatalf("%s package plan lacks rootless runtime package %s: %s", distribution, runtimePackage, packages)
 			}

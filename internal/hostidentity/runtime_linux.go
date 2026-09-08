@@ -37,12 +37,14 @@ type linuxRuntimeManager struct {
 	subuid    string
 	subgid    string
 	linger    string
+	selinux   bool
 }
 
 func newRuntimeManager() runtimeManager {
 	return &linuxRuntimeManager{
 		commands: agentexec.NewRunner(), inspector: hostcapabilities.NewInspector(),
 		subuid: "/etc/subuid", subgid: "/etc/subgid", linger: "/var/lib/systemd/linger",
+		selinux: hostcapabilities.NewInspector().InspectPlatform().DistributionID == "rocky",
 	}
 }
 
@@ -85,6 +87,13 @@ func (manager *linuxRuntimeManager) EnsureRuntime(
 		return RuntimeResult{}, fmt.Errorf("%w: rootless runtime directories", ErrMutationFailed)
 	}
 	result.RuntimePrepared = prepared
+	if manager.selinux {
+		labelled, err := labelEmptyContainerStorage(spec)
+		if err != nil {
+			return RuntimeResult{}, fmt.Errorf("%w: private container storage label", ErrMutationFailed)
+		}
+		result.RuntimePrepared = result.RuntimePrepared || labelled
+	}
 	if err := rejectPodmanAPISocket(spec.RuntimeRoot); err != nil {
 		return RuntimeResult{}, err
 	}
@@ -293,14 +302,22 @@ func (manager *linuxRuntimeManager) ensureLinger(ctx context.Context, spec hosti
 }
 
 func (manager *linuxRuntimeManager) ensureUserRuntime(ctx context.Context, spec hostingoci.Spec) error {
-	if validOwnedDirectory(spec.RuntimeRoot, spec.Identity.UID, spec.Identity.GID, 0o700) {
-		return nil
-	}
+	// logind can create /run/user/UID before the user manager is ready. A
+	// directory alone does not prove a running systemd/DBus user session.
+	// Starting this fixed unit is synchronous and idempotent when already up.
 	if err := manager.run(ctx, agentexec.ProfileStartUserManager, spec.Identity); err != nil {
 		return err
 	}
 	if !validOwnedDirectory(spec.RuntimeRoot, spec.Identity.UID, spec.Identity.GID, 0o700) {
 		return ErrMutationFailed
+	}
+	bus, err := os.Lstat(filepath.Join(spec.RuntimeRoot, "bus"))
+	if err != nil || bus.Mode()&os.ModeSocket == 0 || bus.Mode()&os.ModeSymlink != 0 {
+		return ErrMutationFailed
+	}
+	status, ok := bus.Sys().(*syscall.Stat_t)
+	if !ok || status.Uid != spec.Identity.UID || status.Gid != spec.Identity.GID {
+		return ErrIdentityConflict
 	}
 	return nil
 }

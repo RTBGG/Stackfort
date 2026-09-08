@@ -23,6 +23,11 @@ The report never opens an engine socket. Missing, unsupported, or uncertain
 evidence remains a typed unavailable/unknown capability and blocks account
 runtime mutation with a stable `oci_runtime_unavailable` response.
 
+The installer explicitly installs `catatonit` on every supported distribution
+and `dbus-user-session` on Debian/Ubuntu. These must not depend on optional
+package recommendations: Quadlet's init process and Podman's systemd cgroup
+manager need them even on a minimal server image.
+
 ## Deterministic account contract
 
 Only immutable account identity is accepted across the agent boundary. For UID
@@ -74,10 +79,20 @@ call:
 1. inspect all OCI prerequisites without mutation;
 2. add and re-read the exact subordinate UID/GID ranges;
 3. enable linger and verify its root-owned marker;
-4. start and verify the account user manager when necessary;
+4. synchronously start the account user manager and verify its private runtime
+   directory and account-owned D-Bus socket;
 5. create and verify the fixed storage and Quadlet directories below the
    already project-inheriting account root; and
 6. reject any per-user Podman API socket before returning success.
+
+On Rocky, preparation also seeds the **empty** private container store with
+`container_file_t`, using a no-symlink directory-descriptor walk and a verified
+SELinux attribute write. This is required when a separate hosting filesystem
+starts with an unlabeled root. A persistent file-context rule covers only the
+canonical account's `.local/share/containers` tree, not its webroot or other
+account files. An already-correct label is a no-op; a populated store with an
+unexpected label fails closed and needs administrator review. The installer
+does not recursively relabel tenant data or weaken enforcing SELinux.
 
 `user@<uid>.service` is placed directly below
 `stackfort-accounts-<uid>.slice`. Its delegated `app.slice` and every rootless

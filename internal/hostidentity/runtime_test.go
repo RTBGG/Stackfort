@@ -6,12 +6,48 @@ package hostidentity
 
 import (
 	"errors"
+	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
+	"github.com/RTBGG/stackfort/internal/agentexec"
 	"github.com/RTBGG/stackfort/internal/hostingoci"
 )
+
+func TestExistingRuntimeDirectoryStillStartsUserManager(t *testing.T) {
+	t.Parallel()
+	identity := testSpec(t)
+	// The fake command runner does not apply identity mutations. Match the
+	// temporary directory's owner to exercise the ready-directory branch.
+	identity.UID, identity.GID = uint32(os.Getuid()), uint32(os.Getgid())
+	directory := t.TempDir()
+	if err := os.Chmod(directory, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	host := newFakeHost(identity)
+	manager := &linuxRuntimeManager{commands: host}
+	spec := hostingoci.Spec{Identity: identity, RuntimeRoot: directory}
+	if err := manager.ensureUserRuntime(t.Context(), spec); err == nil {
+		t.Fatal("accepted a user manager without its D-Bus socket")
+	}
+	if !slices.Equal(host.profiles, []agentexec.ProfileID{agentexec.ProfileStartUserManager}) {
+		t.Fatal("a directory was mistaken for a ready user session", host.profiles)
+	}
+	bus, err := net.Listen("unix", filepath.Join(directory, "bus"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer bus.Close()
+	if err := manager.ensureUserRuntime(t.Context(), spec); err != nil {
+		t.Fatal(err)
+	}
+	host.commandErr = errors.New("user manager failed")
+	if err := manager.ensureUserRuntime(t.Context(), spec); err == nil {
+		t.Fatal("accepted a runtime with a failed user manager")
+	}
+}
 
 func TestSubordinateIDParserAndRangeIsolation(t *testing.T) {
 	t.Parallel()

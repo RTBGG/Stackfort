@@ -25,6 +25,7 @@ import (
 	"github.com/RTBGG/stackfort/internal/agentprotocol"
 	"github.com/RTBGG/stackfort/internal/cacheconfig"
 	"github.com/RTBGG/stackfort/internal/hostcapabilities"
+	"github.com/RTBGG/stackfort/internal/hostingoci"
 	"github.com/RTBGG/stackfort/internal/hostnginx"
 	"github.com/RTBGG/stackfort/internal/installpreflight"
 	"github.com/RTBGG/stackfort/internal/nginxbaseline"
@@ -72,6 +73,7 @@ func stackfortSELinuxFileContexts() []selinuxFileContext {
 		// writable cache type as the distribution's native NGINX cache.
 		{"httpd_cache_t", wafconfig.RuntimeRoot + "(/.*)?"},
 		{"httpd_cache_t", cacheconfig.FastCGIDirectory + "(/.*)?"},
+		{"container_file_t", hostingoci.StorageSELinuxPattern},
 	}
 }
 
@@ -348,21 +350,21 @@ func installerPackages(distribution string) []string {
 	case "debian":
 		return []string{
 			"acl", "apparmor", "apparmor-utils", "ca-certificates", "curl", "logrotate", "mariadb-server", "nginx", "nftables",
-			"aardvark-dns", "fuse-overlayfs", "netavark", "passt", "podman", "slirp4netns", "uidmap",
+			"aardvark-dns", "catatonit", "dbus-user-session", "fuse-overlayfs", "netavark", "passt", "podman", "slirp4netns", "uidmap",
 			"php8.4-cli", "php8.4-curl", "php8.4-fpm", "php8.4-gd", "php8.4-intl", "php8.4-mbstring", "php8.4-mysql",
 			"php8.4-xml", "php8.4-zip", "phpmyadmin", "quota",
 		}
 	case "ubuntu":
 		return []string{
 			"acl", "apparmor", "apparmor-utils", "ca-certificates", "curl", "logrotate", "mariadb-server", "nginx", "nftables",
-			"aardvark-dns", "fuse-overlayfs", "netavark", "passt", "podman", "slirp4netns", "uidmap",
+			"aardvark-dns", "catatonit", "dbus-user-session", "fuse-overlayfs", "netavark", "passt", "podman", "slirp4netns", "uidmap",
 			"php8.5-cli", "php8.5-curl", "php8.5-fpm", "php8.5-gd", "php8.5-intl", "php8.5-mbstring", "php8.5-mysql",
 			"php8.5-xml", "php8.5-zip", "phpmyadmin", "quota",
 		}
 	case "rocky":
 		return []string{
 			"acl", "ca-certificates", "checkpolicy", "curl", "firewalld", "logrotate", "mariadb-server", "nginx",
-			"aardvark-dns", "fuse-overlayfs", "netavark", "passt", "podman", "shadow-utils-subid", "slirp4netns",
+			"aardvark-dns", "catatonit", "fuse-overlayfs", "netavark", "passt", "podman", "shadow-utils-subid", "slirp4netns",
 			"php-cli", "php-common", "php-fpm", "php-gd", "php-intl", "php-mbstring", "php-mysqlnd", "php-pecl-zip", "php-xml",
 			"policycoreutils", "policycoreutils-python-utils", "quota",
 		}

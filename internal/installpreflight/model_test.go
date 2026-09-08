@@ -87,6 +87,14 @@ func TestEvaluateActionableBlockers(t *testing.T) {
 
 func TestPlansAreDistributionSpecific(t *testing.T) {
 	t.Parallel()
+	for _, distribution := range []string{"debian", "ubuntu", "rocky"} {
+		if !hasPackage(installationPlan(distribution).Packages, "catatonit") {
+			t.Fatalf("%s plan omits the init helper required by RunInit=true", distribution)
+		}
+		if distribution != "rocky" && !hasPackage(installationPlan(distribution).Packages, "dbus-user-session") {
+			t.Fatalf("%s plan lacks the systemd user bus", distribution)
+		}
+	}
 
 	rocky := installationPlan("rocky")
 	if !hasPackage(rocky.Packages, "firewalld") || !hasPackage(rocky.Packages, "php-fpm") ||
