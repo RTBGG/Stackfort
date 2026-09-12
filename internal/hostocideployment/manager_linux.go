@@ -124,7 +124,8 @@ func (manager *linuxManager) deploy(ctx context.Context, request ocideployment.R
 			return ocideployment.LifecycleResult{}, err
 		}
 	}
-	if err := manager.runUnit(ctx, agentexec.ProfileSystemdUserDaemonReload, values); err == nil {
+	err = manager.runUnit(ctx, agentexec.ProfileSystemdUserDaemonReload, values)
+	if err == nil {
 		err = manager.runUnit(ctx, agentexec.ProfileSystemdUserRestart, values)
 	}
 	if err == nil {
@@ -279,9 +280,16 @@ func (manager *linuxManager) healthProbe(ctx context.Context, spec ocideployment
 				err = connection.Close()
 			}
 		} else {
-			transport := &http.Transport{Proxy: nil, DialContext: (&net.Dialer{}).DialContext,
+			transport := &http.Transport{Proxy: nil,
+				// A tenant-controlled response must never select another host or
+				// port for this privileged probe, including through redirects.
+				DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+					return (&net.Dialer{}).DialContext(ctx, "tcp", address)
+				},
 				DisableKeepAlives: true, MaxIdleConns: 1}
-			client := &http.Client{Transport: transport}
+			client := &http.Client{Transport: transport, CheckRedirect: func(*http.Request, []*http.Request) error {
+				return ErrUnhealthy
+			}}
 			var request *http.Request
 			request, err = http.NewRequestWithContext(probeCtx, http.MethodGet,
 				"http://"+address+spec.Health.Path, nil)
@@ -292,7 +300,7 @@ func (manager *linuxManager) healthProbe(ctx context.Context, spec ocideployment
 				if err == nil {
 					_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, 4<<10))
 					_ = response.Body.Close()
-					if response.StatusCode < 200 || response.StatusCode >= 400 {
+					if response.StatusCode < 200 || response.StatusCode >= 300 {
 						err = ErrUnhealthy
 					}
 				}

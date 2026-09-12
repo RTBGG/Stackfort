@@ -155,7 +155,7 @@ export const messages = {
     databases: {
       wizardTitle: 'Database wizard', wizardSteps: 'Database wizard progress', step: 'Step {current} of {total}',
       createDatabase: 'Create a database', databaseAlias: 'Database alias',
-      aliasHint: 'Lowercase letters, numbers, and underscores; start with a letter. Stackfort adds the account prefix.',
+      aliasHint: 'Lowercase letters, numbers, and underscores; start with a letter. Maximum 26 characters, with each underscore counting as two. Stackfort adds the account prefix.',
       chooseUser: 'Create or select a database user', newUser: 'Create a new database user',
       existingUser: 'Use an existing database user', userAlias: 'User alias', databaseUser: 'Database user',
       selectUser: 'Select a user', accessPreset: 'Access preset', readWrite: 'Read and write',
@@ -583,7 +583,7 @@ export const messages = {
     databases: {
       wizardTitle: 'Datenbank-Assistent', wizardSteps: 'Fortschritt des Datenbank-Assistenten', step: 'Schritt {current} von {total}',
       createDatabase: 'Datenbank erstellen', databaseAlias: 'Datenbank-Alias',
-      aliasHint: 'Kleinbuchstaben, Zahlen und Unterstriche; mit einem Buchstaben beginnen. Stackfort ergänzt das Kontopräfix.',
+      aliasHint: 'Kleinbuchstaben, Zahlen und Unterstriche; mit einem Buchstaben beginnen. Höchstens 26 Zeichen, wobei jeder Unterstrich doppelt zählt. Stackfort ergänzt das Kontopräfix.',
       chooseUser: 'Datenbankbenutzer erstellen oder auswählen', newUser: 'Neuen Datenbankbenutzer erstellen',
       existingUser: 'Vorhandenen Datenbankbenutzer verwenden', userAlias: 'Benutzer-Alias', databaseUser: 'Datenbankbenutzer',
       selectUser: 'Benutzer auswählen', accessPreset: 'Zugriffsprofil', readWrite: 'Lesen und Schreiben',

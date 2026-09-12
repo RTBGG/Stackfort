@@ -27,7 +27,9 @@ import (
 	"github.com/RTBGG/stackfort/internal/ociimage"
 )
 
-const manifestSchema = 1
+// Version 2 requires an immutable, content-bound scanner archive. Historical
+// records cannot silently bypass the new preparation checks on replay.
+const manifestSchema = 2
 
 type commandRunner interface {
 	Run(context.Context, agentexec.Invocation) (agentexec.Result, error)
@@ -46,6 +48,7 @@ type linuxManager struct {
 	stateUID     uint32
 	stateGID     uint32
 	chown        func(string, int, int) error
+	sealArchive  func(context.Context, string, uint32, uint32, uint32, uint32, string) error
 }
 
 type replayManifest struct {
@@ -58,14 +61,14 @@ func NewManager() Manager {
 	return &linuxManager{
 		commands: agentexec.NewRunner(), capabilities: hostcapabilities.NewInspector(),
 		transactions: ociimage.TransactionRoot, artifacts: ociimage.ArtifactRoot,
-		scannerCache: ociimage.ScannerCacheRoot, stateUID: 0, stateGID: 0, chown: os.Chown,
+		scannerCache: ociimage.ScannerCacheRoot, stateUID: 0, stateGID: 0, chown: os.Chown, sealArchive: sealImageArchive,
 	}
 }
 
 func (manager *linuxManager) Prepare(
 	ctx context.Context, operationID string, spec ociimage.PrepareSpec,
 ) (ociimage.Result, error) {
-	if manager == nil || manager.commands == nil || manager.capabilities == nil || ociimage.ValidateSpec(spec) != nil {
+	if manager == nil || manager.commands == nil || manager.capabilities == nil || manager.sealArchive == nil || ociimage.ValidateSpec(spec) != nil {
 		return ociimage.Result{}, ErrInvalid
 	}
 	if _, err := ociimage.TransactionDirectory(operationID); err != nil {
@@ -113,7 +116,7 @@ func (manager *linuxManager) Prepare(
 	}
 	defer func() { _ = os.RemoveAll(transaction) }()
 	if spec.Source.Kind == ociapps.SourceContainerfile {
-		sourceDigest, err = snapshotBuildInputs(spec, transaction, manager.chown)
+		sourceDigest, err = snapshotBuildInputs(spec, transaction, manager.stateUID, manager.chown)
 		if err != nil {
 			return ociimage.Result{}, err
 		}
@@ -148,8 +151,8 @@ func (manager *linuxManager) Prepare(
 		_ = manager.run(cleanupContext, agentexec.ProfilePodmanRemove, values)
 	}()
 	inspect, err := manager.commands.Run(ctx, agentexec.Invocation{Profile: agentexec.ProfilePodmanInspect, Values: values})
-	imageDigest := strings.TrimSpace(inspect.Stdout)
-	if err != nil || inspect.ExitCode != 0 || !ociimage.ValidDigest(imageDigest) {
+	imageDigest, digestErr := parseInspectedImageID(inspect.Stdout)
+	if err != nil || inspect.ExitCode != 0 || digestErr != nil {
 		return ociimage.Result{}, ociimage.ErrInspectFailed
 	}
 	archive := filepath.Join(transaction, "image.tar")
@@ -160,9 +163,8 @@ func (manager *linuxManager) Prepare(
 	if err := manager.run(ctx, agentexec.ProfilePodmanSave, append(values, operationID)); err != nil {
 		return ociimage.Result{}, ociimage.ErrScanFailed
 	}
-	info, err := os.Lstat(archive)
-	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Size() <= 0 ||
-		info.Size() > ociimage.MaximumImageArchiveBytes || manager.chown(archive, int(manager.stateUID), int(manager.stateGID)) != nil || os.Chmod(archive, 0o600) != nil {
+	if err := manager.sealArchive(ctx, archive, spec.Identity.UID, spec.Identity.GID,
+		manager.stateUID, manager.stateGID, imageDigest); err != nil {
 		return ociimage.Result{}, ociimage.ErrScanFailed
 	}
 	scan, err := manager.commands.Run(ctx, agentexec.Invocation{
@@ -193,6 +195,18 @@ func (manager *linuxManager) Prepare(
 	return result, nil
 }
 
+// The fixed Podman {{.Id}} profile produces a bare lowercase 64-hex config
+// ImageID, not its separately exposed manifest Digest. Normalize only that
+// exact producer format, with at most its ordinary final LF.
+func parseInspectedImageID(output string) (string, error) {
+	value := strings.TrimSuffix(output, "\n")
+	digest := "sha256:" + value
+	if len(value) != 64 || !ociimage.ValidDigest(digest) {
+		return "", ociimage.ErrInspectFailed
+	}
+	return digest, nil
+}
+
 func (manager *linuxManager) run(ctx context.Context, profile agentexec.ProfileID, values []string) error {
 	result, err := manager.commands.Run(ctx, agentexec.Invocation{Profile: profile, Values: values})
 	if err != nil || result.ExitCode != 0 {
@@ -204,6 +218,7 @@ func (manager *linuxManager) run(ctx context.Context, profile agentexec.ProfileI
 func snapshotBuildInputs(
 	spec ociimage.PrepareSpec,
 	transaction string,
+	ownerUID uint32,
 	chown func(string, int, int) error,
 ) (string, error) {
 	fail := func() (string, error) { return "", ociimage.ErrBuildContext }
@@ -216,17 +231,20 @@ func snapshotBuildInputs(
 	}
 	defer account.Close()
 	containerSource, err := account.OpenFile(
-		filepath.FromSlash(spec.Source.ContainerfilePath), os.O_RDONLY|syscall.O_NOFOLLOW, 0,
+		filepath.FromSlash(spec.Source.ContainerfilePath), os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0,
 	)
 	if err != nil {
 		return fail()
 	}
 	containerInfo, statErr := containerSource.Stat()
+	if statErr != nil || !containerInfo.Mode().IsRegular() || containerInfo.Mode()&os.ModeSymlink != 0 ||
+		containerInfo.Size() <= 0 || containerInfo.Size() > ociimage.MaximumContainerfileBytes {
+		_ = containerSource.Close()
+		return fail()
+	}
 	containerfile, readErr := io.ReadAll(io.LimitReader(containerSource, ociimage.MaximumContainerfileBytes+1))
 	closeErr := containerSource.Close()
-	if statErr != nil || !containerInfo.Mode().IsRegular() || containerInfo.Mode()&os.ModeSymlink != 0 ||
-		containerInfo.Size() <= 0 || containerInfo.Size() > ociimage.MaximumContainerfileBytes ||
-		readErr != nil || closeErr != nil || int64(len(containerfile)) != containerInfo.Size() ||
+	if readErr != nil || closeErr != nil || int64(len(containerfile)) != containerInfo.Size() ||
 		ociimage.ValidateContainerfile(containerfile) != nil {
 		return fail()
 	}
@@ -262,7 +280,7 @@ func snapshotBuildInputs(
 		if !info.Mode().IsRegular() || info.Size() < 0 {
 			return ociimage.ErrBuildContext
 		}
-		source, err := account.OpenFile(name, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
+		source, err := account.OpenFile(name, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
 		if err != nil {
 			return err
 		}
@@ -277,10 +295,10 @@ func snapshotBuildInputs(
 			_ = source.Close()
 			return ociimage.ErrBuildContext
 		}
-		mode := os.FileMode(0o400)
+		mode := os.FileMode(0o440)
 		executable := "plain"
 		if openedInfo.Mode().Perm()&0o111 != 0 {
-			mode = 0o500
+			mode = 0o550
 			executable = "executable"
 		}
 		_, _ = io.WriteString(digest, "file\x00"+relative+"\x00"+executable+"\x00")
@@ -297,18 +315,19 @@ func snapshotBuildInputs(
 			os.Chmod(target, mode) != nil {
 			return ociimage.ErrBuildContext
 		}
-		return chown(target, int(spec.Identity.UID), int(spec.Identity.GID))
+		return chown(target, int(ownerUID), int(spec.Identity.GID))
 	})
 	if err != nil || files == 0 {
 		return fail()
 	}
 	containerTarget := filepath.Join(transaction, "Containerfile")
-	if err := os.WriteFile(containerTarget, containerfile, 0o400); err != nil { // #nosec G306 -- immutable account-readable build input.
+	if err := os.WriteFile(containerTarget, containerfile, 0o440); err != nil { // #nosec G306 -- root-owned input is readable only by the account group.
 		return fail()
 	}
-	if err := os.Chmod(containerTarget, 0o400); err != nil ||
-		chown(containerTarget, int(spec.Identity.UID), int(spec.Identity.GID)) != nil ||
-		chownDirectories(contextTarget, spec.Identity.UID, spec.Identity.GID, chown) != nil {
+	// #nosec G302 -- root-owned input grants read-only access to its private tenant GID, never tenant write/chmod or access by other accounts.
+	if err := os.Chmod(containerTarget, 0o440); err != nil ||
+		chown(containerTarget, int(ownerUID), int(spec.Identity.GID)) != nil ||
+		chownDirectories(contextTarget, ownerUID, spec.Identity.GID, chown) != nil {
 		return fail()
 	}
 	return "sha256:" + hex.EncodeToString(digest.Sum(nil)), nil
@@ -335,8 +354,8 @@ func chownDirectories(root string, uid, gid uint32, chown func(string, int, int)
 	}); err != nil {
 		return err
 	}
-	// WalkDir visits parents before children. Hand ownership over in reverse so
-	// the account cannot enter the root until every descendant is final.
+	// Keep ownership privileged. The tenant receives group read/traverse only,
+	// never owner chmod rights. Expose the root last, after all descendants.
 	for index := len(directories) - 1; index >= 0; index-- {
 		directory := directories[index]
 		file, err := os.OpenFile(directory, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_DIRECTORY, 0) // #nosec G304 -- collected below a new root-owned transaction snapshot.
@@ -344,7 +363,7 @@ func chownDirectories(root string, uid, gid uint32, chown func(string, int, int)
 			return err
 		}
 		info, statErr := file.Stat()
-		chmodErr := file.Chmod(0o500) // #nosec G302 -- an account-owned directory requires owner execute for traversal.
+		chmodErr := file.Chmod(0o550) // #nosec G302 -- the account group needs read/traverse, never write or ownership.
 		closeErr := file.Close()
 		if statErr != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 || chmodErr != nil || closeErr != nil {
 			return ociimage.ErrBuildContext

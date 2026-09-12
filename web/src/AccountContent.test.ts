@@ -456,6 +456,32 @@ describe('account-owner content', () => {
     wrapper.unmount()
   })
 
+  it('bounds database and new-user aliases by the escaped grant-pattern budget', async () => {
+    const wrapper = mountContent('databases')
+    await wrapper.setProps({ accounts: [{
+      ...account,
+      effectiveLimits: { ...account.effectiveLimits, maxDatabases: 2, maxDatabaseUsers: 2 },
+    }] })
+    for (const step of [1, 2]) {
+      const input = wrapper.get<HTMLInputElement>('.database-wizard input[maxlength]')
+      const next = wrapper.get<HTMLButtonElement>('.database-wizard button.primary-action')
+      expect(input.attributes('maxlength')).toBe('26')
+      for (const [alias, allowed] of [
+        ['a'.repeat(26), true], ['a'.repeat(27), false],
+        ['a'.repeat(24) + '_', true], ['a'.repeat(25) + '_', false],
+        ['aa' + '_'.repeat(12), true], ['a' + '_'.repeat(13), false],
+      ] as const) {
+        await input.setValue(alias)
+        expect(next.element.disabled, `step ${step}: ${alias}`).toBe(!allowed)
+      }
+      expect(wrapper.get('.database-wizard').text()).toContain('each underscore counting as two')
+      await input.setValue('application')
+      await next.trigger('click')
+    }
+    expect(wrapper.emitted('provisionDatabase')).toBeUndefined()
+    wrapper.unmount()
+  })
+
   it('offers phpMyAdmin only for an active granted database user', async () => {
     const wrapper = mountContent('databases')
     await wrapper.setProps({

@@ -12,12 +12,14 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/RTBGG/stackfort/internal/agentexec"
 	"github.com/RTBGG/stackfort/internal/agentprotocol"
 	"github.com/RTBGG/stackfort/internal/hostingidentity"
 	"github.com/RTBGG/stackfort/internal/ociapps"
 	"github.com/RTBGG/stackfort/internal/ociimage"
+	"golang.org/x/sys/unix"
 )
 
 func TestPreparePullsScansPersistsAndReplaysImmutableDigest(t *testing.T) {
@@ -31,7 +33,7 @@ func TestPreparePullsScansPersistsAndReplaysImmutableDigest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantDigest := "sha256:" + strings.Repeat("b", 64)
+	_, wantDigest := imageArchiveFixture(t, false)
 	if result.ImageDigest != wantDigest || result.SourceDigest != "sha256:"+strings.Repeat("a", 64) ||
 		result.Reused || result.ScannerVersion != ociimage.ScannerVersion {
 		t.Fatalf("result = %#v", result)
@@ -117,8 +119,47 @@ func TestSnapshotBuildInputsRejectsSymlinksBeforeCopy(t *testing.T) {
 	spec.Source = ociapps.Source{
 		Kind: ociapps.SourceContainerfile, BuildContext: ".", ContainerfilePath: "Containerfile",
 	}
-	if _, err := snapshotBuildInputs(spec, transaction, func(string, int, int) error { return nil }); !errors.Is(err, ociimage.ErrBuildContext) {
+	if _, err := snapshotBuildInputs(spec, transaction, uint32(os.Getuid()), func(string, int, int) error { return nil }); !errors.Is(err, ociimage.ErrBuildContext) {
 		t.Fatalf("snapshotBuildInputs error = %v", err)
+	}
+}
+
+func TestSnapshotBuildInputsRejectsFIFOWithoutBlocking(t *testing.T) {
+	for _, name := range []string{"Containerfile", "context-pipe"} {
+		t.Run(name, func(t *testing.T) {
+			home := t.TempDir()
+			fifo := filepath.Join(home, name)
+			if err := unix.Mkfifo(fifo, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if name != "Containerfile" {
+				if err := os.WriteFile(filepath.Join(home, "Containerfile"), []byte("FROM scratch\n"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			spec := testPrepareSpec(t)
+			spec.Identity.HomeDirectory = home
+			spec.Source = ociapps.Source{Kind: ociapps.SourceContainerfile, BuildContext: ".", ContainerfilePath: "Containerfile"}
+			transaction := t.TempDir()
+			done := make(chan error, 1)
+			go func() {
+				_, err := snapshotBuildInputs(spec, transaction, uint32(os.Getuid()), func(string, int, int) error { return nil })
+				done <- err
+			}()
+			select {
+			case err := <-done:
+				if !errors.Is(err, ociimage.ErrBuildContext) {
+					t.Fatal("FIFO not rejected:", err)
+				}
+			case <-time.After(time.Second):
+				// Unblock an old implementation before reporting the regression,
+				// so it does not leave a stuck reader behind in the test process.
+				if fd, err := unix.Open(fifo, unix.O_RDWR|unix.O_NONBLOCK, 0); err == nil {
+					_ = unix.Close(fd)
+				}
+				t.Fatal("tenant FIFO blocked privileged snapshot input")
+			}
+		})
 	}
 }
 
@@ -143,17 +184,17 @@ func TestSnapshotBuildInputsBindsContentAndNormalizedExecutableMode(t *testing.T
 		_ = os.Chmod(filepath.Join(firstTransaction, "context"), 0o700)
 		_ = os.Chmod(filepath.Join(secondTransaction, "context"), 0o700)
 	})
-	first, err := snapshotBuildInputs(spec, firstTransaction, func(string, int, int) error { return nil })
+	first, err := snapshotBuildInputs(spec, firstTransaction, uint32(os.Getuid()), func(string, int, int) error { return nil })
 	if err != nil || !ociimage.ValidDigest(first) {
 		t.Fatalf("first digest = %q / %v", first, err)
 	}
-	if info, err := os.Stat(filepath.Join(firstTransaction, "context", "app")); err != nil || info.Mode().Perm() != 0o500 {
+	if info, err := os.Stat(filepath.Join(firstTransaction, "context", "app")); err != nil || info.Mode().Perm() != 0o550 {
 		t.Fatalf("snapshotted executable = %#v / %v", info, err)
 	}
 	if err := os.WriteFile(app, []byte("two"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	second, err := snapshotBuildInputs(spec, secondTransaction, func(string, int, int) error { return nil })
+	second, err := snapshotBuildInputs(spec, secondTransaction, uint32(os.Getuid()), func(string, int, int) error { return nil })
 	if err != nil || first == second {
 		t.Fatalf("content digests = %q / %q / %v", first, second, err)
 	}
@@ -191,6 +232,8 @@ type imageCommandRunner struct {
 	report       string
 	scanErr      error
 	profiles     []agentexec.ProfileID
+	archive      []byte
+	digest       string
 }
 
 func (runner *imageCommandRunner) Run(
@@ -199,10 +242,10 @@ func (runner *imageCommandRunner) Run(
 	runner.profiles = append(runner.profiles, invocation.Profile)
 	switch invocation.Profile {
 	case agentexec.ProfilePodmanInspect:
-		return agentexec.Result{Stdout: "sha256:" + strings.Repeat("b", 64) + "\n"}, nil
+		return agentexec.Result{Stdout: strings.TrimPrefix(runner.digest, "sha256:") + "\n"}, nil
 	case agentexec.ProfilePodmanSave:
 		operationID := invocation.Values[len(invocation.Values)-1]
-		return agentexec.Result{}, os.WriteFile(filepath.Join(runner.transactions, operationID, "image.tar"), []byte("oci-image"), 0o600)
+		return agentexec.Result{}, os.WriteFile(filepath.Join(runner.transactions, operationID, "image.tar"), runner.archive, 0o600)
 	case agentexec.ProfileTrivyScan:
 		return agentexec.Result{Stdout: runner.report}, runner.scanErr
 	default:
@@ -222,11 +265,17 @@ func (imageCapabilityInspector) InspectOCIRuntime(context.Context) (agentprotoco
 }
 
 func testLinuxManager(root string, commands commandRunner) *linuxManager {
+	if runner, ok := commands.(*imageCommandRunner); ok {
+		runner.archive, runner.digest = buildImageArchiveFixture(false)
+	}
 	return &linuxManager{
 		commands: commands, capabilities: imageCapabilityInspector{},
 		transactions: filepath.Join(root, "transactions"), artifacts: filepath.Join(root, "artifacts"),
 		scannerCache: filepath.Join(root, "scanner-cache"), stateUID: uint32(os.Getuid()), stateGID: uint32(os.Getgid()),
 		chown: func(string, int, int) error { return nil },
+		sealArchive: func(ctx context.Context, archive string, _, _, ownerUID, ownerGID uint32, digest string) error {
+			return sealImageArchive(ctx, archive, uint32(os.Getuid()), uint32(os.Getgid()), ownerUID, ownerGID, digest)
+		},
 	}
 }
 
@@ -250,5 +299,20 @@ func testPrepareSpec(t *testing.T) ociimage.PrepareSpec {
 			Kind:           ociapps.SourceImageDigest,
 			ImageReference: "registry.example/stackfort/app@sha256:" + strings.Repeat("a", 64),
 		},
+	}
+}
+
+func TestParseInspectedImageIDMatchesPodmanProducer(t *testing.T) {
+	value := strings.Repeat("ab", 32)
+	for _, output := range []string{value, value + "\n"} {
+		if got, err := parseInspectedImageID(output); err != nil || got != "sha256:"+value {
+			t.Fatalf("bare Podman ImageID rejected: %q, %v", got, err)
+		}
+	}
+	for _, output := range []string{"", value[:63], value + "a", "sha256:" + value, strings.ToUpper(value),
+		value + "\n\n", value + "\n" + value, " " + value, value + " ", value + "\r\n", strings.Repeat("g", 64)} {
+		if got, err := parseInspectedImageID(output); !errors.Is(err, ociimage.ErrInspectFailed) || got != "" {
+			t.Fatal("malformed or ambiguous inspect output accepted")
+		}
 	}
 }

@@ -53,3 +53,24 @@ trust boundaries than ordinary desired-state data.
 - Shared MariaDB remains an authorization boundary, not a hard per-tenant CPU,
   memory, or I/O isolation boundary.
 
+## Amendment — 2026-09-12: literal grants and alias budget
+
+The original 28-character consequence above records the initial decision, not
+the current accepted input limit. Database-level GRANT identifiers have wildcard
+semantics even when backtick-quoted. GRANT, grant lookup and REVOKE now use the
+same escaped literal pattern; CREATE/DROP and physical-name derivation remain
+unchanged. The escaped UUID prefix uses 38 of MariaDB's 64 grant-pattern bytes,
+so the alias budget is now **26 ASCII characters with underscores counted twice**.
+The database and database-user validators and UI enforce that budget before
+mutation; the physical identifier maximum remains 64 bytes.
+
+See [current lifecycle rules](../account-database-lifecycle.md) and the
+[dated SQL review and real MariaDB regression](../../infra/host-tests/results/2026-09-12-sql-codeql-triage.md).
+The regression includes an accepted exact 64-byte grant pattern, literal-sibling
+access denial and revocation before user deletion. Previously accepted
+over-budget aliases/unescaped grants are not silently renamed or migrated;
+the experimental native beta is qualified only for fresh installations.
+Established MariaDB connections are not forcibly terminated by these lifecycle
+operations, so the tests establish denial on new connections, not immediate
+invalidation of every existing session. The existing password-verifier
+compatibility decision is retained, with its limitations recorded in that review.

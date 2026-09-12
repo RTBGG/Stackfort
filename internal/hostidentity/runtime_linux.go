@@ -448,6 +448,11 @@ func ensureAbsoluteDirectoryChain(components []string, uid, gid uint32, mode uin
 	}
 	current := root
 	owned := false
+	defer func() {
+		if owned {
+			_ = unix.Close(current)
+		}
+	}()
 	changed := false
 	for _, component := range components[:len(components)-1] {
 		next, openErr := openDirectoryAt(current, component)
@@ -479,9 +484,6 @@ func ensureAbsoluteDirectoryChain(components []string, uid, gid uint32, mode uin
 			}
 		}
 	}
-	if owned {
-		defer unix.Close(current)
-	}
 	lastChanged, err := ensureDirectoryChain(current, components[len(components)-1:], uid, gid, mode)
 	return changed || lastChanged, err
 }
@@ -489,6 +491,13 @@ func ensureAbsoluteDirectoryChain(components []string, uid, gid uint32, mode uin
 func ensureDirectoryChain(parent int, components []string, uid, gid uint32, mode uint32) (bool, error) {
 	current := parent
 	owned := false
+	defer func() {
+		// The caller retains parent; close only a descriptor opened by this
+		// function, including malformed or tenant-modified directory failures.
+		if owned {
+			_ = unix.Close(current)
+		}
+	}()
 	changed := false
 	for _, component := range components {
 		if component == "" || component == "." || component == ".." || strings.Contains(component, "/") {
@@ -531,9 +540,6 @@ func ensureDirectoryChain(parent int, components []string, uid, gid uint32, mode
 				return false, err
 			}
 		}
-	}
-	if owned {
-		_ = unix.Close(current)
 	}
 	return changed, nil
 }

@@ -196,10 +196,13 @@ const activeDatabaseUsers = computed(() => props.databaseWorkspace.users.filter(
 const selectedDatabaseUser = computed<ManagedDatabaseUser | null>(() => (
   activeDatabaseUsers.value.find((item) => item.id === databaseWizard.existingUserId) ?? null
 ))
-const databaseAliasValid = computed(() => /^[a-z][a-z0-9_]{0,27}$/.test(databaseWizard.databaseAlias))
+function validDatabaseAlias(alias: string): boolean {
+  return /^[a-z][a-z0-9_]{0,25}$/.test(alias) && alias.length + alias.split('_').length - 1 <= 26
+}
+const databaseAliasValid = computed(() => validDatabaseAlias(databaseWizard.databaseAlias))
 const databaseUserStepValid = computed(() => databaseWizard.userMode === 'existing'
   ? selectedDatabaseUser.value !== null
-  : /^[a-z][a-z0-9_]{0,27}$/.test(databaseWizard.newUserAlias))
+  : validDatabaseAlias(databaseWizard.newUserAlias))
 
 watch(() => props.session.identity, (identity) => {
   profileForm.email = identity.email
@@ -1624,13 +1627,13 @@ function revokeManagedSession(item: ManagedSession) {
             </ol>
             <template v-if="databaseWizard.step === 1">
               <h3>{{ t('databases.createDatabase') }}</h3>
-              <label><span>{{ t('databases.databaseAlias') }}</span><input v-model="databaseWizard.databaseAlias" required maxlength="28" pattern="[a-z][a-z0-9_]{0,27}" spellcheck="false" autocomplete="off" :disabled="!canManageDatabases"><small>{{ t('databases.aliasHint') }}</small></label>
+              <label><span>{{ t('databases.databaseAlias') }}</span><input v-model="databaseWizard.databaseAlias" required maxlength="26" pattern="[a-z][a-z0-9_]{0,25}" spellcheck="false" autocomplete="off" :disabled="!canManageDatabases"><small>{{ t('databases.aliasHint') }}</small></label>
             </template>
             <fieldset v-else-if="databaseWizard.step === 2">
               <legend>{{ t('databases.chooseUser') }}</legend>
               <label class="check-field"><input v-model="databaseWizard.userMode" type="radio" value="new" :disabled="!canManageDatabases"><span>{{ t('databases.newUser') }}</span></label>
               <label class="check-field"><input v-model="databaseWizard.userMode" type="radio" value="existing" :disabled="!canManageDatabases || activeDatabaseUsers.length === 0"><span>{{ t('databases.existingUser') }}</span></label>
-              <label v-if="databaseWizard.userMode === 'new'"><span>{{ t('databases.userAlias') }}</span><input v-model="databaseWizard.newUserAlias" required maxlength="28" pattern="[a-z][a-z0-9_]{0,27}" spellcheck="false" autocomplete="off"></label>
+              <label v-if="databaseWizard.userMode === 'new'"><span>{{ t('databases.userAlias') }}</span><input v-model="databaseWizard.newUserAlias" required maxlength="26" pattern="[a-z][a-z0-9_]{0,25}" spellcheck="false" autocomplete="off"><small>{{ t('databases.aliasHint') }}</small></label>
               <label v-else><span>{{ t('databases.databaseUser') }}</span><select v-model="databaseWizard.existingUserId" required><option value="" disabled>{{ t('databases.selectUser') }}</option><option v-for="user in activeDatabaseUsers" :key="user.id" :value="user.id">{{ user.alias }}@{{ user.host }}</option></select></label>
             </fieldset>
             <fieldset v-else-if="databaseWizard.step === 3">

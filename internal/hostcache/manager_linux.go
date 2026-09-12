@@ -87,7 +87,9 @@ func (linuxManager) Purge(
 }
 
 func countCacheLog(ctx context.Context, path, domain string, response *agentprotocol.CacheMetricsResponse) error {
-	descriptor, err := unix.Open(path, unix.O_RDONLY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
+	// Managed logs live in a root-owned tree, but an accidentally placed FIFO
+	// must not block this privileged reader before the file-type check below.
+	descriptor, err := unix.Open(path, unix.O_RDONLY|unix.O_CLOEXEC|unix.O_NOFOLLOW|unix.O_NONBLOCK, 0)
 	if err != nil {
 		return os.NewSyscallError("open managed cache log", err)
 	}

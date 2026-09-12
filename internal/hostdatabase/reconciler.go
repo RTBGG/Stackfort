@@ -650,7 +650,7 @@ func (backend *sqlBackend) Grant(
 			"CREATE TEMPORARY TABLES, LOCK TABLES, REFERENCES, CREATE VIEW, SHOW VIEW, TRIGGER, EXECUTE"
 	}
 	_, err := backend.connection.ExecContext(ctx,
-		"GRANT "+privileges+" ON "+quoteIdentifier(databaseName)+".* TO "+quotePrincipal(username, host))
+		"GRANT "+privileges+" ON "+quoteIdentifier(literalGrantPattern(databaseName))+".* TO "+quotePrincipal(username, host))
 	return err
 }
 
@@ -660,7 +660,7 @@ func (backend *sqlBackend) GrantExists(ctx context.Context, databaseName, userna
 		SELECT EXISTS(
 		  SELECT 1 FROM mysql.db
 		  WHERE Db = ? AND User = ? AND Host = ?
-		)`, databaseName, username, host).Scan(&exists)
+		)`, literalGrantPattern(databaseName), username, host).Scan(&exists)
 	return exists == 1, err
 }
 
@@ -670,7 +670,7 @@ func (backend *sqlBackend) Revoke(
 	_ agentprotocol.DatabaseGrantPreset,
 ) error {
 	_, err := backend.connection.ExecContext(ctx,
-		"REVOKE ALL PRIVILEGES ON "+quoteIdentifier(databaseName)+".* FROM "+quotePrincipal(username, host))
+		"REVOKE ALL PRIVILEGES ON "+quoteIdentifier(literalGrantPattern(databaseName))+".* FROM "+quotePrincipal(username, host))
 	return err
 }
 
@@ -700,6 +700,15 @@ func (backend *sqlBackend) DeleteMarker(ctx context.Context, kind, name, account
 }
 
 func quoteIdentifier(value string) string { return "`" + value + "`" }
+
+// Database-level GRANT/REVOKE identifiers are LIKE patterns even inside
+// backticks. CREATE/DROP DATABASE identifiers are not. Keep the escaped pattern
+// identical in the grant, its mysql.db lookup and its revocation; otherwise an
+// alias such as app_data would also authorize appxdata in the same account.
+// Inputs have already passed ValidateDerived's strict lowercase ASCII allowlist.
+func literalGrantPattern(value string) string {
+	return strings.NewReplacer(`\`, `\\`, `_`, `\_`, `%`, `\%`).Replace(value)
+}
 
 func quotePrincipal(username, host string) string {
 	return fmt.Sprintf("'%s'@'%s'", username, host)

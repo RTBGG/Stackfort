@@ -11,7 +11,8 @@ subsequent work.
 
 ## Names and ownership
 
-The account owner enters a lowercase alias of at most 28 characters. Stackfort
+The account owner enters a lowercase alias with a 26-character budget; each
+underscore counts as two characters. Stackfort
 derives the physical database or principal name as:
 
 ```text
@@ -19,9 +20,29 @@ sf_<32 lowercase hexadecimal account UUID characters>_<alias>
 ```
 
 The complete account UUID prevents prefix ambiguity while remaining within
-MariaDB's 64-character identifier limit. The browser and API read models see
+MariaDB's 64-character identifier limit. Database-level grants escape every
+underscore, including the account-prefix separators, so permissions cannot
+match another database through wildcards. The escaped pattern must also fit
+the 64-character `mysql.db.Db` field: the prefix uses 38 characters, leaving
+26 for the weighted alias. This same alias rule applies to database users.
+See MariaDB's [privilege-table schema](https://mariadb.com/docs/server/reference/system-tables/the-mysql-database-tables/mysql-db-table)
+and the upstream [MDEV-39047 regression test](https://github.com/MariaDB/server/blob/12.3/mysql-test/main/grant.test)
+for the escaped-name limit; escaping cannot be omitted to fit a longer name.
+The browser and API read models see
 the friendly alias, record ID, status, timestamps, and grant relationships—not
 the physical name. Database principals are fixed to `localhost`.
+
+Accepted physical names are unchanged. Older internal/lab installations may
+contain aliases outside this tighter budget or unescaped legacy grants; they
+are not silently renamed or migrated. The experimental native beta requires a
+fresh disposable server, not an upgrade of that unqualified database state.
+
+Grant revocation, database-user deletion and password rotation do not currently
+terminate existing database sessions. MariaDB may retain effective privileges
+in an already authenticated session; denying fresh connections or removing grant
+rows is not immediate session invalidation. The integration checks distinguish
+fresh-connection authorization from established sessions. See MariaDB's
+[`DROP USER` connection behavior](https://mariadb.com/docs/server/reference/sql-statements/account-management-sql-statements/drop-user).
 
 SQLite migration 016 enforces the derived name, UUIDv7 record shape, live alias
 uniqueness, composite tenant ownership, closed statuses, and two grant presets:

@@ -13,16 +13,23 @@ import (
 )
 
 const (
-	AliasMaximumBytes    = 28
+	AliasMaximumBytes    = 26
 	PhysicalMaximumBytes = 64
 	LocalHost            = "localhost"
+	// mysql.db.Db stores the escaped GRANT pattern, not just the physical
+	// identifier. The fixed sf_<32 hex>_ prefix occupies 38 bytes once both
+	// underscores are escaped. Each underscore in the alias needs one more.
+	grantPrefixBytes = 38
 )
 
-var aliasPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,27}$`)
+var aliasPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,25}$`)
 
 func ValidateAlias(alias string) error {
 	if !aliasPattern.MatchString(alias) {
-		return errors.New("database alias must be lowercase ASCII, start with a letter, and contain at most 28 characters")
+		return errors.New("database alias must be lowercase ASCII, start with a letter, and contain at most 26 characters")
+	}
+	if grantPrefixBytes+len(alias)+strings.Count(alias, "_") > PhysicalMaximumBytes {
+		return errors.New("database alias exceeds the 26-character privilege-pattern budget; each underscore counts as two characters")
 	}
 	return nil
 }

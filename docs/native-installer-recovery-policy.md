@@ -1,9 +1,14 @@
 # Native installation recovery policy
 
-Status: **read-only handoff and internal fresh-disposable recovery-choice binding
-implemented; public native activation remains blocked**. This is current source,
-not a change to published release candidates. The external-backup route is not
-accepted until an independent verification mechanism is qualified.
+Status: **read-only recovery handoff, fresh-disposable decision binding and public
+interactive `onboard` are implemented; exact-candidate publication qualification
+is pending**. Current source accepts only an authenticated `tag-release` on an
+eligible fresh, disposable Debian 13 `amd64` host, with explicit controlling-terminal
+consent. It does not enable automatic recovery, generic public resume or data
+erasure. This is not a claim that a matching public release has been qualified
+and published. See the [current installation guide](installer-installation.md#interactive-native-setup).
+The external-backup route remains unaccepted until its independent verification
+mechanism is qualified.
 
 The ordinary goal remains: rent a supported fresh server, run one command, finish
 setup in the browser. Manual partitioning is not part of that flow. Exceptional
@@ -11,14 +16,15 @@ failures must not turn a convenient installer into an automatic data-erasure too
 
 ## Backup and reinstallation boundaries
 
-The following policy defines the requirements for the future public native path.
-It does **not** yet provide a backup service, backup-verification receipt, consent
-screen, provider API or generic restore command.
+The following policy governs current fresh-disposable native preparation and
+records the requirements of the still-unavailable external-backup route.
+The public path implements terminal consent; it does **not** provide a backup
+service, backup-verification receipt, provider API or generic restore command.
 
 | Situation | Required decision before conversion | Exceptional failure route |
 | --- | --- | --- |
 | Eligible, freshly provisioned server with no data to retain | Owner explicitly accepts that provider reinstallation may be necessary if conversion fails; no mandatory full-disk backup for this disposable case | Preserve evidence; owner separately authorizes the provider's reinstallation of the exact affected server |
-| Otherwise eligible fresh server whose pre-installation state must be retained | Independently verified, recoverable whole-system backup outside the affected disk, plus owner review of its scope and rollback point | Independent rescue environment; operator explicitly authorizes the exact backup and replacement target |
+| Otherwise eligible fresh server whose pre-installation state must be retained — not accepted by the current native path | Future route requires independently verified, recoverable whole-system backup outside the affected disk, plus owner review of its scope and rollback point | Independent rescue environment; operator explicitly authorizes the exact backup and replacement target |
 | Existing hosting, valuable data of unknown scope, unsupported layout, or unclear backup/reinstallation decision | Do not start native conversion; a backup does not override fresh-host eligibility restrictions | Preserve the host and obtain an explicit migration/recovery plan |
 
 Acceptance of possible reinstallation is **not** advance permission for Stackfort
@@ -26,10 +32,13 @@ to trigger it. No timeout, `--yes`, failed health check, successful fsck, pendin
 admission approval or local `backupAvailable` flag may authorize disk overwrite,
 filesystem repair, provider reimage or a repeated conversion.
 
-The internal preparation API now enforces the fresh-disposable decision before
-package or boot preparation can mutate the host. It does not enable the public
-bootstrap or provide a user-facing consent screen. The read-only recovery report
-is never an authorization receipt.
+The preparation API enforces the fresh-disposable decision before package or
+boot preparation can mutate the host. The registered public `onboard` flow
+authenticates the exact release/host review and obtains that decision through
+a verified root controlling terminal. It separately confirms reboot and requires
+acknowledgement that the one-use setup code was saved. Piped stdin or a generic
+`--yes` cannot supply those confirmations. The read-only recovery report is
+never an authorization receipt.
 
 ## Enforced preparation decision
 
@@ -44,10 +53,12 @@ Reviewing does not create consent, install packages or arm a conversion.
 review digest, mode `fresh-disposable`, and **both** explicit assertions:
 `noDataToRetain` and `acceptProviderReinstallationRisk`. It repeats live review;
 host/source/binary drift invalidates the old decision. Unsupported backup modes,
-missing assertions and a generic yes-only decision are rejected. Future callers
+missing assertions and a generic yes-only decision are rejected. All callers
 must display the policy and obtain those assertions; they must not derive consent
-from `native recovery-plan`, a timeout or unattended defaults. Public interactive
-and unattended consent transports still require separate implementation/review.
+from `native recovery-plan`, a timeout or unattended defaults. The public
+interactive transport is implemented in `onboard`; no public unattended consent
+transport is supported. Its exact-candidate end-to-end qualification remains a
+publication requirement, separate from implementation and focused tests.
 
 After validation, preparation exclusively creates root-private mode-0600
 `/var/lib/stackfort-installer/native-recovery-choice.json`, syncing both file and
@@ -69,9 +80,11 @@ Historical intents without this field remain readable with their original
 semantics and hashes; no receipt is synthesized for them. **New preparation always
 requires the decision.** Existing sealed binaries are not replaced in place.
 The [package-coordination follow-up](native-installer-package-coordination.md)
-adds process-lifetime APT/dpkg guards and exact delta checks. Durable coordination
-through process exit/reboot and direct boot-tool commands remains open, so this
-binding is not a claim that every host-change race has been eliminated.
+adds process-lifetime APT/dpkg guards and exact delta checks. Private initramfs
+construction and unmounted pre-write boot-file checks reject relevant drift;
+this is not a claim of hermetic coordination with arbitrary privileged writers.
+See that follow-up for the remaining maintenance-availability boundaries and
+their qualification status.
 
 The lab driver requires `-Stage Prepare -AcceptDisposableReinstallationRisk` and
 passes a dedicated explicit test opt-in. The flag is rejected on later stages;

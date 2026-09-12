@@ -1,9 +1,13 @@
 # Native installer operator commands
 
-Status: **operator interface integrated; production boot/resume remains disabled**.
-The public installer now understands recorded native state and durable recovery
-approvals. The boot backend, conversion dispatcher and service supervisor are
-still the opt-in Debian laboratory implementation, not a production installer.
+Status: **operator inspection/approval and the public interactive native path are
+implemented; exact-candidate publication qualification is pending**. Current
+source registers `onboard` for an authenticated `tag-release` on an eligible
+fresh, disposable Debian 13 `amd64` host. It includes terminal consent, guarded
+offline preparation and supervised installation; this is not production support
+or a claim that a matching public candidate has been qualified and published.
+See the [current installation guide](installer-installation.md#interactive-native-setup).
+Automatic recovery and public resume of partial state remain disabled.
 
 This follows [service admission](native-quota-service-admission.md). The
 [dated qualification](../infra/host-tests/results/2026-09-09-native-installer-operator.md)
@@ -41,9 +45,15 @@ snapshot and emits limited evidence; inspection errors never become a partially
 trusted recovery plan. Exit 2 requests operator review, exit 1 indicates failed
 inspection/output, and exit 0 is not live readiness or installation permission.
 See the [backup/reinstallation policy](native-installer-recovery-policy.md) for
-the enforced internal preparation decision and remaining public consent transport.
+the enforced preparation decision and implemented terminal consent boundary.
 Status exposes only the recovery mode and reviewed/record digests, not the full
 host snapshot. A consumed preparation decision never authorizes restore/reimage.
+
+The public `onboard` rerun can separately supervise live verification of an
+already complete, admitted installation from the exact same authenticated release.
+That is not this read-only inspection command and is not recovery: incomplete
+admission, pending approval or mismatched state is rejected without adoption,
+another setup code or another conversion attempt.
 
 ## Review and approve once
 
@@ -95,23 +105,32 @@ rejected. A different still-pending approval cannot be silently overwritten:
 cancel that exact record first. Corrupt records are preserved for investigation,
 not forcibly repaired by these commands.
 
-## Qualification and remaining integration
+## Historical qualification and current release boundary
 
-The Debian harness seals two separate current-code artifacts: the integration
+The original Debian operator qualification sealed two separate artifacts: the integration
 helper and actual installer CLI. The CLI is not substituted into the older
 authenticated candidate archive. The lab supervisor consumes the same durable
 approval format as the installer creates; the old ad-hoc lab request file is
 no longer used or silently adopted.
 
-The real test flow covers status, repeated approval, wrong and correct
+That real test flow covered status, repeated approval, wrong and correct
 cancellation, reapproval with a new UUID, supervised consumption, replay rejection,
-and subsequent verified boot. The package wrapper is updated to forward native
+and subsequent verified boot. The package wrapper forwards native
 commands rather than treating them as installation arguments.
 
 The subsequent [real boot-service integration](native-installer-runtime.md)
-moves post-ready verification, admission and independent quarantine into the
-installer binary. Initial offline conversion still uses the lab backend.
-Next: package and qualify that initial backend/handoff, including bootstrap
-prerequisites and all listener/firewall interactions.
-External package/kernel serialization, capacity reserve, provider-image coverage
-for Debian/Ubuntu/Rocky, and a freshly signed native-runtime candidate remain open.
+moved post-ready verification, admission and independent quarantine into the
+installer binary. Current source also implements the initial offline backend,
+prerequisites, authenticated public dispatch, controlling-terminal fresh-server
+and reboot consent, and sealed setup-code delivery/activation. The
+[setup handoff](native-installer-bootstrap-handoff.md) describes these boundaries.
+Older laboratory payloads and separate source/namespace tests are not proof of
+the final tagged archive's public installation flow.
+
+Before publication, that exact candidate still needs the applicable fresh-host,
+reboot, setup, completed-rerun, failure-boundary and full-OS removal evidence under
+the [release-readiness gates](one-line-installation-readiness.md). The initial
+native scope is Debian 13 only; fresh-default Ubuntu/Rocky support is not
+advertised. Shared-root capacity is an explicit experimental limitation, not a
+guaranteed OS reserve. No inspection, approval or failure state authorizes
+automatic repair, filesystem reset or server reinstallation.
