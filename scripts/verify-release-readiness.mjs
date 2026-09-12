@@ -20,6 +20,16 @@ export const requiredChecks = Object.freeze([
   'tenant-isolation', 'quota-enforcement', 'waf-cache', 'rootless-oci',
   'failure-recovery', 'active-uninstall',
 ]);
+export const experimentalChecks = Object.freeze([
+  ...requiredChecks.filter((check) => check !== 'active-uninstall'),
+  'full-system-reprovision-removal',
+]);
+export const reprovisionChecks = Object.freeze([
+  'active-candidate-installed', 'authenticated-distribution-installer',
+  'complete-os-disk-provisioning', 'fresh-os-boot', 'stackfort-state-absent',
+  'stackfort-services-absent', 'hosting-data-absent',
+]);
+export const experimentalRemovalDisclosure = 'No in-place uninstaller is available for this experimental beta. Removal requires complete operating-system reinstallation and irreversibly removes all server data, configuration and services. Removing the passive release package is not removal of Stackfort.';
 export const reviewScopes = Object.freeze([
   'authentication', 'agent-rpc', 'file-archive', 'phpmyadmin-handoff',
   'updater', 'native-installer',
@@ -75,8 +85,10 @@ export function validatePolicy(policy) {
   object(policy, ['schemaVersion', 'policy', 'repository', 'experimentalBeta', 'support', 'installationMatrix'], 'policy');
   requireValue(policy.schemaVersion === 1 && policy.policy === policyName && policy.repository === repository, 'unsupported readiness policy');
   const experimental = policy.experimentalBeta;
-  object(experimental, ['authorizedBy', 'authorizedOn', 'independentReview', 'freshDisposableOnly', 'productionUseAllowed', 'importantDataAllowed'], 'experimental beta policy');
+  object(experimental, ['authorizedBy', 'authorizedOn', 'independentReview', 'freshDisposableOnly', 'productionUseAllowed', 'importantDataAllowed', 'removal'], 'experimental beta policy');
   requireValue(experimental.authorizedBy === 'RTBGG' && experimental.authorizedOn === '2026-09-12' && experimental.independentReview === 'not-performed' && experimental.freshDisposableOnly === true && experimental.productionUseAllowed === false && experimental.importantDataAllowed === false, 'unsupported experimental beta authorization');
+  object(experimental.removal, ['authorizedBy', 'authorizedOn', 'method', 'inPlaceUninstallerAvailable', 'destroysAllServerData'], 'experimental removal policy');
+  requireValue(experimental.removal.authorizedBy === 'RTBGG' && experimental.removal.authorizedOn === '2026-09-12' && experimental.removal.method === 'full-system-reprovision' && experimental.removal.inPlaceUninstallerAvailable === false && experimental.removal.destroysAllServerData === true, 'explicit destructive experimental removal authorization required');
   validateCommunitySupport(policy.support);
   requireValue(Array.isArray(policy.installationMatrix) && policy.installationMatrix.length >= 1 && policy.installationMatrix.length <= 3, 'policy: nonempty installation matrix required');
   policy.installationMatrix.forEach((cell) => installationCell(cell, 'policy cell'));
@@ -107,6 +119,21 @@ export function validateCandidate(candidate, expected) {
   digest(candidate.build.artifactSHA256, 'retained candidate ZIP');
 }
 
+function validateExperimentalRemoval(removal, candidate, completedAt, reports) {
+  object(removal, ['method', 'result', 'candidate', 'targetBefore', 'targetAfter', 'installerMediaSHA256', 'checks', 'completedAt', 'report'], 'experimental removal evidence');
+  requireValue(removal.method === 'full-system-reprovision' && removal.result === 'pass', 'tested full-system reprovision removal required; passive carrier removal or snapshot rollback is not accepted');
+  validateCandidate(removal.candidate, candidate);
+  requireValue(['runId', 'attempt', 'artifactId', 'artifactSHA256'].every((key) => removal.candidate.build[key] === candidate.build[key]), 'removal evidence belongs to a different retained candidate build');
+  text(removal.targetBefore, 'installed removal-test target', 256);
+  text(removal.targetAfter, 'reprovisioned removal-test target', 256);
+  requireValue(removal.targetBefore === removal.targetAfter, 'removal must reprovision the same target that ran the exact active candidate');
+  digest(removal.installerMediaSHA256, 'authenticated distribution installation media');
+  exactSet(removal.checks, reprovisionChecks, 'experimental removal checks');
+  timestamp(removal.completedAt, completedAt, 'full-system reprovision completion');
+  reportReference(removal.report, 'full-system reprovision report');
+  reports.push(removal.report);
+}
+
 export function evidenceInventory(policy, evidence, expected, now = Date.now()) {
   validatePolicy(policy);
   object(evidence, ['schemaVersion', 'kind', 'policy', 'releaseClass', 'candidate', 'approvedBy', 'approvedAt', 'installationResults', 'workflowRuns', 'independentReview', 'supportPolicy', 'publicationDecision'], 'evidence');
@@ -122,11 +149,12 @@ export function evidenceInventory(policy, evidence, expected, now = Date.now()) 
   const reports = [];
   const cells = [];
   for (const result of evidence.installationResults) {
-    object(result, ['cell', 'result', 'sourceCommit', 'archiveSHA256', 'checks', 'completedAt', 'report'], 'installation result');
+    object(result, ['cell', 'result', 'sourceCommit', 'archiveSHA256', 'checks', 'completedAt', 'report', ...(experimental ? ['removal'] : [])], 'installation result');
     installationCell(result.cell, 'installation result cell');
     requireValue(result.result === 'pass' && result.sourceCommit === expected.commit && result.archiveSHA256 === expected.archiveSHA256, 'failed or stale installation result');
-    exactSet(result.checks, requiredChecks, 'installation checks');
-    timestamp(result.completedAt, approvedAt, 'installation completion');
+    exactSet(result.checks, experimental ? experimentalChecks : requiredChecks, 'installation checks');
+    const completedAt = timestamp(result.completedAt, approvedAt, 'installation completion');
+    if (experimental) validateExperimentalRemoval(result.removal, evidence.candidate, completedAt, reports);
     reportReference(result.report, 'installation report');
     cells.push(cellKey(result.cell));
     reports.push(result.report);
@@ -157,23 +185,25 @@ export function evidenceInventory(policy, evidence, expected, now = Date.now()) 
   }
 
   const support = evidence.supportPolicy;
-  object(support, ['decision', 'approvedBy', 'versions', 'terms', 'deploymentLimits', 'securityPolicySHA256', 'report'], 'support policy');
+  object(support, ['decision', 'approvedBy', 'versions', 'terms', 'deploymentLimits', 'securityPolicySHA256', 'report', ...(experimental ? ['removalMethod'] : [])], 'support policy');
   requireValue(support.decision === 'approved', 'explicit supported-version policy approval required');
   identity(support.approvedBy, 'support policy approver');
   requireValue(support.approvedBy.toLowerCase() === policy.support.maintainer.toLowerCase(), 'community support decision requires the recorded maintainer');
   exactSet(support.versions, [expected.version], 'candidate supported versions');
   validateCommunitySupport(support.terms);
   text(support.deploymentLimits, 'deployment limits');
+  if (experimental) requireValue(support.removalMethod === 'full-system-reprovision', 'experimental support decision must acknowledge full-system removal');
   digest(support.securityPolicySHA256, 'candidate SECURITY.md');
   reportReference(support.report, 'support policy decision');
   reports.push(support.report);
 
   const publication = evidence.publicationDecision;
-  object(publication, ['decision', 'approvedBy', 'releaseClass', 'freshDisposableOnly', 'productionUseAllowed', 'importantDataAllowed', 'report'], 'publication decision');
+  object(publication, ['decision', 'approvedBy', 'releaseClass', 'freshDisposableOnly', 'productionUseAllowed', 'importantDataAllowed', 'report', ...(experimental ? ['removalMethod'] : [])], 'publication decision');
   requireValue(publication.decision === 'approved', 'explicit publication approval required');
   identity(publication.approvedBy, 'publication approver');
   requireValue(publication.releaseClass === evidence.releaseClass && publication.freshDisposableOnly === true && publication.productionUseAllowed === false && publication.importantDataAllowed === false, 'publication requires explicit fresh-disposable non-production scope');
   requireValue(publication.approvedBy === 'RTBGG', 'candidate publication decision requires RTBGG');
+  if (experimental) requireValue(publication.removalMethod === 'full-system-reprovision', 'candidate approval must explicitly acknowledge destructive full-system removal');
   reportReference(publication.report, 'publication approval report');
   reports.push(publication.report);
 
@@ -212,7 +242,7 @@ export function verifyReadiness({ policy, evidence, expected, evidenceCommit, fi
     requireValue(actual, 'missing workflow API response');
     validateWorkflow(actual.run, actual.jobs, reference, expected.commit);
   }
-  return { schemaVersion: 1, kind: 'verified-release-readiness', policy: policyName, releaseClass: evidence.releaseClass, candidate: evidence.candidate, evidenceCommit, evidenceSHA256: hash(Buffer.from(JSON.stringify(evidence, null, 2) + '\n')), checkedAt: new Date(now).toISOString(), installationCells: policy.installationMatrix, workflowRuns: inventory.workflowRuns, recordedIndependentReview: evidence.releaseClass === 'reviewed-release', independentReviewDisclosure: evidence.releaseClass === 'experimental-beta' ? experimentalDisclosure : 'Independent review approval recorded; see reviewed report.', recordedSupportDecision: true, recordedPublicationApproval: true, freshDisposableOnly: true, productionUseAllowed: false, importantDataAllowed: false };
+  return { schemaVersion: 1, kind: 'verified-release-readiness', policy: policyName, releaseClass: evidence.releaseClass, candidate: evidence.candidate, evidenceCommit, evidenceSHA256: hash(Buffer.from(JSON.stringify(evidence, null, 2) + '\n')), checkedAt: new Date(now).toISOString(), installationCells: policy.installationMatrix, workflowRuns: inventory.workflowRuns, recordedIndependentReview: evidence.releaseClass === 'reviewed-release', independentReviewDisclosure: evidence.releaseClass === 'experimental-beta' ? experimentalDisclosure : 'Independent review approval recorded; see reviewed report.', removalMethod: evidence.releaseClass === 'experimental-beta' ? 'full-system-reprovision' : 'active-uninstall', removalDisclosure: evidence.releaseClass === 'experimental-beta' ? experimentalRemovalDisclosure : 'Active-installation uninstall qualification recorded; see the exact-candidate report.', recordedSupportDecision: true, recordedPublicationApproval: true, freshDisposableOnly: true, productionUseAllowed: false, importantDataAllowed: false };
 }
 
 export function hash(data) {

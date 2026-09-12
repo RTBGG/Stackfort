@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { evidenceInventory, experimentalDisclosure, hash, main, parseDocument, requiredChecks, requiredWorkflows, reviewScopes, validatePolicy, verifyReadiness } from './verify-release-readiness.mjs';
+import { evidenceInventory, experimentalChecks, experimentalDisclosure, experimentalRemovalDisclosure, hash, main, parseDocument, requiredChecks, requiredWorkflows, reprovisionChecks, reviewScopes, validatePolicy, verifyReadiness } from './verify-release-readiness.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const policy = JSON.parse(readFileSync(path.join(root, 'packaging/releases/readiness-policy.json'), 'utf8'));
@@ -51,6 +51,28 @@ function fixture() {
   return { policy: structuredClone(policy), evidence, expected, evidenceCommit: 'b'.repeat(40), files, workflows, securityPolicy, now, archive };
 }
 
+function experimentalFixture() {
+  const data = fixture();
+  data.evidence.releaseClass = 'experimental-beta';
+  data.evidence.publicationDecision.releaseClass = 'experimental-beta';
+  data.evidence.publicationDecision.removalMethod = 'full-system-reprovision';
+  data.evidence.supportPolicy.removalMethod = 'full-system-reprovision';
+  data.evidence.independentReview = { decision: 'not-performed', disclosure: experimentalDisclosure };
+  for (const result of data.evidence.installationResults) {
+    const filename = `docs/release-evidence/synthetic-removal-${result.cell.distribution}.md`;
+    const content = Buffer.from('Synthetic unit-test removal report; no system was reinstalled and no removal qualification occurred.');
+    data.files.set(filename, content);
+    result.checks = [...experimentalChecks];
+    result.removal = {
+      method: 'full-system-reprovision', result: 'pass', candidate: structuredClone(data.evidence.candidate),
+      targetBefore: 'synthetic-disposable-vm-id', targetAfter: 'synthetic-disposable-vm-id',
+      installerMediaSHA256: 'd'.repeat(64), checks: [...reprovisionChecks],
+      completedAt: '2030-01-01T09:59:00Z', report: { path: filename, sha256: hash(content) },
+    };
+  }
+  return data;
+}
+
 test('accepts complete digest-bound evidence and fresh successful exact-commit workflows', () => {
   const data = fixture();
   const result = verifyReadiness(data);
@@ -59,6 +81,7 @@ test('accepts complete digest-bound evidence and fresh successful exact-commit w
   assert.equal(result.evidenceSHA256, hash(Buffer.from(canonical(data.evidence))));
   assert.deepEqual(result.installationCells, policy.installationMatrix);
   assert.equal(result.recordedIndependentReview, true);
+  assert.equal(result.removalMethod, 'active-uninstall');
   assert.equal('independentlyAudited' in result, false);
 });
 
@@ -189,18 +212,14 @@ test('canonical evidence rejects duplicate keys, truncation, oversized documents
   }
 });
 
-test('authorized experimental beta records no independent review and retains all technical checks', () => {
-  const make = () => {
-    const data = fixture();
-    data.evidence.releaseClass = 'experimental-beta';
-    data.evidence.publicationDecision.releaseClass = 'experimental-beta';
-    data.evidence.independentReview = { decision: 'not-performed', disclosure: experimentalDisclosure };
-    return data;
-  };
-  const result = verifyReadiness(make());
+test('authorized experimental beta retains other checks and requires exact full-system removal evidence', () => {
+  const result = verifyReadiness(experimentalFixture());
   assert.equal(result.recordedIndependentReview, false);
   assert.equal(result.productionUseAllowed, false);
   assert.equal(result.independentReviewDisclosure, experimentalDisclosure);
+  assert.equal(result.removalMethod, 'full-system-reprovision');
+  assert.equal(result.removalDisclosure, experimentalRemovalDisclosure);
+  assert.deepEqual(experimentalChecks.filter((check) => check !== 'full-system-reprovision-removal'), requiredChecks.filter((check) => check !== 'active-uninstall'));
   for (const mutate of [
     (data) => { data.evidence.independentReview.decision = 'approved'; },
     (data) => { data.evidence.independentReview.disclosure = 'Audited and production ready.'; },
@@ -215,10 +234,70 @@ test('authorized experimental beta records no independent review and retains all
       data.evidence.candidate.archive = 'stackfort-1.2.3-linux-amd64.tar.gz';
     },
   ]) {
-    const data = make();
+    const data = experimentalFixture();
     mutate(data);
     assert.throws(() => verifyReadiness(data));
   }
+});
+
+const removalFailures = {
+  'missing whole-system removal record': (data) => { delete data.evidence.installationResults[0].removal; },
+  'passive package removal only': (data) => { data.evidence.installationResults[0].removal.method = 'passive-carrier-removal'; },
+  'snapshot rollback only': (data) => { data.evidence.installationResults[0].removal.method = 'snapshot-rollback'; },
+  'claimed in-place uninstall': (data) => { data.evidence.installationResults[0].removal.method = 'active-uninstall'; },
+  'failed reprovisioning': (data) => { data.evidence.installationResults[0].removal.result = 'fail'; },
+  'unknown removal field': (data) => { data.evidence.installationResults[0].removal.force = true; },
+  'different active target': (data) => { data.evidence.installationResults[0].removal.targetBefore = 'other-vm'; },
+  'missing target identity': (data) => { data.evidence.installationResults[0].removal.targetAfter = ''; },
+  'missing authenticated installation media hash': (data) => { data.evidence.installationResults[0].removal.installerMediaSHA256 = ''; },
+  'different removal version': (data) => { data.evidence.installationResults[0].removal.candidate.version = '1.2.2'; },
+  'different removal source commit': (data) => { data.evidence.installationResults[0].removal.candidate.commit = 'f'.repeat(40); },
+  'different removal archive hash': (data) => { data.evidence.installationResults[0].removal.candidate.archiveSHA256 = 'f'.repeat(64); },
+  'different removal build run': (data) => { data.evidence.installationResults[0].removal.candidate.build.runId++; },
+  'different removal build attempt': (data) => { data.evidence.installationResults[0].removal.candidate.build.attempt++; },
+  'different removal artifact ID': (data) => { data.evidence.installationResults[0].removal.candidate.build.artifactId++; },
+  'different removal ZIP hash': (data) => { data.evidence.installationResults[0].removal.candidate.build.artifactSHA256 = 'f'.repeat(64); },
+  'duplicate removal check': (data) => { data.evidence.installationResults[0].removal.checks[1] = data.evidence.installationResults[0].removal.checks[0]; },
+  'late removal completion': (data) => { data.evidence.installationResults[0].removal.completedAt = '2030-01-01T10:01:00Z'; },
+  'missing removal report': (data) => { data.files.delete(data.evidence.installationResults[0].removal.report.path); },
+  'changed removal report': (data) => { data.files.set(data.evidence.installationResults[0].removal.report.path, Buffer.from('altered')); },
+  'unsafe removal report': (data) => { data.evidence.installationResults[0].removal.report.path = 'docs/release-evidence/../outside.md'; },
+  'no candidate removal approval': (data) => { delete data.evidence.publicationDecision.removalMethod; },
+  'different candidate removal approval': (data) => { data.evidence.publicationDecision.removalMethod = 'passive-carrier-removal'; },
+  'no support removal disclosure': (data) => { delete data.evidence.supportPolicy.removalMethod; },
+  'different support removal promise': (data) => { data.evidence.supportPolicy.removalMethod = 'in-place'; },
+  'missing general removal authorization': (data) => { delete data.policy.experimentalBeta.removal; },
+  'unapproved removal policy': (data) => { data.policy.experimentalBeta.removal.authorizedBy = 'SomeoneElse'; },
+  'different removal policy date': (data) => { data.policy.experimentalBeta.removal.authorizedOn = '2026-09-11'; },
+  'invented in-place uninstaller': (data) => { data.policy.experimentalBeta.removal.inPlaceUninstallerAvailable = true; },
+  'data-preserving removal claim': (data) => { data.policy.experimentalBeta.removal.destroysAllServerData = false; },
+};
+for (const check of experimentalChecks) removalFailures[`missing experimental ${check}`] = (data) => {
+  data.evidence.installationResults[0].checks = data.evidence.installationResults[0].checks.filter((value) => value !== check);
+};
+for (const check of reprovisionChecks) removalFailures[`missing reprovision ${check}`] = (data) => {
+  data.evidence.installationResults[0].removal.checks = data.evidence.installationResults[0].removal.checks.filter((value) => value !== check);
+};
+for (const [name, mutate] of Object.entries(removalFailures)) {
+  test(`rejects experimental ${name}`, () => {
+    const data = experimentalFixture();
+    mutate(data);
+    assert.throws(() => verifyReadiness(data));
+  });
+}
+
+test('reviewed releases cannot substitute reprovision evidence for active uninstall', () => {
+  const data = fixture();
+  data.evidence.installationResults[0].checks = [...experimentalChecks];
+  assert.throws(() => verifyReadiness(data), /installation checks/);
+  data.evidence.installationResults[0].checks = [...requiredChecks];
+  data.evidence.installationResults[0].removal = experimentalFixture().evidence.installationResults[0].removal;
+  assert.throws(() => verifyReadiness(data), /unknown fields/);
+});
+
+test('release workflow renders the validated removal warning', () => {
+  const workflow = readFileSync(path.join(root, '.github/workflows/release.yml'), 'utf8');
+  assert.match(workflow, /jq -er '\.removalDisclosure' dist\/release-readiness\.json >>"\$notes"/);
 });
 
 test('CLI fails closed on absent evidence and does not print a success receipt', () => {
@@ -228,17 +307,20 @@ test('CLI fails closed on absent evidence and does not print a success receipt',
   assert.match(result.stderr, /^Release readiness blocked:/);
 });
 
-test('publication wrapper pins reviewed files, verifies API jobs, and stays closed on failure', { skip: process.platform === 'win32' }, () => {
+for (const releaseClass of ['reviewed-release', 'experimental-beta']) test(`publication wrapper pins ${releaseClass} files, verifies API jobs, and stays closed on failure`, { skip: process.platform === 'win32' }, () => {
   const directory = mkdtempSync(path.join(tmpdir(), 'stackfort-readiness-test-'));
   try {
     for (const name of ['scripts', 'packaging/releases', 'dist', 'test-bin']) mkdirSync(path.join(directory, name), { recursive: true });
     for (const name of ['verify-release-readiness.sh', 'verify-release-readiness.mjs']) cpSync(path.join(root, 'scripts', name), path.join(directory, 'scripts', name));
     writeFileSync(path.join(directory, 'packaging/releases/readiness-policy.json'), canonical(policy));
-    const data = fixture();
+    const data = releaseClass === 'experimental-beta' ? experimentalFixture() : fixture();
     // Use the real clock for the executable CLI; fixture decisions remain fake.
     data.evidence.approvedAt = '2020-01-01T12:00:00Z';
-    for (const result of data.evidence.installationResults) result.completedAt = '2020-01-01T10:00:00Z';
-    data.evidence.independentReview.completedAt = '2020-01-01T11:00:00Z';
+    for (const result of data.evidence.installationResults) {
+      result.completedAt = '2020-01-01T10:00:00Z';
+      if (result.removal) result.removal.completedAt = '2020-01-01T09:59:00Z';
+    }
+    if (releaseClass === 'reviewed-release') data.evidence.independentReview.completedAt = '2020-01-01T11:00:00Z';
     writeFileSync(path.join(directory, 'SECURITY.md'), data.securityPolicy);
     writeFileSync(path.join(directory, 'dist', data.evidence.candidate.archive), data.archive);
     const gitOptions = { cwd: directory, env: { ...process.env, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null' } };
@@ -249,7 +331,10 @@ test('publication wrapper pins reviewed files, verifies API jobs, and stays clos
     data.expected.commit = commit;
     data.evidence.candidate.commit = commit;
     writeFileSync(path.join(directory, 'dist/candidate-promotion.json'), canonical({ schemaVersion: 1, kind: 'verified-candidate-promotion', candidate: data.evidence.candidate, publicationAuthorized: false }));
-    for (const result of data.evidence.installationResults) result.sourceCommit = commit;
+    for (const result of data.evidence.installationResults) {
+      result.sourceCommit = commit;
+      if (result.removal) result.removal.candidate.commit = commit;
+    }
     for (const actual of data.workflows.values()) {
       actual.run.head_sha = commit;
       for (const job of actual.jobs.jobs) job.head_sha = commit;
@@ -275,18 +360,31 @@ test('publication wrapper pins reviewed files, verifies API jobs, and stays clos
     const success = run();
     assert.equal(success.status, 0, success.stdout + success.stderr);
     assert.equal(JSON.parse(readFileSync(path.join(directory, 'dist/release-readiness.json'), 'utf8')).candidate.commit, commit);
+    assert.equal(JSON.parse(readFileSync(path.join(directory, 'dist/release-readiness.json'), 'utf8')).removalMethod, releaseClass === 'experimental-beta' ? 'full-system-reprovision' : 'active-uninstall');
     const protectedReceipt = readFileSync(path.join(directory, 'dist/release-readiness.json'));
     const failures = {
       'missing readiness evidence': (values) => { delete values[evidenceEndpoint]; },
       'changed evidence-branch policy': (values) => { values[contents('packaging/releases/readiness-policy.json')] = canonical({ ...policy, installationMatrix: [...policy.installationMatrix, { ...policy.installationMatrix[0], distribution: 'ubuntu', version: '26.04' }] }); },
       'diverged evidence history': (values) => { values[prefix + `compare/${commit}...${data.evidenceCommit}`] = 'diverged'; },
       'changed report bytes': (values) => { values[contents(data.evidence.installationResults[0].report.path)] = 'changed'; },
-      'missing report': (values) => { delete values[contents(data.evidence.independentReview.report.path)]; },
+      'missing review or removal report': (values) => { delete values[contents(releaseClass === 'experimental-beta' ? data.evidence.installationResults[0].removal.report.path : data.evidence.independentReview.report.path)]; },
       'failed live workflow': (values) => { values[prefix + 'actions/runs/100'] = JSON.stringify({ ...data.workflows.get(100).run, conclusion: 'failure' }); },
       'missing workflow API response': (values) => { delete values[prefix + 'actions/runs/100']; },
       'truncated paginated jobs': (values) => { const jobs = structuredClone(data.workflows.get(100).jobs); jobs.jobs.pop(); values[prefix + 'actions/runs/100/attempts/1/jobs?per_page=100'] = JSON.stringify([jobs]); },
       'malformed jobs pages': (values) => { values[prefix + 'actions/runs/100/attempts/1/jobs?per_page=100'] = '[]'; },
     };
+    if (releaseClass === 'experimental-beta') {
+      failures['missing tested reprovisioning'] = (values) => {
+        const evidence = JSON.parse(values[evidenceEndpoint]);
+        delete evidence.installationResults[0].removal;
+        values[evidenceEndpoint] = canonical(evidence);
+      };
+      failures['passive-carrier removal substituted'] = (values) => {
+        const evidence = JSON.parse(values[evidenceEndpoint]);
+        evidence.installationResults[0].removal.method = 'passive-carrier-removal';
+        values[evidenceEndpoint] = canonical(evidence);
+      };
+    }
     for (const [name, mutate] of Object.entries(failures)) {
       const changed = structuredClone(replies);
       mutate(changed);

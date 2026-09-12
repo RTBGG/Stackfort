@@ -46,7 +46,11 @@ def extract_candidate(promotion, archive, destination):
     installer = f"stackfort-installer-{version}-linux-amd64"
     sbom = f"stackfort-{version}.spdx.json"
     checksummed = {candidate["archive"], installer, deb, rpm, deb + ".release.json", rpm + ".release.json"}
-    expected = checksummed | {"SHA256SUMS", sbom}
+    # build-native-package.sh also emits one checksum sidecar per passive
+    # carrier. These are not entries in the aggregate SHA256SUMS, so validate
+    # their exact bounded contents against the independently hashed carriers.
+    carrier_checksums = {deb + ".sha256", rpm + ".sha256"}
+    expected = checksummed | carrier_checksums | {"SHA256SUMS", sbom}
     require(candidate["archive"] == f"stackfort-{version}-linux-amd64.tar.gz", "invalid archive name")
     with zipfile.ZipFile(archive) as package:
         members = package.infolist()
@@ -80,6 +84,12 @@ def extract_candidate(promotion, archive, destination):
         require(digest_file(destination / name) == match[1], "candidate payload checksum mismatch")
         seen.add(name)
     require(seen == checksummed, "incomplete candidate checksums")
+    for name in (deb, rpm):
+        sidecar = destination / (name + ".sha256")
+        expected_checksum = f"{digest_file(destination / name)}  {name}\n".encode("ascii")
+        require(sidecar.stat().st_size == len(expected_checksum) and
+                sidecar.read_bytes() == expected_checksum,
+                "native carrier checksum sidecar mismatch")
     require((destination / sbom).stat().st_size <= 16 << 20, "SBOM exceeds size limit")
     require(json.loads((destination / sbom).read_text(encoding="utf-8")).get("spdxVersion", "").startswith("SPDX-"), "missing SPDX SBOM")
     top = f"stackfort-{version}-linux-amd64"

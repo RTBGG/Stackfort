@@ -77,6 +77,15 @@ must prominently disclose the missing review, meet the technical gates and
 record candidate-specific approval. The first native fresh-root scope is Debian
 13 amd64; prepared-storage qualification on other systems is a separate path.
 
+RTBGG also approved complete operating-system reinstallation as the experimental
+beta's only removal method on 2026-09-12. No in-place uninstaller is available.
+Removal irreversibly destroys all server data, configuration and services;
+removing a passive DEB/RPM is not removal of the active platform. An actual
+same-target full-OS reprovision test of each exact experimental candidate remains
+mandatory. This authorization is not a passed removal test, production support
+or an exception to reviewed releases' active-uninstall requirement. See the
+[removal policy](docs/experimental-beta-removal.md).
+
 The native experimental profile does not yet guarantee a durable OS disk/inode
 reserve. Aggregate account usage or platform data can exhaust the shared root
 filesystem and make the entire test server unavailable, even when individual

@@ -182,7 +182,7 @@ evidence or approvals. Later reruns must not be mistaken for the recorded bytes.
 This closes the previously missing internal real-image/kernel-lifecycle
 qualification for the pinned installer above. It does not qualify the later
 public dispatcher or create release approval. Listener coverage, setup delivery,
-full product/uninstall tests, exact tagged archive
+full product and class-specific removal tests, exact tagged archive
 qualification and the [publication contract](../../../packaging/releases/README.md)
 remain separately evidenced requirements.
 

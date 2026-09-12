@@ -19,6 +19,13 @@ an **experimental-beta alternative on 2026-09-12** without independent review,
 strictly for fresh disposable test servers, not production or important data.
 That policy authorization is not candidate-specific approval or a passed test.
 Do not generate approvals, empty reports or synthetic host evidence to open it.
+On the same date, RTBGG explicitly approved **complete operating-system
+reinstallation as the experimental beta's only removal method**, instead of
+requiring an unavailable in-place uninstaller. This irreversibly removes all
+server data, configuration and services. A real exact-candidate reprovisioning
+test remains mandatory; passive package removal or snapshot rollback is not one.
+Reviewed releases retain the `active-uninstall` requirement. See the
+[removal scope and qualification procedure](../../docs/experimental-beta-removal.md).
 
 ## Candidate and reviewed evidence
 
@@ -101,7 +108,31 @@ Each `installationResults` entry has exactly:
 - `report`: digest-bound real qualification report;
 - `checks`: exactly `fresh-install`, `idempotent-rerun`, `normal-reboot`,
   `host-security`, `tenant-isolation`, `quota-enforcement`, `waf-cache`,
-  `rootless-oci`, `failure-recovery` and `active-uninstall`.
+  `rootless-oci`, `failure-recovery`, plus the class-specific removal check:
+  `active-uninstall` for `reviewed-release`, or `full-system-reprovision-removal`
+  for `experimental-beta`.
+- `removal`: present **only** for `experimental-beta`, with the exact fields
+  below. A reviewed release cannot substitute this record for active uninstall.
+
+The experimental `removal` record requires exactly:
+
+| Field | Required evidence |
+| --- | --- |
+| `method`, `result` | `full-system-reprovision`, `pass` |
+| `candidate` | The complete identical candidate object, including original build run/attempt/artifact ID and ZIP SHA |
+| `targetBefore`, `targetAfter` | Identical nonempty, nonsecret stable target identities, such as the same Hyper-V VM ID; maximum 256 characters each |
+| `installerMediaSHA256` | Exact SHA-256 of the authenticated distribution installation media used to completely reprovision that target's OS disk |
+| `checks` | Exactly `active-candidate-installed`, `authenticated-distribution-installer`, `complete-os-disk-provisioning`, `fresh-os-boot`, `stackfort-state-absent`, `stackfort-services-absent`, `hosting-data-absent` |
+| `completedAt` | Real completion time no later than the enclosing installation-result completion/approval |
+| `report` | Digest-bound real report documenting the active exact candidate before reprovision, media authentication, full OS installation and clean post-reinstallation observations |
+
+The enclosing `completedAt` therefore covers the complete qualification including
+removal, not merely the earlier installation. The report must tie both phases to
+the same target. Creating a different clean VM, merely removing a carrier package,
+stopping services, reinstalling files over the old system or rolling back a
+snapshot does not satisfy complete OS disk provisioning. The validator checks
+recorded identities/checks/report integrity, not the truth of an invented test.
+No actual removal result is supplied by the checked-in policy or unit fixtures.
 
 For `reviewed-release`, `independentReview` has exactly `decision: "approved"`, `reviewer`,
 `independentOfImplementation: true`, `completedAt`, `scopes`, and `report`.
@@ -117,7 +148,8 @@ For `experimental-beta`, the version must have canonical `-beta.N` form and
 
 This exact warning is carried into verification receipts and generated release
 notes. A reviewer, approval or independent-audit claim is rejected in that branch.
-All technical installation, security CI and upgrade evidence requirements remain.
+All other technical installation, security CI and upgrade evidence requirements
+remain. Only the explicitly experimental removal method differs.
 
 `supportPolicy` has exactly `decision: "approved"`, `approvedBy` (the currently
 recorded maintainer, RTBGG), `versions` (the one exact candidate version), `terms`
@@ -128,9 +160,14 @@ and private-security-reporting channels, `guaranteedResponse: false`,
 `guaranteedFixes: false`, and `supportEnds: null`. Possible future contributors
 are volunteers, not a promised staffed service. Do not invent an SLA, support
 window or fix commitment to satisfy validation; none is required or accepted.
+For `experimental-beta`, `supportPolicy` additionally requires
+`removalMethod: "full-system-reprovision"`; its report and deployment limits must
+disclose destructive whole-system reinstallation and absence of in-place removal.
 `publicationDecision` has exactly `decision: "approved"`, `approvedBy: "RTBGG"`,
 the same `releaseClass`, `freshDisposableOnly: true`, `productionUseAllowed: false`,
-`importantDataAllowed: false`, and `report`. These scope restrictions apply to
+`importantDataAllowed: false`, and `report`. For `experimental-beta`, it additionally
+requires `removalMethod: "full-system-reprovision"`, so a candidate-specific approval
+cannot omit that removal scope. These scope restrictions apply to
 both currently supported classes; neither is a production release contract.
 GitHub-like identity syntax does not independently verify authority. The general
 2026-09-12 policy authorization is not this candidate-specific approval record.
@@ -139,6 +176,12 @@ No independent review has been completed and no professional paid audit is funde
 A genuinely independent voluntary/community review is welcome. Its approval must
 not be fabricated from automated or agent checks. The explicitly authorized
 experimental path accurately discloses that this review has not happened.
+
+Verified receipts record the selected `removalMethod` and `removalDisclosure`;
+the release workflow renders that validated disclosure into release notes.
+The changed removal policy is a new candidate input. The earlier
+`74feaf628e39e8a809bc9a8899fc0af0bb127ff0` build is rehearsal only for this contract;
+do not reuse its archive, policy or evidence as if this change were included.
 
 ## Live workflow verification
 

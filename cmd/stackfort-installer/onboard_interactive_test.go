@@ -190,7 +190,7 @@ func TestOnboardInteractiveExactConsentAndSecretOnlyOnTerminal(t *testing.T) {
 	if strings.Contains(stdout.String(), fixture.code) || strings.Contains(stdout.String(), "sfb_") || !strings.Contains(fixture.terminal.String(), fixture.code) {
 		t.Fatal("setup secret delivery boundary violated")
 	}
-	for _, expected := range []string{fixture.review.Source.Origin.Commit, fixture.review.Recovery.Snapshot.Host.RootUUID, fixture.review.Recovery.Snapshot.Host.MachineID, "EXPERIMENTAL", "provider reinstallation"} {
+	for _, expected := range []string{fixture.review.Source.Origin.Commit, fixture.review.Recovery.Snapshot.Host.RootUUID, fixture.review.Recovery.Snapshot.Host.MachineID, "EXPERIMENTAL", "provider reinstallation", "No in-place uninstaller", "destroys all server data, configuration and services"} {
 		if !strings.Contains(fixture.terminal.String(), expected) {
 			t.Fatal("review omitted", expected)
 		}

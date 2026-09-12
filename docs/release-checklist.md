@@ -18,9 +18,15 @@ releases or claim independent review from automated tests alone.
   MFA setup/replacement/removal and recovery-code display now have EN/DE browser
   flows and automated coverage; include real authenticator and narrow-screen
   checks in the final review.
-- [ ] Implement and qualify active-installation uninstall on every supported
-  distribution, as required by the product specification. Passive carrier
-  removal tests do not cover removal of the active platform.
+- [ ] Qualify removal for the selected release class on every supported profile:
+  `reviewed-release` requires active-installation uninstall; the expressly
+  authorized disposable `experimental-beta` instead requires actual complete OS
+  reinstallation of the same target after testing the active exact candidate.
+  Follow the [experimental removal contract](experimental-beta-removal.md),
+  retain media authentication and clean post-install observations, and prominently
+  disclose destruction of all server data/configuration/services with no in-place
+  uninstaller. Passive carrier removal and snapshot rollback cannot satisfy this
+  requirement. No candidate-specific removal pass is recorded by this checklist.
 - [ ] Complete the independent security review required by the
   [security model](security.md#6-security-release-gates), or use the explicitly
   authorized experimental-beta contract with accurate missing-review disclosure
@@ -60,6 +66,8 @@ releases or claim independent review from automated tests alone.
    Retain first-install/no-op, host-security,
    service, tenant-isolation, WAF/cache, and OCI evidence appropriate to the
    release. Historical result links alone do not qualify a changed archive.
+   Include the class-specific removal evidence and explicit candidate-specific
+   support/publication acknowledgement of destructive reprovisioning when used.
    The [2026-09-12 private-image/kernel cycle](../infra/host-tests/results/2026-09-12-native-private-image-kernel-lifecycle.md)
    passed internally on beta.3 platform files with a separately pinned installer;
    it is not final beta.4 archive/public-onboarding evidence.

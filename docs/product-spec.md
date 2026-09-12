@@ -366,7 +366,11 @@ The activation and recovery contract is documented in
 The first public beta is possible only when:
 
 - all supported distributions pass clean-install, upgrade, rollback, and
-  uninstall tests in disposable VMs;
+  removal tests in disposable VMs: reviewed releases require active uninstall;
+  the explicitly authorized fresh-disposable experimental beta instead requires
+  tested complete OS reinstallation of the same active-candidate target, with
+  destruction of all server data/configuration/services and no in-place
+  uninstaller. Passive carrier removal or snapshot rollback alone does not count;
 - cross-account file, process, database, backup, and container isolation tests
   pass;
 - domain and account mutations survive injected failures without corrupting

@@ -472,6 +472,11 @@ not assert security review or production readiness; see [SECURITY.md](../SECURIT
   blocks production capacity claims and must be disclosed in experimental
   release notes and deployment limits.
 - A privileged host compromise can defeat local secrets and audit guarantees.
+- The experimental beta has no in-place uninstaller. Its explicitly approved
+  removal route requires complete OS reinstallation and destroys all server
+  data, configuration and services. The [removal contract](experimental-beta-removal.md)
+  still requires a real same-target reprovisioning test of the exact candidate;
+  passive package removal and snapshot rollback do not qualify.
 - WAF rules reduce common application attacks but cannot make vulnerable hosted
   code safe.
 - Full-page caching remains application-sensitive and can leak data if unsafe

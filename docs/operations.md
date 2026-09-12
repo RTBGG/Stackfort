@@ -131,6 +131,15 @@ These are key locations, not a complete filesystem recovery manifest. Do not
 delete journals, staging, snapshots, or backup keys to make a failing operation
 retry. Native package removal is not a Stackfort uninstaller.
 
+### Removing the experimental beta
+
+There is no in-place uninstaller. The explicitly approved experimental removal
+method is complete OS reinstallation through the provider or an authenticated
+distribution installer. It irreversibly removes **all server data, configuration
+and services**; do not use it on a system containing important data. Passive
+package removal and snapshot rollback are not substitutes. Read the
+[removal policy and qualification boundary](experimental-beta-removal.md).
+
 ## WAF, cache, and runtime changes
 
 WAF and page caching are **off by default per domain**. For a test application,

@@ -66,6 +66,13 @@ directories, traversal, extra/missing/duplicate members, changed checksums and
 an existing output directory are rejected. Partial temporary output is never
 copied into `dist` after an extraction failure.
 
+The original build artifact contains exactly ten files: the archive, standalone
+installer, two passive carriers, their two `.release.json` records and two
+`.sha256` records, aggregate `SHA256SUMS`, and SPDX SBOM. Each carrier checksum
+sidecar must exactly match its carrier's digest and filename. The later
+tag-qualified artifact adds `candidate-promotion.json` and
+`build-attestation.jsonl`; it is not an input to the original-build extractor.
+
 Current bounds are 2 GiB per downloaded artifact/aggregate extracted data, 2 GiB
 of expanded TAR member data, at most 100,000 TAR members, and
 512 MiB per member. JSON metadata is bounded to 1 MiB and the SPDX file to 16 MiB.

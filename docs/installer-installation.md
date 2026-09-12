@@ -17,6 +17,11 @@ reserve. Account aggregation and platform growth can exhaust shared-root disk
 space/inodes and make the test server unavailable; see the
 [experimental capacity limitation](one-line-installation-readiness.md#experimental-capacity-limitation).
 
+**Removal requires complete OS reinstallation and destroys all server data,
+configuration and services.** This experimental beta has no in-place uninstaller;
+passive package removal is insufficient. Review the
+[removal scope](experimental-beta-removal.md) before installing.
+
 No public release has been published yet. The current bootstrap explicitly pins
 `0.1.0-beta.4`; that is a planned experimental candidate, not a claim that its
 assets exist or its exact tagged installation has passed qualification. The

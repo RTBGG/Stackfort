@@ -37,6 +37,8 @@ def fixture(commit="a" * 40):
     rpm = "stackfort-release-1.2.3~beta.1-1.sf1.x86_64.rpm"
     files = {f"{top}.tar.gz": archive_bytes, f"stackfort-installer-{version}-linux-amd64": installer, deb: b"synthetic DEB", rpm: b"synthetic RPM", deb + ".release.json": b"{}", rpm + ".release.json": b"{}"}
     files["SHA256SUMS"] = "".join(f"{digest(value)}  ./{name}\n" for name, value in sorted(files.items())).encode()
+    for name in (deb, rpm):
+        files[name + ".sha256"] = f"{digest(files[name])}  {name}\n".encode()
     files[f"stackfort-{version}.spdx.json"] = b'{"spdxVersion":"SPDX-2.3"}'
     record = {"schemaVersion": 1, "kind": "verified-candidate-promotion", "publicationAuthorized": False, "candidate": {"version": version, "commit": commit, "archive": f"{top}.tar.gz", "archiveSHA256": digest(archive_bytes), "build": {"runId": 1, "attempt": 1, "artifactId": 2, "artifactSHA256": ""}}}
     return record, files
@@ -82,6 +84,10 @@ class CandidateExtractionTests(unittest.TestCase):
             "duplicate checksum": lambda record, files: files.update(SHA256SUMS=files["SHA256SUMS"] * 2),
             "escaping checksum": lambda record, files: files.update(SHA256SUMS=b"0" * 64 + b"  ../outside\n"),
             "invalid SBOM": lambda record, files: files.update({"stackfort-1.2.3-beta.1.spdx.json": b"{}"}),
+            "missing carrier checksum": lambda record, files: files.pop("stackfort-release_1.2.3~beta.1-1_amd64.deb.sha256"),
+            "changed carrier checksum": lambda record, files: files.update({"stackfort-release_1.2.3~beta.1-1_amd64.deb.sha256": b"0" * 64 + b"  stackfort-release_1.2.3~beta.1-1_amd64.deb\n"}),
+            "wrong carrier checksum target": lambda record, files: files.update({"stackfort-release-1.2.3~beta.1-1.sf1.x86_64.rpm.sha256": digest(files["stackfort-release-1.2.3~beta.1-1.sf1.x86_64.rpm"]).encode() + b"  ../outside\n"}),
+            "appended carrier checksum": lambda record, files: files.update({"stackfort-release_1.2.3~beta.1-1_amd64.deb.sha256": files["stackfort-release_1.2.3~beta.1-1_amd64.deb.sha256"] + b"\n"}),
             "changed commit": lambda record, files: record["candidate"].update(commit="b" * 40),
             "publication claim": lambda record, files: record.update(publicationAuthorized=True),
         }

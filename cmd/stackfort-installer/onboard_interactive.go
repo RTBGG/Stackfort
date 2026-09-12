@@ -91,7 +91,7 @@ func (controller onboardInteractiveController) run(ctx context.Context, selectio
 			err = errors.Join(err, terminal.Close())
 		}
 	}()
-	if err := onboardWrite(terminal, "EXPERIMENTAL Debian 13 native installation\nOnly a fresh, disposable server with no important data is supported.\nThis experimental installer has not received independent security review; support is community-only.\nThe installer changes root ext4 quota metadata during a controlled reboot.\nA failure can leave this server unbootable and require provider reinstallation.\nNo backup recovery or automatic reset is promised. Hosting quotas share the root filesystem; capacity oversubscription is not prevented.\nAuthenticating the selected release and inspecting this host now; no consent has been recorded.\n"); err != nil {
+	if err := onboardWrite(terminal, "EXPERIMENTAL Debian 13 native installation\nOnly a fresh, disposable server with no important data is supported.\nThis experimental installer has not received independent security review; support is community-only.\nThe installer changes root ext4 quota metadata during a controlled reboot.\nA failure can leave this server unbootable and require provider reinstallation.\nNo in-place uninstaller is available. Removal requires complete OS reinstallation and destroys all server data, configuration and services.\nNo backup recovery or automatic reset is promised. Hosting quotas share the root filesystem; capacity oversubscription is not prevented.\nAuthenticating the selected release and inspecting this host now; no consent has been recorded.\n"); err != nil {
 		return err
 	}
 	review, err := controller.review(ctx, selection)

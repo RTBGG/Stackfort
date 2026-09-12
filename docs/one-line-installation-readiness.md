@@ -47,7 +47,8 @@ Unpublished workflow candidates are not public releases.
    advertised installation profile; separately retain failure/recovery evidence.
 7. Satisfy the public-beta policy: independent security review or the expressly
    authorized experimental-beta contract with honest missing-review disclosure, exact
-   released-version/deployment scope under community-only support, remaining product and uninstall qualification,
+   released-version/deployment scope under community-only support, remaining product
+   and class-specific removal qualification,
    and explicit publication approval. Automated or agent reviews do not invent
    an independent approval or support promise.
 8. Publish the tested immutable assets, verify public downloads/provenance/channel
@@ -109,6 +110,16 @@ records that policy, requires explicit `not-performed` disclosure and actual
 candidate-specific approval, and retains every technical gate. No candidate
 approval or independent reviewer is invented. Voluntary independent review
 remains welcome.
+
+The maintainer separately approved complete OS reinstallation as the experimental
+beta's only removal method on 2026-09-12. It destroys all server data,
+configuration and services and provides no in-place uninstall. The
+[removal contract](experimental-beta-removal.md) requires a real same-target
+full-OS reprovision after exact-candidate activation; package removal or snapshot
+rollback alone cannot pass. Reviewed releases retain active-uninstall tests.
+This policy change requires a new source candidate and build; the earlier
+`74feaf628e39e8a809bc9a8899fc0af0bb127ff0` candidate is rehearsal only, not evidence
+that the revised contract passed.
 
 The first native fresh-default beta scope is explicitly Debian 13 amd64 only;
 Ubuntu/Rocky native paths remain unadvertised until qualified. The

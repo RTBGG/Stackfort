@@ -17,6 +17,8 @@ the web interface itself a privileged system process.
 > release is available yet; installation examples require published assets.
 > The first native beta targets disposable Debian 13 test servers only.
 > No independent security review has been performed; support is community-only.
+> No in-place uninstaller is available. Removing the experimental beta requires
+> complete OS reinstallation, destroying all server data, configuration and services.
 
 [Documentation](docs/README.md) · [Operations](docs/operations.md) ·
 [Roadmap](docs/roadmap.md) · [Security policy](SECURITY.md) ·
@@ -45,6 +47,8 @@ separate installation path, not qualification of their default root filesystems.
 Disk/inode exhaustion can still make the shared-root test server unavailable;
 there is no durable OS capacity reserve yet. See the
 [experimental limits](docs/one-line-installation-readiness.md#experimental-capacity-limitation).
+Read the [removal scope](docs/experimental-beta-removal.md) before installation;
+removing the release package does not remove the active platform.
 
 After installation, [configure a panel subdomain](docs/panel-hostname.md) such as
 `https://panel.example.com/`, with automatic Let's Encrypt issuance and renewal.
