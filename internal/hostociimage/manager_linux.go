@@ -108,13 +108,16 @@ func (manager *linuxManager) Prepare(
 		ensureOwnedDirectory(manager.scannerCache, manager.stateUID, manager.stateGID, 0o700) != nil {
 		return ociimage.Result{}, ErrConflict
 	}
-	if err := os.Mkdir(transaction, 0o711); err != nil { // #nosec G301 -- the account needs traverse-only access to its root-owned transaction.
+	if err := os.Mkdir(transaction, 0o700); err != nil {
 		if errors.Is(err, os.ErrExist) {
 			return ociimage.Result{}, ErrConflict
 		}
 		return ociimage.Result{}, ErrMutation
 	}
 	defer func() { _ = os.RemoveAll(transaction) }()
+	if err := exposeTransactionDirectory(transaction, manager.stateUID, manager.stateGID); err != nil {
+		return ociimage.Result{}, ErrMutation
+	}
 	if spec.Source.Kind == ociapps.SourceContainerfile {
 		sourceDigest, err = snapshotBuildInputs(spec, transaction, manager.stateUID, manager.chown)
 		if err != nil {
@@ -193,6 +196,30 @@ func (manager *linuxManager) Prepare(
 	}
 	retainImage = true
 	return result, nil
+}
+
+// The broker's umask intentionally removes permissions from ordinary file
+// creation. A new root-owned transaction needs exact traversal permissions for
+// the account builder/exporter, but never directory listing or tenant writes.
+// Its parent has already been checked as root-owned and non-writable by tenants.
+func exposeTransactionDirectory(path string, uid, gid uint32) error {
+	file, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_DIRECTORY, 0) // #nosec G304 -- caller passes its newly created UUIDv7 transaction below the verified private root.
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	status, ok := info.Sys().(*syscall.Stat_t)
+	if !ok || !info.IsDir() || status.Uid != uid || status.Gid != gid || info.Mode().Perm()&0o077 != 0 {
+		return ErrConflict
+	}
+	if err := file.Chmod(0o711); err != nil { // #nosec G302 -- explicit root-owned traverse-only directory, never tenant listing or writes.
+		return err
+	}
+	return file.Sync()
 }
 
 // The fixed Podman {{.Id}} profile produces a bare lowercase 64-hex config

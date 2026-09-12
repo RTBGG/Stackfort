@@ -176,10 +176,13 @@ func (stage *SourceStage) PrepareNativeBoot(ctx context.Context, binding Release
 	if err := gate.VerifyClosed(ctx); err != nil {
 		return manifest, err
 	}
-	for _, path := range []string{"/srv/stackfort-native-hosting", "/srv/hosting", "/var/lib/stackfort-agent"} {
-		if err := nativeBootMkdir(path); err != nil {
+	for _, path := range []string{"/srv/stackfort-native-hosting", "/srv/hosting"} {
+		if err := nativeBootMkdirMode(path, nativeHostingDirectoryMode); err != nil {
 			return manifest, err
 		}
+	}
+	if err := nativeBootMkdir("/var/lib/stackfort-agent"); err != nil {
+		return manifest, err
 	}
 	for name, content := range units {
 		if err := nativeBootCreate("/etc/systemd/system/"+name, []byte(content), 0644); err != nil {
@@ -260,15 +263,40 @@ func nativeBootCreate(path string, data []byte, mode os.FileMode) error {
 }
 
 func nativeBootMkdir(path string) error {
+	return nativeBootMkdirMode(path, 0755)
+}
+
+func nativeBootMkdirMode(path string, mode uint32) error {
 	dir, err := openSourceDirectory(filepath.Dir(path), false)
 	if err != nil {
 		return err
 	}
 	defer unix.Close(dir)
-	if err := unix.Mkdirat(dir, filepath.Base(path), 0755); err != nil {
+	return nativeBootMkdirAt(dir, filepath.Base(path), mode)
+}
+
+func nativeBootMkdirAt(parent int, name string, mode uint32) error {
+	if name == "" || name == "." || name == ".." || strings.ContainsAny(name, "/\\") || (mode != 0755 && mode != nativeHostingDirectoryMode) {
+		return errors.New("invalid native boot directory contract")
+	}
+	if err := unix.Mkdirat(parent, name, 0700); err != nil {
 		return err
 	}
-	return unix.Fsync(dir)
+	dir, err := unix.Openat(parent, name, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return err
+	}
+	defer unix.Close(dir)
+	var metadata unix.Stat_t
+	if err := unix.Fstat(dir, &metadata); err != nil || metadata.Uid != 0 || metadata.Gid != 0 || metadata.Mode&unix.S_IFMT != unix.S_IFDIR || metadata.Mode&0077 != 0 {
+		return errors.Join(err, errors.New("new native boot directory ownership drift"))
+	}
+	// Mkdir honors the installer umask (normally 0077). Apply the exact mode
+	// through the new directory FD; never chmod or adopt a pre-existing path.
+	if err := unix.Fchmod(dir, mode); err != nil {
+		return err
+	}
+	return errors.Join(unix.Fsync(dir), unix.Fsync(parent))
 }
 func nativeBootDirectory(path string) error {
 	if err := nativeBootMkdir(path); err != nil && !errors.Is(err, unix.EEXIST) {

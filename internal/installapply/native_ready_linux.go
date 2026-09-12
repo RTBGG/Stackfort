@@ -163,15 +163,24 @@ func (b nativeReadyBackend) VerifyReady(ctx context.Context, plan storageprep.Pl
 	}
 	err = unix.Fstat(fd, &source)
 	_ = unix.Close(fd)
-	if err != nil || source.Dev != block.Rdev {
-		return errors.New("native hosting source is not on root")
+	if err != nil || !nativeHostingDirectoryMetadata(source, block.Rdev) {
+		return errors.New("native hosting source ownership, traversal permissions or root device drift")
+	}
+	targetFD, err := openSourceDirectory("/srv/hosting", false)
+	if err != nil {
+		return err
+	}
+	var target unix.Stat_t
+	err = unix.Fstat(targetFD, &target)
+	_ = unix.Close(targetFD)
+	if err != nil || !nativeHostingDirectoryMetadata(target, block.Rdev) {
+		return errors.New("native hosting target ownership, traversal permissions or root device drift")
 	}
 	if b.hostingMounted {
 		if err := nativeVerifyQuotaMount(ctx, "/srv/hosting", block.Rdev); err != nil {
 			return err
 		}
-		var target unix.Stat_t
-		if err := unix.Stat("/srv/hosting", &target); err != nil || source.Dev != target.Dev || source.Ino != target.Ino {
+		if source.Dev != target.Dev || source.Ino != target.Ino {
 			return errors.New("native hosting bind source drift")
 		}
 	}
@@ -218,6 +227,15 @@ func (b nativeReadyBackend) VerifyReady(ctx context.Context, plan storageprep.Pl
 		return errors.New("native one-shot boot selection is not safely retired")
 	}
 	return ctx.Err()
+}
+
+// Both the pre-mount boot gate and mounted admission require traversal without
+// directory listing. They only inspect this contract; drift is never repaired
+// during readiness checks or a completed-native rerun.
+const nativeHostingDirectoryMode uint32 = 0711
+
+func nativeHostingDirectoryMetadata(info unix.Stat_t, device uint64) bool {
+	return info.Mode == unix.S_IFDIR|nativeHostingDirectoryMode && info.Uid == 0 && info.Gid == 0 && info.Dev == device
 }
 
 func nativeVerifyQuotaMount(ctx context.Context, path string, device uint64) error {

@@ -110,6 +110,50 @@ qualification**. Container build/scanning/deployment needs its own real
 installed-service test; merely invoking production code outside this service
 would miss the inherited sandbox defect.
 
+## Actual installed-broker OCI diagnostic
+
+After the unit-only correction, a separate scratch-image fixture used the real
+installed agent socket, authenticated with the fixed control service's kernel
+UID. Its Containerfile includes a real exec-form `RUN` as UID/GID 1000, not just
+file copies; no scanner or build-resource bypass was introduced. Four pure
+helper test groups passed first. An earlier helper version's output-bound test
+had failed before any OCI mutation; that failed helper and its log were retained.
+
+The real v2 probe created fresh account
+`01a0951d-2302-74c7-b99b-31089921435c`, UID/GID 249940, and successfully reconciled
+identity, filesystem/quota, resources and rootless runtime. Image preparation
+operation `01a0951d-2501-7640-b916-214e21c82bd4` failed at
+`2026-09-12T10:15:10.419321925Z`, with agent audit HTTP 503. The existing protocol
+validator rejected this error because the server's generic `oci_image_unavailable`
+response lacked its mandatory capability detail. The helper treated the outcome
+as uncertain and deliberately retained all remaining fixture state.
+
+Read-only path inspection found `/srv/hosting` and its actual bind source
+`/srv/stackfort-native-hosting` were the same root-owned inode with mode **0700**.
+The account parent itself was correctly 0711. A fixed rootless `podman info`
+diagnostic in the actual broker mount namespace failed immediately with a
+permission error traversing that native hosting parent. After preserving
+checkpoint `native-beta5-broker-rpc-v2-failure` (ID
+`c236b35f-ee9c-422a-a7a0-e1dd4afb75bb`), a guarded diagnostic changed only that
+verified bind-source inode to root-owned **0711**: traverse, but no directory
+listing or writes for other users. The same `podman info` command then succeeded
+and reported `overlay`. This is not a successful image build or release test.
+
+Source inspection also found that creating an OCI transaction with requested
+mode 0711 under the actual agent's `UMask=0027` leaves mode 0710 without an
+explicit final chmod. Both umask-sensitive directory contracts require product
+fixes and real regression tests. The service umask must not be relaxed to hide
+these faults. No finding here justifies removing tenant isolation or disabling
+scanner checks.
+
+Ignored v2 evidence under `infra/host-tests/work/candidate-broker-rpc-probe-v2/`:
+
+- Probe binary SHA-256 `58cb0b0fa4609d060adce7f6b43bbffc6e96f9cbe393388f80c536838a8bfc25`.
+- `actual-helper-tests.log`: SHA-256 `57e715b455283fc6b0ec3e3d1db6185b7a574a7e4997616d01f627bfd6e9c0af`.
+- `actual-rpc-probe.log`: SHA-256 `25184d60ab5aa1ecfaa06bc9d8b07102ccd12c73b0670cb62dadf9c5a57fee37`.
+- `mount-namespace-podman-info.log`: SHA-256 `f908c9496bc0c5638790cacdc8395f99889e3dd9716e4b4a32885f2704f59d69`.
+- `mount-namespace-podman-info-hosting-fixed.log`: SHA-256 `9dccdd68ed4bb1b0182f01b354d7f3ddfa397e76b1be057c8cea2255e71ead6f`.
+
 ## Collector limitation found during diagnosis
 
 The version-1 read-only collector observed matching installed artifact hashes

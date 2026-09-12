@@ -1236,6 +1236,10 @@ func (handler *Handler) ociResourceError(
 	)
 	if response.Error == nil {
 		response.Error = &agentprotocol.ResponseError{Code: code, Message: message}
+		if code == agentprotocol.ErrorOCIResourceUnavailable {
+			response.Error.Capability = &agentprotocol.Capability{Status: agentprotocol.CapabilityUnknown,
+				ReasonCode: "oci-resource-operation-failed"}
+		}
 	}
 	return status, response
 }
@@ -1267,6 +1271,23 @@ func (handler *Handler) ociImageError(
 	)
 	if response.Error == nil {
 		response.Error = &agentprotocol.ResponseError{Code: code, Message: message}
+		if code == agentprotocol.ErrorOCIImageUnavailable {
+			// Classify only closed sentinels; backend output and error strings can
+			// contain tenant data and must never become capability reasons.
+			reason := "oci-image-operation-failed"
+			switch {
+			case errors.Is(err, ociimage.ErrBuildFailed):
+				reason = "oci-image-build-failed"
+			case errors.Is(err, ociimage.ErrPullFailed):
+				reason = "oci-image-pull-failed"
+			case errors.Is(err, ociimage.ErrInspectFailed):
+				reason = "oci-image-inspect-failed"
+			case errors.Is(err, ociimage.ErrScanFailed):
+				reason = "oci-image-scan-failed"
+			}
+			response.Error.Capability = &agentprotocol.Capability{Status: agentprotocol.CapabilityUnknown,
+				ReasonCode: reason}
+		}
 	}
 	return status, response
 }
