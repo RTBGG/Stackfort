@@ -153,10 +153,10 @@ expect_failure 'automatic native preparation is limited' run_fixture STACKFORT_B
 expect_no_match '^(install|onboard)$' "$result"
 printf 'ID=debian\nVERSION_ID="13"\n' >"$workspace/os-release"
 
-make_fixture '0.1.0-beta.5'
+make_fixture '0.1.0-beta.6'
 env STACKFORT_VERSION= STACKFORT_BOOTSTRAP_TESTING=1 STACKFORT_BOOTSTRAP_TEST_FIXTURE="$fixture" \
   STACKFORT_BOOTSTRAP_TEST_RESULT="$result" bash "$bootstrap" >"$workspace/default.out"
-grep -Fq 'explicitly pinned experimental release 0.1.0-beta.5' "$workspace/default.out"
+grep -Fq 'explicitly pinned experimental release 0.1.0-beta.6' "$workspace/default.out"
 make_fixture "$version"
 for invalid in '01.2.3' '1.02.3' '1.2.03' '1.2.3-01' '1.2.3-a..b' '1.2.3+' '1.2.3+..' 'latest' 'vv1.2.3' '1.2.3/evil'; do
   expect_failure 'selected release version is invalid' \
@@ -241,7 +241,7 @@ tar --sort=name --owner=0 --group=0 --numeric-owner -C "$workspace/bad" -czf "$f
 expect_failure 'release archive contains a link or special file' run_fixture
 
 grep -Fq "readonly repository='RTBGG/stackfort'" "$bootstrap"
-grep -Fq "readonly default_version='0.1.0-beta.5'" "$bootstrap"
+grep -Fq "readonly default_version='0.1.0-beta.6'" "$bootstrap"
 grep -Fq "readonly release_base=\"https://github.com/\$repository/releases/download/\$tag\"" "$bootstrap"
 grep -Fq -- "--proto '=https' --tlsv1.2" "$bootstrap"
 if grep -Fq "\"https://github.com/\$repository/releases/latest\"" "$bootstrap"; then

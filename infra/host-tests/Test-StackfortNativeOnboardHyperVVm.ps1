@@ -6,7 +6,7 @@
 param(
     [ValidateSet('Onboard')][string] $Stage = 'Onboard',
     [Parameter(Mandatory)][string] $ArchiveDirectory,
-    [ValidateSet('0.1.0-beta.5')][string] $Version = '0.1.0-beta.5',
+    [ValidateSet('0.1.0-beta.6')][string] $Version = '0.1.0-beta.6',
     [Parameter(Mandatory)][ValidatePattern('^[0-9a-f]{40}$')][string] $Commit,
     [Parameter(Mandatory)][ValidatePattern('^[0-9a-f]{64}$')][string] $ArchiveSHA256,
     [Parameter(Mandatory)][ValidatePattern('^[0-9a-f]{64}$')][string] $ChecksumsSHA256,

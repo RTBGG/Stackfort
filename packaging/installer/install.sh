@@ -7,7 +7,7 @@ export LC_ALL=C
 readonly repository='RTBGG/stackfort'
 # This is an explicitly selected experimental release, not GitHub's stable
 # /releases/latest channel (which does not select prereleases).
-readonly default_version='0.1.0-beta.5'
+readonly default_version='0.1.0-beta.6'
 readonly state_directory='/var/lib/stackfort-installer'
 readonly journal='/var/lib/stackfort-installer/install-state.json'
 readonly storage_journal='/var/lib/stackfort-installer/storage-state.json'

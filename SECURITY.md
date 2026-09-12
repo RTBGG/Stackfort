@@ -31,7 +31,7 @@ Stackfort is currently pre-beta. No public release has been published and no
 version is supported for production use. Findings against `main` are welcome;
 development artifacts and local rehearsal versions are not supported releases.
 
-The selected **`0.1.0-beta.5` candidate** is intended as the first experimental
+The selected **`0.1.0-beta.6` candidate** is intended as the first experimental
 public version, subject to its complete technical qualification and RTBGG's
 separate publication approval. Naming it here does not mean that it is published,
 approved or independently audited. If published, its deployment/support scope is:

@@ -1227,24 +1227,7 @@ func (runner *LinuxRunner) verifyServices(ctx context.Context) error {
 			return fmt.Errorf("Stackfort service is not active and enabled: %s", unit)
 		}
 	}
-	required := map[string]map[string]string{
-		"vinyl.service": {
-			"User": "vinyl", "Slice": "stackfort-core.slice", "NoNewPrivileges": "yes",
-			"PrivateDevices": "yes", "PrivateTmp": "yes", "ProtectSystem": "strict",
-		},
-		"stackfort-agent.service": {
-			"User": "root", "Slice": "stackfort-core.slice", "NoNewPrivileges": "yes",
-			"PrivateDevices": "yes", "PrivateTmp": "yes", "ProtectSystem": "full",
-		},
-		"stackfort-api.service": {
-			"User": "stackfort", "Slice": "stackfort-core.slice", "NoNewPrivileges": "yes",
-			"PrivateDevices": "yes", "PrivateTmp": "yes", "ProtectSystem": "strict",
-		},
-		phpMyAdminUnit: {
-			"User": "stackfort-pma", "Slice": "stackfort-core.slice", "NoNewPrivileges": "yes",
-			"PrivateDevices": "yes", "PrivateTmp": "yes", "ProtectSystem": "strict",
-		},
-	}
+	required := requiredServiceSandboxes()
 	for unit, properties := range required {
 		arguments := []string{"show", "--no-pager"}
 		keys := make([]string, 0, len(properties))
@@ -1261,10 +1244,8 @@ func (runner *LinuxRunner) verifyServices(ctx context.Context) error {
 			return err
 		}
 		observed := parseAssignments(output)
-		for key, wanted := range properties {
-			if observed[key] != wanted {
-				return fmt.Errorf("systemd sandbox mismatch for %s: %s=%q", unit, key, observed[key])
-			}
+		if err := verifyServiceSandbox(unit, observed); err != nil {
+			return err
 		}
 	}
 	if runner.distribution == "debian" || runner.distribution == "ubuntu" {

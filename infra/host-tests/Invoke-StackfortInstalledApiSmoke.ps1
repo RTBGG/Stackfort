@@ -129,7 +129,9 @@ function Invoke-StackfortInstalledApiSmoke {
             Assert-SfSmoke ($operation.id -ceq $operationID) 'operation identity'
             if ($operation.status -ceq 'succeeded') { return }
             if ($operation.status -notin @('pending', 'running')) {
-                $diagnostic.Note = ' Queued operation reached a non-success terminal status.'
+                # The ID was checked above. Do not echo arbitrary response fields,
+                # error bodies or headers across the credential-owning boundary.
+                $diagnostic.Note = " Queued operation $operationID reached a non-success terminal status."
                 throw 'Installed API smoke operation did not succeed.'
             }
             Start-Sleep -Milliseconds 500

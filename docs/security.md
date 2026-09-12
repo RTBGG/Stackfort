@@ -115,6 +115,32 @@ cross-tenant identifier substitution have automated negative coverage. See
 - The agent uses restrictive systemd sandboxing compatible with its explicit
   duties and delegates narrow child operations when possible.
 
+The installed agent is a **privileged root provisioning broker**, not a sandbox
+for tenant application code. Its service retains read-only `/usr` and `/boot`
+(`ProtectSystem=yes`), private temporary files, inaccessible `/home` and `/root`,
+kernel/clock protections, and the existing cgroup protection. It deliberately
+needs writable `/etc`: shadow-utils create locks and temporary files and
+atomically replace identity databases, while managed NGINX/PHP/systemd/container
+and SELinux configuration also lives there. Per-file writable bind mounts do not
+preserve those database operations. `ProtectSystem=full` is incompatible with
+this duty; the tested systemd 257 namespace still made `/etc` read-only when an
+identical `ReadWritePaths=/etc` exception was added.
+
+Only this broker has `NoNewPrivileges=no` and `PrivateDevices=no`: its fixed
+rootless Podman profiles drop to an account UID before invoking the system's
+subordinate-UID/GID helpers, and quota/FUSE operations require host device
+visibility. `ProtectHome=no` is paired with `InaccessiblePaths=/home /root` so
+the broker can reach the managed user bus below `/run/user`. Its address-family
+allowlist includes netlink for container networking. These exceptions expand
+the broker's host authority; they do not grant tenants root access or authorize
+arbitrary devices/commands through RPC. The API, phpMyAdmin and Vinyl retain
+their separate stricter service sandboxes. Initial installation and completed
+native admission check the broker's exact live property contract, including
+these exceptions and retained protections; they must not accept stale or
+broadened drop-ins. Real installed-agent provisioning and OCI qualification are
+still required: a test executable run outside the service does not exercise its
+inherited namespace/seccomp restrictions.
+
 D-001 implements the first local privilege boundary: the filesystem Unix socket
 is owned for the control API service group, while Linux `SO_PEERCRED` requires
 the exact configured API UID before any HTTP is parsed. RPC JSON is limited to

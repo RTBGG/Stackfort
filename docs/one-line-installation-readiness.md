@@ -82,7 +82,7 @@ fail-closed boot, firewall or exact-candidate functional tests.
 
 ### Bootstrap selection and availability
 
-The bare bootstrap now explicitly selects `0.1.0-beta.5` for a fresh invocation,
+The bare bootstrap now explicitly selects `0.1.0-beta.6` for a fresh invocation,
 not GitHub's latest-stable channel. Explicit versions and existing journal pins
 remain supported; a beta is never relabeled stable. The public handler is
 registered, but final tagged-candidate qualification and public release assets

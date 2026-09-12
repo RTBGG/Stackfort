@@ -111,19 +111,21 @@ Slice=stackfort-core.slice
 RuntimeDirectory=stackfort
 RuntimeDirectoryMode=0750
 UMask=0027
-NoNewPrivileges=yes
-PrivateDevices=yes
+` + agentWritableConfigurationExplanation + `NoNewPrivileges=no
+PrivateDevices=no
 PrivateTmp=yes
 ProtectClock=yes
 ProtectControlGroups=yes
-ProtectHome=yes
+ProtectHome=no
+InaccessiblePaths=/home /root
 ProtectKernelLogs=yes
 ProtectKernelModules=yes
 ProtectKernelTunables=yes
-ProtectSystem=full
+ProtectSystem=yes
+ReadWritePaths=` + agentWritableConfigurationRoot + `
 LockPersonality=yes
 RestrictRealtime=yes
-RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
 SystemCallArchitectures=native
 
 [Install]

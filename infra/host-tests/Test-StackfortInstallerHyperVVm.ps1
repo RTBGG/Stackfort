@@ -391,9 +391,17 @@ $phpMyAdminConfigCheck
 sudo test -x '$phpBinary'
 ! sudo systemctl is-active --quiet '$phpUnit'
 ! sudo systemctl is-enabled --quiet '$phpUnit'
-sudo systemctl show --property=NoNewPrivileges --value stackfort-agent.service | grep -qx yes
+# The privileged provisioning broker needs atomic /etc writes, UID-map helpers,
+# host quota/FUSE devices and the managed user bus; it is not the tenant sandbox.
+sudo systemctl show --property=NoNewPrivileges --value stackfort-agent.service | grep -qx no
+sudo systemctl show --property=PrivateDevices --value stackfort-agent.service | grep -qx no
+sudo systemctl show --property=ProtectSystem --value stackfort-agent.service | grep -qx yes
+sudo systemctl show --property=ReadWritePaths --value stackfort-agent.service | grep -qx /etc
+sudo systemctl show --property=ProtectHome --value stackfort-agent.service | grep -qx no
+sudo systemctl show --property=ProtectControlGroups --value stackfort-agent.service | grep -qx yes
+sudo systemctl show --property=InaccessiblePaths --value stackfort-agent.service | tr ' ' '\n' | LC_ALL=C sort | paste -sd ' ' - | grep -qx '/home /root'
+sudo systemctl show --property=RestrictAddressFamilies --value stackfort-agent.service | tr ' ' '\n' | LC_ALL=C sort | paste -sd ' ' - | grep -qx 'AF_INET AF_INET6 AF_NETLINK AF_UNIX'
 sudo systemctl show --property=NoNewPrivileges --value stackfort-api.service | grep -qx yes
-sudo systemctl show --property=PrivateDevices --value stackfort-agent.service | grep -qx yes
 sudo systemctl show --property=PrivateDevices --value stackfort-api.service | grep -qx yes
 sudo systemctl show --property=NoNewPrivileges --value stackfort-phpmyadmin.service | grep -qx yes
 sudo systemctl show --property=PrivateDevices --value stackfort-phpmyadmin.service | grep -qx yes
