@@ -282,11 +282,13 @@ jobs:
             exit 1
           fi
           notes="$RUNNER_TEMP/stackfort-release-notice.md"
-          jq -r '.independentReviewDisclosure' dist/release-readiness.json >"$notes"
-          printf '\nFresh disposable test servers only. Not for production or important data. Native fresh-default installation is limited to Debian 13 amd64.\n\nCommunity-only GitHub support by RTBGG and possible volunteers; no guaranteed response, fixes, SLA or support period.\n' >>"$notes"
-          printf '\nHosting quotas share the root filesystem. Aggregate capacity admission and a guaranteed OS disk/inode reserve are not implemented; exhaustion can make the server unavailable and require reinstallation.\n' >>"$notes"
-          printf '\n' >>"$notes"
-          jq -er '.removalDisclosure' dist/release-readiness.json >>"$notes"
+          {
+            jq -r '.independentReviewDisclosure' dist/release-readiness.json
+            printf '\nFresh disposable test servers only. Not for production or important data. Native fresh-default installation is limited to Debian 13 amd64.\n\nCommunity-only GitHub support by RTBGG and possible volunteers; no guaranteed response, fixes, SLA or support period.\n'
+            printf '\nHosting quotas share the root filesystem. Aggregate capacity admission and a guaranteed OS disk/inode reserve are not implemented; exhaustion can make the server unavailable and require reinstallation.\n'
+            printf '\n'
+            jq -er '.removalDisclosure' dist/release-readiness.json
+          } >"$notes"
           release_flags=(--verify-tag --generate-notes --notes-file "$notes" --title "Stackfort $RELEASE_TAG")
           if [[ "$RELEASE_CHANNEL" == beta ]]; then
             release_flags+=(--prerelease --latest=false)

@@ -62,3 +62,12 @@ Test-source TAR SHA-256:
 `d5a85e2fcb550912d7a0dac77299b3e02e5e9f21cef8324ba79fc6b815e21bbd`.
 The local log is `infra/host-tests/work/native-beta4-release-gates-final.log`.
 These synthetic gate tests do not perform removal or authorize publication.
+
+The following candidate attempt at `538fbccd18ba3f88d7188314043e04a95722680a`
+exposed an embedded ShellCheck SC2129 warning in the release-note generation
+block through GitHub's full actionlint integration. Consecutive file appends were
+grouped into one output redirection, preserving all disclosures and failure
+propagation. Linux actionlint 1.7.12 **with** portable ShellCheck 0.11.0 then
+passed, followed by all 160 gate tests with zero skips. This supersedes the
+earlier local actionlint-only check for the modified workflow. See ignored
+`infra/host-tests/work/native-beta4-notes-linux-lint-and-gates.log`.

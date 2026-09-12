@@ -297,7 +297,7 @@ test('reviewed releases cannot substitute reprovision evidence for active uninst
 
 test('release workflow renders the validated removal warning', () => {
   const workflow = readFileSync(path.join(root, '.github/workflows/release.yml'), 'utf8');
-  assert.match(workflow, /jq -er '\.removalDisclosure' dist\/release-readiness\.json >>"\$notes"/);
+  assert.match(workflow, /\{\n\s+jq -r '\.independentReviewDisclosure'[\s\S]+?jq -er '\.removalDisclosure' dist\/release-readiness\.json\n\s+\} >"\$notes"/);
 });
 
 test('CLI fails closed on absent evidence and does not print a success receipt', () => {
