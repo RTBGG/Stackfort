@@ -31,6 +31,30 @@ Stackfort is currently pre-beta. No public release has been published and no
 version is supported for production use. Findings against `main` are welcome;
 development artifacts and local rehearsal versions are not supported releases.
 
+The selected **`0.1.0-beta.5` candidate** is intended as the first experimental
+public version, subject to its complete technical qualification and RTBGG's
+separate publication approval. Naming it here does not mean that it is published,
+approved or independently audited. If published, its deployment/support scope is:
+
+- Fresh disposable **Debian 13 amd64** test servers with plain GPT/ext4 root
+  storage and GRUB; no production workloads or important data.
+- The native one-line installation path only. Ubuntu/Rocky native conversion,
+  retained-data conversion, LVM/RAID and separate persistent boot/state
+  filesystems are not supported by this experimental scope.
+- Community-only GitHub support under the terms below. No response/fix SLA,
+  maintenance duration or future upgrade compatibility is promised.
+- No published predecessor exists at candidate preparation. Unpublished lab
+  installations must not be treated as supported upgrade sources; use a fresh
+  OS installation. Any later supported upgrade requires its own qualified path.
+- No in-place uninstaller: removal is complete OS reinstallation, destroying
+  all server data, configuration and services. The shared-root capacity
+  limitation described below remains applicable.
+
+Release notes and the digest-bound candidate support/publication records must
+confirm this exact scope before public availability. Check the
+[release list](https://github.com/RTBGG/Stackfort/releases) for actual publication;
+neither a Git tag nor a successful artifact build is a published release.
+
 Support is **community-only through GitHub**, provided voluntarily by
 [RTBGG](https://github.com/RTBGG) and any future community contributors. There is
 no commercial support, service-level agreement, guaranteed response or fix, or
