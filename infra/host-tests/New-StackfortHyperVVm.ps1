@@ -11,11 +11,14 @@ param(
 
     [string] $SwitchName = 'Default Switch',
     [string] $VmRoot = 'C:\ProgramData\Stackfort\Hyper-V',
+    [string] $ImageCacheRoot = (Join-Path $PSScriptRoot 'cache'),
     [UInt64] $MemoryStartupBytes = 4GB,
     [ValidateRange(2, 64)]
     [int] $ProcessorCount = 2,
     [UInt64] $SystemDiskSizeBytes = 20GB,
-    [UInt64] $QuotaDiskSizeBytes = 8GB
+    [UInt64] $QuotaDiskSizeBytes = 8GB,
+    # Exercise ordinary VPS onboarding without a prepared hosting filesystem.
+    [switch] $SingleDisk
 )
 
 $ErrorActionPreference = 'Stop'
@@ -44,7 +47,7 @@ if (-not (Test-Path -LiteralPath $qemuImg -PathType Leaf)) {
 }
 $sshKeygen = (Get-Command ssh-keygen.exe -ErrorAction Stop).Source
 
-$imagePath = & (Join-Path $PSScriptRoot 'prepare-image.ps1') -ImageId $ImageId
+$imagePath = & (Join-Path $PSScriptRoot 'prepare-image.ps1') -ImageId $ImageId -CacheRoot $ImageCacheRoot
 $verifiedPath = "$imagePath.verified"
 if (-not (Test-Path -LiteralPath $verifiedPath -PathType Leaf)) {
     throw 'The downloaded image has no verification record.'
@@ -62,7 +65,7 @@ if (Test-Path -LiteralPath $vmDirectory) {
 }
 New-Item -ItemType Directory -Path $baseRoot, $keyRoot -Force | Out-Null
 
-$baseDisk = Join-Path $baseRoot "$ImageId-$($sourceHash.Substring(0, 12)).vhdx"
+$baseDisk = Join-Path $baseRoot "$ImageId-$($sourceHash.Substring(0, 12))-$SystemDiskSizeBytes.vhdx"
 if (-not (Test-Path -LiteralPath $baseDisk -PathType Leaf)) {
     $temporaryBase = Join-Path $baseRoot "$ImageId-$([Guid]::NewGuid().ToString('N')).partial.vhdx"
     & $qemuImg convert -p -f qcow2 -O vhdx -o subformat=dynamic $imagePath $temporaryBase
@@ -102,7 +105,9 @@ $seedDisk = Join-Path $vmDirectory 'cidata.vhdx'
 $quotaDisk = Join-Path $vmDirectory 'quota.vhdx'
 New-Item -ItemType Directory -Path $vmDirectory | Out-Null
 New-VHD -Path $systemDisk -ParentPath $baseDisk -Differencing | Out-Null
-New-VHD -Path $quotaDisk -Dynamic -SizeBytes $QuotaDiskSizeBytes -BlockSizeBytes 1MB | Out-Null
+if (-not $SingleDisk) {
+    New-VHD -Path $quotaDisk -Dynamic -SizeBytes $QuotaDiskSizeBytes -BlockSizeBytes 1MB | Out-Null
+}
 New-VHD -Path $seedDisk -Dynamic -SizeBytes 64MB -BlockSizeBytes 1MB | Out-Null
 
 $linuxGroup = if ($ImageId -eq 'rocky-10') { 'wheel' } else { 'sudo' }
@@ -120,26 +125,7 @@ $packages = if ($ImageId -eq 'rocky-10') {
     "  - sudo`n  - hyperv-daemons`n  - quota`n  - xfsprogs`n  - git`n  - curl`n  - ca-certificates`n  - rsync`n  - build-essential"
 }
 $instanceId = "$VmName-$([Guid]::NewGuid().ToString('N'))"
-$userData = @"
-#cloud-config
-preserve_hostname: false
-hostname: $VmName
-manage_etc_hosts: true
-ssh_pwauth: false
-disable_root: true
-users:
-  - default
-  - name: stackfort-test
-    gecos: Stackfort host test
-    groups: [$linuxGroup]
-    shell: /bin/bash
-    sudo: ALL=(ALL) NOPASSWD:ALL
-    lock_passwd: true
-    ssh_authorized_keys:
-      - $publicKey
-package_update: true
-packages:
-$packages
+$storageCloudConfig = @"
 write_files:
   - path: /usr/local/sbin/stackfort-prepare-quota.sh
     owner: root:root
@@ -173,6 +159,34 @@ write_files:
       touch /var/lib/stackfort-host-ready
 runcmd:
   - [/usr/local/sbin/stackfort-prepare-quota.sh]
+"@
+if ($SingleDisk) {
+    $storageCloudConfig = @'
+runcmd:
+  - [touch, /var/lib/stackfort-host-ready]
+'@
+}
+$userData = @"
+#cloud-config
+preserve_hostname: false
+hostname: $VmName
+manage_etc_hosts: true
+ssh_pwauth: false
+disable_root: true
+users:
+  - default
+  - name: stackfort-test
+    gecos: Stackfort host test
+    groups: [$linuxGroup]
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    lock_passwd: true
+    ssh_authorized_keys:
+      - $publicKey
+package_update: true
+packages:
+$packages
+$storageCloudConfig
 final_message: Stackfort Hyper-V test node is ready.
 "@
 $metaData = "instance-id: $instanceId`nlocal-hostname: $VmName`n"
@@ -201,8 +215,10 @@ Set-VM -Name $VmName -AutomaticCheckpointsEnabled $false -AutomaticStartAction N
     -AutomaticStopAction ShutDown
 Add-VMHardDiskDrive -VMName $VmName -ControllerType SCSI -ControllerNumber 0 `
     -ControllerLocation 1 -Path $seedDisk | Out-Null
-Add-VMHardDiskDrive -VMName $VmName -ControllerType SCSI -ControllerNumber 0 `
-    -ControllerLocation 2 -Path $quotaDisk | Out-Null
+if (-not $SingleDisk) {
+    Add-VMHardDiskDrive -VMName $VmName -ControllerType SCSI -ControllerNumber 0 `
+        -ControllerLocation 2 -Path $quotaDisk | Out-Null
+}
 $bootDisk = Get-VMHardDiskDrive -VMName $VmName | Where-Object ControllerLocation -EQ 0
 Set-VMFirmware -VMName $VmName -EnableSecureBoot On `
     -SecureBootTemplate MicrosoftUEFICertificateAuthority -FirstBootDevice $bootDisk
@@ -211,8 +227,8 @@ Start-VM -Name $VmName
 [pscustomobject]@{
     VMName = $VmName
     State = (Get-VM -Name $VmName).State
-    SSHUser = 'stackfort'
+    SSHUser = 'stackfort-test'
     SSHPrivateKey = $keyPath
-    QuotaFilesystem = $filesystem
+    QuotaFilesystem = if ($SingleDisk) { 'none (unprepared root filesystem)' } else { $filesystem }
     VMPath = $vmDirectory
 }

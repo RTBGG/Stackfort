@@ -1,27 +1,45 @@
 # Fresh-host installation
 
-I-002 installs Stackfort on a disposable fresh Debian 13, Ubuntu 26.04 LTS, or
-Rocky Linux 10 `amd64` host after the read-only preflight passes. The project is
-still pre-beta: do not use an unreleased build on a server containing valuable
-data.
+The existing I-002 path installs Stackfort on disposable Debian 13, Ubuntu 26.04
+LTS, or Rocky Linux 10 `amd64` hosts with **already quota-prepared storage** after
+the read-only preflight passes. This is not qualification of those systems'
+default root filesystems.
 
-No public release has been published yet. The commands below document the
-release installation routes; do not expect illustrative `0.1.0` assets to
-exist. Select an exact version from the
-[release list](https://github.com/RTBGG/Stackfort/releases) when available.
+The first native fresh-default beta is limited to **Debian 13 `amd64`**, within
+the [native host profile and release gates](one-line-installation-readiness.md).
+Ubuntu/Rocky native fresh-default installation is not advertised until qualified.
+The maintainer has authorized an experimental beta without independent security
+review, not approved any particular candidate. It is for fresh disposable test
+servers only, never production or important data. Support is community-only,
+without guaranteed responses or fixes; see the [security policy](../SECURITY.md).
+The initial 8 GiB/100,000-free-inode check is installation headroom, not an OS
+reserve. Account aggregation and platform growth can exhaust shared-root disk
+space/inodes and make the test server unavailable; see the
+[experimental capacity limitation](one-line-installation-readiness.md#experimental-capacity-limitation).
+
+No public release has been published yet. The current bootstrap explicitly pins
+`0.1.0-beta.4`; that is a planned experimental candidate, not a claim that its
+assets exist or its exact tagged installation has passed qualification. The
+commands below require matching published assets from the
+[release list](https://github.com/RTBGG/Stackfort/releases).
 Use the [operations guide](operations.md) for first setup and ongoing checks.
 
 ## Before installation
 
 The host must satisfy the complete [preflight contract](installer-preflight.md),
-including a project-quota-enabled `/srv/hosting` filesystem. Installation must
+including a project-quota-enabled `/srv/hosting` filesystem for the existing
+prepared-storage installation routes below. Native preparation has its own
+restricted host, recovery, provenance and consent contract; do not bypass the
+preflight or treat a passive carrier package as native-conversion authority.
+Installation must
 run as root. The installer refuses a foreign `stackfort` identity, existing
 Stackfort units, active conflicting web/database services, unsafe release
 files, symlinked destinations, and unmanaged configuration conflicts.
 
 ## GitHub bootstrap
 
-Once a stable release exists, the short convenience command is:
+Once the selected experimental release is qualified and published, the short
+convenience command is:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -fsSL \
@@ -30,7 +48,7 @@ curl --proto '=https' --tlsv1.2 -fsSL \
 ```
 
 For a reviewable invocation, download the bootstrap first, inspect it, then
-select an exact release (replace the illustrative version). To pin the
+select an exact release. To pin the
 bootstrap itself, replace `main` in its URL with a reviewed full commit SHA;
 `STACKFORT_VERSION` pins the release payload, not the branch-hosted script:
 
@@ -38,33 +56,74 @@ bootstrap itself, replace `main` in its URL with a reviewed full commit SHA;
 curl --proto '=https' --tlsv1.2 -fSLo stackfort-install.sh \
   https://raw.githubusercontent.com/RTBGG/stackfort/main/packaging/installer/install.sh
 less stackfort-install.sh
-sudo env STACKFORT_VERSION=0.1.0 bash stackfort-install.sh
+sudo env STACKFORT_VERSION=0.1.0-beta.4 bash stackfort-install.sh
 ```
 
-For a beta-only release, explicitly use its version, such as `0.1.0-beta.1`;
-the default `latest` lookup does not select prereleases. The example versions
-are not release announcements.
+With no journal or explicit `STACKFORT_VERSION`, the current script selects
+`0.1.0-beta.4`. It does not query GitHub's latest-stable channel or dynamically
+choose a newer beta. An explicit version may select another published release;
+an existing journal pins its original version and conflicting selections stop.
+This bootstrap selection is separate from the panel's stable/beta update-check
+settings and does not turn a beta into a stable release.
 
 The bootstrap accepts semantic versions only, downloads the matching `amd64`
 archive and `SHA256SUMS` from the versioned GitHub Release, verifies the exact
 archive checksum, constrains archive paths to the expected bundle root, and
-runs the installer contained in that bundle. GitHub also records build
-attestations for release assets. A checksum fetched from the same release is an
+runs the installer contained in that bundle. It also downloads
+`build-attestation.jsonl`; native onboarding verifies the exact archive against
+the expected repository, workflow, tag and embedded build commit before
+preparation. The public native path never accepts the laboratory origin exception.
+A checksum fetched from the same release is an
 integrity check, not a substitute for reviewing the bootstrap or the GitHub
 trust boundary.
 
-If a journal already exists, the bootstrap resumes or verifies that journal's
-version instead of silently switching to the newest release.
+The dispatcher chooses the existing installation path when ordinary preflight
+passes. A preflight blocker on Debian 13 may enter `onboard`, which independently
+checks the full restricted native host profile; not every preflight failure is
+convertible. Other operating systems or inspection errors stop. Existing native
+state always goes to native validation, never to the ordinary `install --yes`
+path. See [retry behavior](#journal-and-retry-behavior).
 
 The production bootstrap has no alternate repository or transport setting.
 Its explicit root-owned local-fixture mode is reserved for the project's
 unreleased clean-host qualification and remains disabled unless the test flag
-is deliberately set. The complete nine-cell evidence is recorded in the
-[clean-host installer matrix](../infra/host-tests/results/2026-09-01-clean-installer-matrix-hyper-v.md).
+is deliberately set. The older
+[clean-host installer matrix](../infra/host-tests/results/2026-09-01-clean-installer-matrix-hyper-v.md)
+covers already prepared storage, not the new beta.4 public-native flow. Seven
+shell-routing qualification markers now pass; these isolated fixtures do not
+substitute for running the exact tagged archive on a clean host.
+
+### Interactive native setup
+
+Use a real root console or SSH session with a controlling terminal. The script
+can be piped to Bash, but consent is read directly from `/dev/tty`, not piped
+stdin. `onboard` has no unattended `--yes`, caller-supplied consent digest,
+device override or force/reset option.
+
+1. Review the experimental warning and authenticated exact host/release summary.
+   Confirm `FRESH-DISPOSABLE NO-DATA REINSTALLATION-RISK` only for an empty,
+   disposable test server, accepting that failure may require provider
+   reinstallation.
+2. Separately confirm `REBOOT`. The SSH session will disconnect after successful
+   preparation and one-shot boot arming.
+3. Save the one-use administrator setup code securely, then confirm `SAVED`.
+   It appears only on the controlling terminal, not normal command output or
+   installer logs. Avoid terminal recording; the installer cannot recover it.
+
+Only then does preparation install approved prerequisites, seal the runtime and
+setup commitment, arm the controlled offline quota boot and request the reboot.
+Failure before completed arming does not request a reboot. Interrupted or partial
+state is preserved for operator inspection, not silently reset or replayed.
+
+After installation, open `https://<server-IP>:8443/` and use the saved code in the
+setup form. Its one-hour lifetime begins at local activation after installed
+payload, service-identity and health checks, not when it was displayed before
+reboot. Only its digest is persisted; reboots/reruns never extend its lifetime.
+See [setup delivery and recovery](native-installer-bootstrap-handoff.md).
 
 ## Manual release installation
 
-### Native release package
+### Passive native package (prepared-storage route)
 
 Published releases will provide a `stackfort-release` DEB for Debian/Ubuntu and an RPM
 for Rocky Linux. Download the matching package together with `SHA256SUMS`, then
@@ -89,8 +148,10 @@ has no maintainer scripts/scriptlets and does not configure or start Stackfort.
 Removing it later removes only those packaged source files; it is not an
 uninstaller and does not delete an active installation or customer data. See
 [ADR 0059](adr/0059-passive-native-release-carrier.md).
+This is not the native default-root onboarding route: installing the carrier
+first creates an existing-package conflict with that fresh-host profile.
 
-### Release archive
+### Release archive (prepared-storage route)
 
 After independently downloading the archive and `SHA256SUMS`, verify and
 extract it as root so the installer's source-trust contract is preserved:
@@ -112,6 +173,17 @@ Exit `0` is success, `2` is an actionable preflight blocker, and `1` is an
 invocation, source, journal, stage, or verification failure.
 
 ## Journal and retry behavior
+
+For native onboarding, a rerun selects the journal-bound release and requires
+the exact completed, admitted installation with ready storage. It invokes the
+sealed runtime through systemd supervision to recheck live storage, installed
+payload and admission; successful completion repeats no conversion/installation,
+reissues no setup code and schedules no reboot. Partial state, pending recovery,
+unsafe records or mismatched release evidence stop for inspection. A journal's
+presence alone never authorizes native resume or recovery.
+
+The following ordinary installer behavior applies to the separate
+already-prepared-storage path, not permission to replay interrupted conversion.
 
 The root-only journal is
 `/var/lib/stackfort-installer/install-state.json`. Each stage is saved as
@@ -149,8 +221,10 @@ https://<server-address>:8443/
 
 The first-start certificate is generated locally and therefore is not trusted
 by public browsers. Confirm that the address belongs to the intended server
-before accepting the warning. Then create the short-lived one-time capability
-from an authenticated console or SSH session:
+before accepting the warning. Native onboarding uses the code saved before
+reboot. For the separate prepared-storage installation route, or explicit local
+recovery of a lost/expired code before administrator creation, create a
+short-lived one-time capability from an authenticated console or SSH session:
 
 ```sh
 sudo -u stackfort -- /usr/local/bin/stackfort-api bootstrap create
@@ -159,6 +233,8 @@ sudo -u stackfort -- /usr/local/bin/stackfort-api bootstrap create
 Use the displayed value only in the bootstrap form. See
 [Installed panel ingress](installed-panel-ingress.md) for the exact NGINX,
 certificate, and browser boundary.
+Do not automate replacement of an active capability or treat setup-code recovery
+as authorization to reset an interrupted storage operation.
 
 ## Installed security boundary
 

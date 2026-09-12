@@ -5,6 +5,12 @@ into a reproducible `stackfort-release` DEB or RPM. The package is a passive,
 versioned release carrier; the journaled Stackfort installer remains the only
 component allowed to configure a host.
 
+The installed `/usr/sbin/stackfort-install` wrapper forwards `preflight`,
+`version`, `panel`, `native` and the read-only `native-host` commands to its selected release installer.
+The [native operator commands](../../docs/native-installer-operator.md) expose
+recorded status and explicit recovery approvals; they do not enable native
+storage preparation or automatic boot resume.
+
 ```sh
 SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)" \
   bash packaging/core/build-native-package.sh \

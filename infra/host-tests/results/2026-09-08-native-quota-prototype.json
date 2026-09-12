@@ -1,0 +1,937 @@
+{
+  "schemaVersion": 1,
+  "kind": "native-ext4-project-quota-before-after-lab",
+  "baseline": "native root ext4 before quota/project conversion; project 0",
+  "candidate": "same native ext4 after offline quota/project conversion; inherited project with 1 GiB hard limit",
+  "comparisonBoundary": "Sequential before/after phases separated by reboot and validation; not randomized or simultaneous paired runs. No statistical significance or application-performance claim.",
+  "workloads": [
+    {
+      "workload": "randread",
+      "latencyMetric": "fio clat_ns p99",
+      "before": {
+        "iops": {
+          "median": 131814.318568,
+          "min": 127226.277372,
+          "max": 166850.114989,
+          "runs": [
+            166850.114989,
+            127226.277372,
+            131814.318568
+          ]
+        },
+        "mibPerSecond": {
+          "median": 514.9055404663086,
+          "min": 496.9835042953491,
+          "max": 651.7641201019287,
+          "runs": [
+            651.7641201019287,
+            496.9835042953491,
+            514.9055404663086
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 0.2304,
+          "min": 0.214016,
+          "max": 0.252928,
+          "runs": [
+            0.214016,
+            0.252928,
+            0.2304
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 39.57169459962756,
+          "min": 38.85167464114833,
+          "max": 41.88191881918819,
+          "runs": [
+            41.88191881918819,
+            38.85167464114833,
+            39.57169459962756
+          ]
+        }
+      },
+      "after": {
+        "iops": {
+          "median": 130896.710329,
+          "min": 128241.775822,
+          "max": 169064.793521,
+          "runs": [
+            169064.793521,
+            130896.710329,
+            128241.775822
+          ]
+        },
+        "mibPerSecond": {
+          "median": 511.3211326599121,
+          "min": 500.95068550109863,
+          "max": 660.415207862854,
+          "runs": [
+            660.415207862854,
+            511.3211326599121,
+            500.95068550109863
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 0.234496,
+          "min": 0.171008,
+          "max": 0.242688,
+          "runs": [
+            0.171008,
+            0.234496,
+            0.242688
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 40.170670037926676,
+          "min": 38.94368437798282,
+          "max": 43.82298709280885,
+          "runs": [
+            43.82298709280885,
+            38.94368437798282,
+            40.170670037926676
+          ]
+        }
+      },
+      "medianIOPSChangePercent": -0.6961369970794329
+    },
+    {
+      "workload": "randwrite",
+      "latencyMetric": "fio clat_ns p99",
+      "before": {
+        "iops": {
+          "median": 241444.488858,
+          "min": 232275.107425,
+          "max": 243574.612694,
+          "runs": [
+            243574.612694,
+            232275.107425,
+            241444.488858
+          ]
+        },
+        "mibPerSecond": {
+          "median": 943.1487798690796,
+          "min": 907.3304929733276,
+          "max": 951.4691867828369,
+          "runs": [
+            951.4691867828369,
+            907.3304929733276,
+            943.1487798690796
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 0.132096,
+          "min": 0.128512,
+          "max": 0.146432,
+          "runs": [
+            0.132096,
+            0.146432,
+            0.128512
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 54.66834328827413,
+          "min": 54.61897356143079,
+          "max": 54.84375,
+          "runs": [
+            54.61897356143079,
+            54.66834328827413,
+            54.84375
+          ]
+        }
+      },
+      "after": {
+        "iops": {
+          "median": 222705.917633,
+          "min": 210848.875562,
+          "max": 229495.001999,
+          "runs": [
+            222705.917633,
+            229495.001999,
+            210848.875562
+          ]
+        },
+        "mibPerSecond": {
+          "median": 869.9512376785278,
+          "min": 823.6346664428711,
+          "max": 896.4707078933716,
+          "runs": [
+            869.9512376785278,
+            896.4707078933716,
+            823.6346664428711
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 0.173056,
+          "min": 0.162816,
+          "max": 0.218112,
+          "runs": [
+            0.173056,
+            0.162816,
+            0.218112
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 54.16017450919289,
+          "min": 53.33960489181562,
+          "max": 54.20062695924765,
+          "runs": [
+            54.16017450919289,
+            54.20062695924765,
+            53.33960489181562
+          ]
+        }
+      },
+      "medianIOPSChangePercent": -7.7610266913239245
+    },
+    {
+      "workload": "syncwrite",
+      "latencyMetric": "fio sync.lat_ns p99 (fsync only)",
+      "before": {
+        "iops": {
+          "median": 224.577542,
+          "min": 220.23393,
+          "max": 240.727782,
+          "runs": [
+            224.577542,
+            220.23393,
+            240.727782
+          ]
+        },
+        "mibPerSecond": {
+          "median": 0.8772554397583008,
+          "min": 0.8602886199951172,
+          "max": 0.9403419494628906,
+          "runs": [
+            0.8772554397583008,
+            0.8602886199951172,
+            0.9403419494628906
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 6.193152,
+          "min": 6.06208,
+          "max": 6.914048,
+          "runs": [
+            6.193152,
+            6.914048,
+            6.06208
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 3.1720856463124503,
+          "min": 2.7359238699444886,
+          "max": 5.746239876590821,
+          "runs": [
+            3.1720856463124503,
+            5.746239876590821,
+            2.7359238699444886
+          ]
+        }
+      },
+      "after": {
+        "iops": {
+          "median": 236.176382,
+          "min": 232.853429,
+          "max": 237.376262,
+          "runs": [
+            237.376262,
+            236.176382,
+            232.853429
+          ]
+        },
+        "mibPerSecond": {
+          "median": 0.9225635528564453,
+          "min": 0.9095830917358398,
+          "max": 0.927250862121582,
+          "runs": [
+            0.927250862121582,
+            0.9225635528564453,
+            0.9095830917358398
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 5.996544,
+          "min": 5.996544,
+          "max": 5.996544,
+          "runs": [
+            5.996544,
+            5.996544,
+            5.996544
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 3.858267716535433,
+          "min": 3.132434575733545,
+          "max": 5.093312597200622,
+          "runs": [
+            3.132434575733545,
+            3.858267716535433,
+            5.093312597200622
+          ]
+        }
+      },
+      "medianIOPSChangePercent": 5.164737264779573
+    }
+  ],
+  "date": "2026-09-08",
+  "outcome": "Automatic offline native ext4 project-quota preparation and unattended resume passed in the dedicated Debian lab; candidate for production design, not an installer release gate closure.",
+  "sourceBaseCommit": "ef74732bdcb18caf9ddd3d5aa3024b4381c6c3f2",
+  "scope": {
+    "installerChanged": false,
+    "releasePublished": false,
+    "customerVPSChanged": false,
+    "productionCodeChanges": [
+      "Host-verified native-root target selection for the fixed project-quota execution profile; no caller-provided target and no broad retry.",
+      "Read-only descriptor-based accounting/enforcement query, required for native-root quota mutation."
+    ]
+  },
+  "environment": {
+    "vm": "stackfort-native-quota-debian-13",
+    "hypervisor": "Hyper-V",
+    "vCPUs": 2,
+    "memoryBytes": 8589934592,
+    "systemDiskBytes": 53687091200,
+    "auxiliaryDisk": "64 MiB NoCloud seed; no separate hosting disk",
+    "cloudImageSHA512": "8ea9faae810043a0b35b0149f05014f26705c2339ffb11ead308f33e844a87cc3ef46ec81d5262b38817b6a88af404874d48a5857ebe072ef6a31dfb6e371f50",
+    "intent": {
+      "Operation": "f52a85ff-faed-446a-b72d-a90d9f4fef1d",
+      "UUID": "a88eaa57-e875-4855-a3cb-c231758653f8",
+      "PartUUID": "54964bdf-2add-41b7-b41e-6d483962d021",
+      "Kernel": "6.12.107+deb13-cloud-amd64",
+      "BootBefore": "15f5ef37-7125-4ba9-881d-adcf8d0235e6",
+      "VMUUID": "6365bd88-5141-4f15-b3f8-2ba9996baad2",
+      "Features": "has_journal ext_attr resize_inode dir_index orphan_file filetype needs_recovery extent 64bit flex_bg metadata_csum_seed sparse_super large_file huge_file dir_nlink extra_isize metadata_csum orphan_present",
+      "Blocks": "13074427",
+      "BlockSize": "4096",
+      "InodeSize": "256",
+      "FstabBefore": "PARTUUID=54964bdf-2add-41b7-b41e-6d483962d021 / ext4 rw,discard,errors=remount-ro,x-systemd.growfs 0 1\nPARTUUID=1571ce10-020a-40ee-b41a-6cc127239fac /boot/efi vfat defaults,umask=077 0 2\n",
+      "FstabAfter": "PARTUUID=54964bdf-2add-41b7-b41e-6d483962d021\t/\text4\trw,discard,errors=remount-ro,x-systemd.growfs,prjquota\t0\t1\nPARTUUID=1571ce10-020a-40ee-b41a-6cc127239fac /boot/efi vfat defaults,umask=077 0 2\n",
+      "SentinelHash": "327d8378f753da0c57b6997ef530afa2a7ce820b0adf8f32f02669e5b0f4e4d1"
+    },
+    "before": {
+      "fileBytes": 536870912,
+      "fio": "fio-3.39",
+      "kernel": "6.12.107+deb13-cloud-amd64",
+      "note": "Three repeats per phase separated by reboot/conversion; not randomized or paired simultaneously",
+      "phase": "before",
+      "rootMount": "/dev/sda1 ext4 rw,relatime,discard,errors=remount-ro",
+      "superblock": {
+        "Block count": "13074427",
+        "Block size": "4096",
+        "Blocks per group": "32768",
+        "Check interval": "0 (<none>)",
+        "Checksum": "0x1714f091",
+        "Checksum seed": "0xefb5eae1",
+        "Checksum type": "crc32c",
+        "Default directory hash": "half_md4",
+        "Default mount options": "user_xattr acl",
+        "Desired extra isize": "32",
+        "Directory Hash Seed": "b5a79c99-aec7-4d30-b885-77f0560c078a",
+        "Errors behavior": "Continue",
+        "Filesystem OS type": "Linux",
+        "Filesystem UUID": "a88eaa57-e875-4855-a3cb-c231758653f8",
+        "Filesystem created": "Mon Aug 31 05:05:30 2026",
+        "Filesystem features": "has_journal ext_attr resize_inode dir_index orphan_file filetype needs_recovery extent 64bit flex_bg metadata_csum_seed sparse_super large_file huge_file dir_nlink extra_isize metadata_csum orphan_present",
+        "Filesystem flags": "signed_directory_hash",
+        "Filesystem magic number": "0xEF53",
+        "Filesystem revision #": "1 (dynamic)",
+        "Filesystem state": "clean",
+        "Filesystem volume name": "<none>",
+        "First block": "0",
+        "First inode": "11",
+        "Flex block group size": "16",
+        "Fragment size": "4096",
+        "Fragments per group": "32768",
+        "Free blocks": "12350507",
+        "Free inodes": "3228755",
+        "Group descriptor size": "64",
+        "Inode blocks per group": "512",
+        "Inode count": "3268608",
+        "Inode size": "256",
+        "Inodes per group": "8192",
+        "Journal backup": "inode blocks",
+        "Journal inode": "8",
+        "Last checked": "Mon Aug 31 05:05:30 2026",
+        "Last mount time": "Tue Sep  8 09:10:32 2026",
+        "Last mounted on": "/",
+        "Last write time": "Tue Sep  8 09:10:31 2026",
+        "Lifetime writes": "4306 MB",
+        "Maximum mount count": "-1",
+        "Mount count": "5",
+        "Orphan file inode": "12",
+        "Overhead clusters": "226267",
+        "Required extra isize": "32",
+        "Reserved GDT blocks": "361",
+        "Reserved block count": "530488",
+        "Reserved blocks gid": "0 (group root)",
+        "Reserved blocks uid": "0 (user root)"
+      }
+    },
+    "after": {
+      "fileBytes": 536870912,
+      "fio": "fio-3.39",
+      "kernel": "6.12.107+deb13-cloud-amd64",
+      "note": "Three repeats per phase separated by reboot/conversion; not randomized or paired simultaneously",
+      "phase": "after",
+      "rootMount": "/dev/sda1 ext4 rw,relatime,discard,prjquota,errors=remount-ro",
+      "superblock": {
+        "Block count": "13074427",
+        "Block size": "4096",
+        "Blocks per group": "32768",
+        "Check interval": "0 (<none>)",
+        "Checksum": "0xfa23f909",
+        "Checksum seed": "0xefb5eae1",
+        "Checksum type": "crc32c",
+        "Default directory hash": "half_md4",
+        "Default mount options": "user_xattr acl",
+        "Desired extra isize": "32",
+        "Directory Hash Seed": "b5a79c99-aec7-4d30-b885-77f0560c078a",
+        "Errors behavior": "Continue",
+        "Filesystem OS type": "Linux",
+        "Filesystem UUID": "a88eaa57-e875-4855-a3cb-c231758653f8",
+        "Filesystem created": "Mon Aug 31 05:05:30 2026",
+        "Filesystem features": "has_journal ext_attr resize_inode dir_index orphan_file filetype needs_recovery extent 64bit flex_bg metadata_csum_seed sparse_super large_file huge_file dir_nlink extra_isize quota metadata_csum project orphan_present",
+        "Filesystem flags": "signed_directory_hash",
+        "Filesystem magic number": "0xEF53",
+        "Filesystem revision #": "1 (dynamic)",
+        "Filesystem state": "clean",
+        "Filesystem volume name": "<none>",
+        "First block": "0",
+        "First inode": "11",
+        "Flex block group size": "16",
+        "Fragment size": "4096",
+        "Fragments per group": "32768",
+        "Free blocks": "12340137",
+        "Free inodes": "3228721",
+        "Group descriptor size": "64",
+        "Inode blocks per group": "512",
+        "Inode count": "3268608",
+        "Inode size": "256",
+        "Inodes per group": "8192",
+        "Journal backup": "inode blocks",
+        "Journal inode": "8",
+        "Last checked": "Tue Sep  8 09:15:52 2026",
+        "Last mount time": "Tue Sep  8 09:23:59 2026",
+        "Last mounted on": "/",
+        "Last write time": "Tue Sep  8 09:23:57 2026",
+        "Lifetime writes": "38 GB",
+        "Maximum mount count": "-1",
+        "Mount count": "2",
+        "Orphan file inode": "12",
+        "Overhead clusters": "226267",
+        "Project quota inode": "150",
+        "Required extra isize": "32",
+        "Reserved GDT blocks": "361",
+        "Reserved block count": "530488",
+        "Reserved blocks gid": "0 (group root)",
+        "Reserved blocks uid": "0 (user root)"
+      }
+    }
+  },
+  "method": {
+    "measuredJobs": 18,
+    "phases": 2,
+    "repetitions": 3,
+    "fileBytes": 536870912,
+    "rampSeconds": 2,
+    "measurementSeconds": 10,
+    "applicationDirectIO": true,
+    "ioengine": "libaio",
+    "randomQueueDepth": 16,
+    "fsyncQueueDepth": 1,
+    "projectIDAfter": 249570,
+    "projectHardBytesAfter": 1073741824,
+    "order": "Before, then reboot/conversion and validation, then after. Not randomized.",
+    "cpu": "Guest-wide busy fraction including warm-up/startup/background, not fio process-only CPU",
+    "latency": "syncwrite p99 is fsync-only sync.lat_ns; other p99 is completion clat_ns"
+  },
+  "functionalChecks": {
+    "wrongUUID": "passed; ordinary OS boot continues, root features/fstab unchanged and hosting consumer blocked",
+    "offlineConversion": "passed; plain root partition unmounted, VM/root/partition/geometry matches, pre/post e2fsck, quota/project metadata enabled without resize/reformat",
+    "dataIntegrity": "sentinel SHA256, UUID, partition UUID, geometry and existing stable features preserved",
+    "automaticResume": "passed; current boot/operation evidence, explicit enforcement activation and read-back, atomic fstab persistence, native bind mount and synthetic dependent service",
+    "quotaAndAccountIsolation": "passed; byte and inode hard limits, cross-account boundaries and existing CPU/memory/PID regression",
+    "rootlessOCI": "private resources and complete deployment lifecycle passed",
+    "subordinateUIDQuota": {
+      "result": "passed",
+      "containerImageID": "881a32046cbec149de5f57d15349042946d52f9aeb49e430146b0c6ee714e7a5",
+      "accountUID": 249940,
+      "fileUID": 3273867840,
+      "initialHardBytes": 268435456,
+      "partialFileBytes": 202670080,
+      "raisedHardBytes": 335544320,
+      "recoveredAppendBytes": 16777216
+    },
+    "accountingOnly": "passed; after quotaoff, accounting stays on but limits are off; native quota mutation is rejected without account data creation; automatic resume restores enforcement",
+    "missingBootEvidence": "passed; consumer refuses startup until matching current boot evidence is restored",
+    "mountLossAndRetry": "passed; consumer stops, idempotent resume restores readiness without duplicate fstab entries",
+    "subsequentReboot": "passed with status already-ready, no repeated conversion; accounting/enforcement, hard limits and OCI tests pass",
+    "fullRootENOSPC": "NOT RUN; deliberately do not fill the OS filesystem",
+    "existingSeparateFilesystemRegression": "passed on the prior Debian ext4-image VM with the same final binary: quota/isolation, OCI private resources/lifecycle, subordinate-UID quota recovery, direct/buffered bandwidth and IOPS; no root conversion or image replacement",
+    "freshReplay": {
+      "result": "passed from the offline pre-conversion checkpoint without manual post-boot quota activation",
+      "operation": "c7090a1e-752b-43e0-9143-609d91250a59",
+      "binarySHA256": "6ade1cee7a9481837d1b9801e2f1e705895fdfe1eaa4b771560845b6b0f631cc",
+      "stages": [
+        "infra/host-tests/work/native-quota-Prepare-20260908T092811Z",
+        "infra/host-tests/work/native-quota-Arm-20260908T092814Z",
+        "infra/host-tests/work/native-quota-Validate-20260908T092818Z"
+      ],
+      "conversionSecondsRounded": 0.24,
+      "resumeSecondsRounded": 0.04
+    }
+  },
+  "discoveries": [
+    "initramfs ROOT may contain the original PARTUUID= specifier; the first rejection attempt failed before identity comparison. Validated UUID resolution fixed this; no metadata mutation occurred.",
+    "orphan_present is cleared at clean unmount. An initial strict feature check rejected the unmounted root; only known mount-state flags are now exempted, not permanent safety features.",
+    "quota-tools rejected the subtree bind mount /srv/hosting as a filesystem argument. A descriptor- and kernel-verified native-root target was added without a caller-controlled path.",
+    "Initial remount/print-state showed quotas on, but hard limits were not enforced. Explicit quotaon proved the cause; kernel accounting/enforcement flags now gate resume and native mutations.",
+    "Manual diagnostic fixes are not the success evidence: the final binary replay from the pre-conversion checkpoint passed without them."
+  ],
+  "limitations": [
+    "One Debian 13 Hyper-V vendor image, ordinary ext4 partition and matching GRUB/initramfs-tools boot chain only.",
+    "No Ubuntu/Rocky native qualification, LVM/RAID/LUKS or provider-managed boot/kernel qualification.",
+    "Sequential before/after measurement phases, short samples and host caches/state; no precise causal overhead or statistical-significance claim. No HTTP, PHP, WAF or database transaction benchmark.",
+    "A stable fsync median here does not prove quotas are free; random-write median was lower after conversion.",
+    "Synthetic mount-dependent consumer only; not the real NGINX/PHP/OCI/agent service graph or complete installer/browser setup.",
+    "Production one-shot/retry journal, installation locking, initrd/kernel coordination, power-loss recovery, aggregate capacity/OS reserve and migration remain open.",
+    "Boot mutation marker is in memory, not power-loss-safe durable state; emergency recovery path was not destructively qualified.",
+    "Existing high-level capability reporting still needs accounting-versus-enforcement semantics; the new native execution/startup gates check actual kernel state.",
+    "Individual binaries changed during debugging. Fresh final replay shares one binary hash; the broader experiment is not an immutable release qualification."
+  ],
+  "artifacts": {
+    "phases": [
+      {
+        "directory": "infra/host-tests/work/native-quota-Arm-20260908T091425Z",
+        "passed": true,
+        "files": [
+          {
+            "name": "boot.log",
+            "sha256": "4a513c0070be65eeb1c8dcf3c2f64c1339095bb88850f71c4f5cb37fe63d382b"
+          },
+          {
+            "name": "evidence.tar.gz",
+            "sha256": "96a03ac7ccc92fcb315cf7085b0f9c2c382586043c014013ef00d35b06352f99"
+          },
+          {
+            "name": "native-quota.test",
+            "sha256": "fb25566ebeda9c0e59d30e446621dfcc3fb15787f1f59a11a169357875eb0ac8"
+          },
+          {
+            "name": "tests.log",
+            "sha256": "dfd217dba1dc8a2cf9d06d288a94b96c766fb1c4d599b817e462d1a7c95e42b4"
+          }
+        ]
+      },
+      {
+        "directory": "infra/host-tests/work/native-quota-Arm-20260908T091546Z",
+        "passed": true,
+        "files": [
+          {
+            "name": "boot.log",
+            "sha256": "29c01f91ef6733d548df392fe7fad7d318c4ed357d90d9450d8d97cfe8837f80"
+          },
+          {
+            "name": "evidence.tar.gz",
+            "sha256": "7aadf9801ba6111ed764518b1e604492e625c39760e091bf371bf5587ab307c7"
+          },
+          {
+            "name": "native-quota.test",
+            "sha256": "8f8bbb62df494cd3ca3a68c56b6f767dcfd23f19d577bd7209643505f695a339"
+          },
+          {
+            "name": "tests.log",
+            "sha256": "e2e8616b1edd85919e269fff0da8ae3c2c8761633c9d4d649de82a1da0223495"
+          }
+        ]
+      },
+      {
+        "directory": "infra/host-tests/work/native-quota-Arm-20260908T092309Z",
+        "passed": true,
+        "files": [
+          {
+            "name": "boot.log",
+            "sha256": "a73a2c3c047576a18e6193c57e6e33d32872bbe0979057ba3005db2f102d7e39"
+          },
+          {
+            "name": "evidence.tar.gz",
+            "sha256": "bf27f9e87c404688a0896e7ff5df28a4e642c025268fb553b0e183901e53d2fc"
+          },
+          {
+            "name": "native-quota.test",
+            "sha256": "6ade1cee7a9481837d1b9801e2f1e705895fdfe1eaa4b771560845b6b0f631cc"
+          },
+          {
+            "name": "tests.log",
+            "sha256": "cdd2a2cb788d071fe0f9a82ec3ff2b3c87db73608ac6896cddd04aeb12a90eea"
+          }
+        ]
+      },
+      {
+        "directory": "infra/host-tests/work/native-quota-Arm-20260908T092814Z",
+        "passed": true,
+        "files": [
+          {
+            "name": "boot.log",
+            "sha256": "364a69156bc485a3f944e5e8cc1b6777b8d1eee1bc38043ca6ba1aafc302d005"
+          },
+          {
+            "name": "evidence.tar.gz",
+            "sha256": "1c41671f31399993b7628c65791384e71b169cadbcbdd4c58c0b27bcadaaec3c"
+          },
+          {
+            "name": "native-quota.test",
+            "sha256": "6ade1cee7a9481837d1b9801e2f1e705895fdfe1eaa4b771560845b6b0f631cc"
+          },
+          {
+            "name": "tests.log",
+            "sha256": "c61513db90918e4d19b334da1834c6569414aa34cfe4ee304700dfdaed9e34d6"
+          }
+        ]
+      },
+      {
+        "directory": "infra/host-tests/work/native-quota-ArmReject-20260908T090941Z",
+        "passed": true,
+        "files": [
+          {
+            "name": "boot.log",
+            "sha256": "c00abc4c45bd167b4fa033b4f5c90d56299060b0ab2a7fd224df5d69118ad5ea"
+          },
+          {
+            "name": "evidence.tar.gz",
+            "sha256": "aab7eed1ff994fa88ee423e344e298ca8e0f33ad06b9d86452bbb6057f10ae2e"
+          },
+          {
+            "name": "native-quota.test",
+            "sha256": "916ff9cb7a2a21bf14e91eb2954a37abaa17975d41eaf9cf86b46cbbf574dc3e"
+          },
+          {
+            "name": "tests.log",
+            "sha256": "648c3670d8e0e7779bf71252e89c51b9f36eb60f575bd2e7d12e737e08c7d53c"
+          }
+        ]
+      },
+      {
+        "directory": "infra/host-tests/work/native-quota-ArmReject-20260908T091023Z",
+        "passed": true,
+        "files": [
+          {
+            "name": "boot.log",
+            "sha256": "46611923c6c9abdcd8da7b43327d45ecc440bb9a3196ec992a93dc371756ffb2"
+          },
+          {
+            "name": "evidence.tar.gz",
+            "sha256": "5d27fd8cb75406b9d2bba1d4d55ffc9cacdc09c510f372e6ac9cea595dc94721"
+          },
+          {
+            "name": "native-quota.test",
+            "sha256": "1f35ae977c85aee2cec463da692857e9fbdabebc69fe2bc3784a0d3327a2116a"
+          },
+          {
+            "name": "tests.log",
+            "sha256": "b531c373463d997a67f888f5c93bdf6c84e0cecf5309934d220fbd2c456e98e4"
+          }
+        ]
+      },
+      {
+        "directory": "infra/host-tests/work/native-quota-BenchmarkAfter-20260908T092508Z",
+        "passed": true,
+        "files": [
+          {
+            "name": "boot.log",
+            "sha256": "45c06fd38ddc94c96f152dc85a0ccde1ad1e24b6dfcfb1149a6df34a39862b8d"
+          },
+          {
+            "name": "evidence.tar.gz",
+            "sha256": "abb054ce0a4c06ffd66f5c65cabe49cccc09705ca5ab69a392977d2aeaf78d6e"
+          },
+          {
+            "name": "native-quota.test",
+            "sha256": "6ade1cee7a9481837d1b9801e2f1e705895fdfe1eaa4b771560845b6b0f631cc"
+          },
+          {
+            "name": "tests.log",
+            "sha256": "d4e6b01aa1573794a72a2097f3b2f405e675555652e2bb8a52f8ad284cea9b5a"
+          }
+        ]
+      },
+      {
+        "directory": "infra/host-tests/work/native-quota-BenchmarkBefore-20260908T091157Z",
+        "passed": true,
+        "files": [
+          {
+            "name": "boot.log",
+            "sha256": "4a513c0070be65eeb1c8dcf3c2f64c1339095bb88850f71c4f5cb37fe63d382b"
+          },
+          {
+            "name": "evidence.tar.gz",
+            "sha256": "f0949e2fc8edd023799740713821ffa94975f92fd9bbc005b707e4e418cc9fce"
+          },
+          {
+            "name": "native-quota.test",
+            "sha256": "c6caaa9f88f9206a525803ddbea9280805e74775fe691b98d33147ecfead801a"
+          },
+          {
+            "name": "tests.log",
+            "sha256": "b6156bc8cd011c1dd8bcb1f08400408eeda588126661de447222eb7d457a45b3"
+          }
+        ]
+      },
+      {
+        "directory": "infra/host-tests/work/native-quota-CheckReject-20260908T090951Z",
+        "passed": false,
+        "files": [
+          {
+            "name": "boot.log",
+            "sha256": "46611923c6c9abdcd8da7b43327d45ecc440bb9a3196ec992a93dc371756ffb2"
+          },
+          {
+            "name": "evidence.tar.gz",
+            "sha256": "aab7eed1ff994fa88ee423e344e298ca8e0f33ad06b9d86452bbb6057f10ae2e"
+          },
+          {
+            "name": "native-quota.test",
+            "sha256": "916ff9cb7a2a21bf14e91eb2954a37abaa17975d41eaf9cf86b46cbbf574dc3e"
+          },
+          {
+            "name": "tests.log",
+            "sha256": "b352a7848a43d4369824d318d7c6de4f4dfaad73f3324709c6338c8920ce5f3d"
+          }
+        ]
+      },
+      {
+        "directory": "infra/host-tests/work/native-quota-CheckReject-20260908T091027Z",
+        "passed": true,
+        "files": [
+          {
+            "name": "boot.log",
+            "sha256": "4a513c0070be65eeb1c8dcf3c2f64c1339095bb88850f71c4f5cb37fe63d382b"
+          },
+          {
+            "name": "evidence.tar.gz",
+            "sha256": "5d27fd8cb75406b9d2bba1d4d55ffc9cacdc09c510f372e6ac9cea595dc94721"
+          },
+          {
+            "name": "native-quota.test",
+            "sha256": "1f35ae977c85aee2cec463da692857e9fbdabebc69fe2bc3784a0d3327a2116a"
+          },
+          {
+            "name": "tests.log",
+            "sha256": "6404f051b84e1b0e87fbadf7a9cd8d6716219d66b199bcde025bb7af238bf086"
+          }
+        ]
+      },
+      {
+        "directory": "infra/host-tests/work/native-quota-Prepare-20260908T090923Z",
+        "passed": true,
+        "files": [
+          {
+            "name": "boot.log",
+            "sha256": "c00abc4c45bd167b4fa033b4f5c90d56299060b0ab2a7fd224df5d69118ad5ea"
+          },
+          {
+            "name": "evidence.tar.gz",
+            "sha256": "8c44bb9cb76b14db0a4c9a5fe71dee40a40fa5f1139cc8c687bd2e72a9986a9a"
+          },
+          {
+            "name": "native-quota.test",
+            "sha256": "916ff9cb7a2a21bf14e91eb2954a37abaa17975d41eaf9cf86b46cbbf574dc3e"
+          },
+          {
+            "name": "tests.log",
+            "sha256": "8b3b9caf5b2d4e2cf3aa9369063dc4f1c1a63228aeed352570a3199b588d899c"
+          }
+        ]
+      },
+      {
+        "directory": "infra/host-tests/work/native-quota-Prepare-20260908T092811Z",
+        "passed": true,
+        "files": [
+          {
+            "name": "boot.log",
+            "sha256": "364a69156bc485a3f944e5e8cc1b6777b8d1eee1bc38043ca6ba1aafc302d005"
+          },
+          {
+            "name": "evidence.tar.gz",
+            "sha256": "732ae75287e2bc6002a55e15d8d5eff5c6e3a0764cf1902cee107101f6f04894"
+          },
+          {
+            "name": "native-quota.test",
+            "sha256": "6ade1cee7a9481837d1b9801e2f1e705895fdfe1eaa4b771560845b6b0f631cc"
+          },
+          {
+            "name": "tests.log",
+            "sha256": "bec267727688c6a33005d5dcc80d191a25e81d53d53bbd9c24a3783e05d61e5b"
+          }
+        ]
+      },
+      {
+        "directory": "infra/host-tests/work/native-quota-Reboot-20260908T092356Z",
+        "passed": true,
+        "files": [
+          {
+            "name": "boot.log",
+            "sha256": "45c06fd38ddc94c96f152dc85a0ccde1ad1e24b6dfcfb1149a6df34a39862b8d"
+          },
+          {
+            "name": "evidence.tar.gz",
+            "sha256": "c915a44c25ea9666ab89cddd14a62c31b796356c2c991aa6984679b1e1fbddff"
+          },
+          {
+            "name": "native-quota.test",
+            "sha256": "6ade1cee7a9481837d1b9801e2f1e705895fdfe1eaa4b771560845b6b0f631cc"
+          },
+          {
+            "name": "tests.log",
+            "sha256": "e40be208b32b837f279ab846b87dba825eb52444797560cd3ed68ef5a1bff1d0"
+          }
+        ]
+      },
+      {
+        "directory": "infra/host-tests/work/native-quota-Safety-20260908T092314Z",
+        "passed": true,
+        "files": [
+          {
+            "name": "boot.log",
+            "sha256": "dc9de1e8090777a8c3bc56b3999b8a48e0737087a92d02f1ff620e4c2efb3b48"
+          },
+          {
+            "name": "evidence.tar.gz",
+            "sha256": "84e0908275ee4f7a05fd01902e59fe2464c5e209269bfa2eb8e224a6ad9fa359"
+          },
+          {
+            "name": "native-quota.test",
+            "sha256": "6ade1cee7a9481837d1b9801e2f1e705895fdfe1eaa4b771560845b6b0f631cc"
+          },
+          {
+            "name": "tests.log",
+            "sha256": "5cc648a0800911fdc6d93bbf7f6770ccd045d12e1b9ba8fbc6698eeeda4461f0"
+          }
+        ]
+      },
+      {
+        "directory": "infra/host-tests/work/native-quota-Validate-20260908T091430Z",
+        "passed": false,
+        "files": [
+          {
+            "name": "boot.log",
+            "sha256": "29c01f91ef6733d548df392fe7fad7d318c4ed357d90d9450d8d97cfe8837f80"
+          },
+          {
+            "name": "evidence.tar.gz",
+            "sha256": "96a03ac7ccc92fcb315cf7085b0f9c2c382586043c014013ef00d35b06352f99"
+          },
+          {
+            "name": "native-quota.test",
+            "sha256": "fb25566ebeda9c0e59d30e446621dfcc3fb15787f1f59a11a169357875eb0ac8"
+          },
+          {
+            "name": "tests.log",
+            "sha256": "73e5e680dc42ed6abf3213074649c180e710b0d9b3dfa29d288c5af3d43fa223"
+          }
+        ]
+      },
+      {
+        "directory": "infra/host-tests/work/native-quota-Validate-20260908T091550Z",
+        "passed": false,
+        "files": [
+          {
+            "name": "boot.log",
+            "sha256": "a73a2c3c047576a18e6193c57e6e33d32872bbe0979057ba3005db2f102d7e39"
+          },
+          {
+            "name": "evidence.tar.gz",
+            "sha256": "94f229b82f05f69d387eedd2cf08e1b7bdc3c78e454d9a78b7bac455e8751782"
+          },
+          {
+            "name": "native-quota.test",
+            "sha256": "8f8bbb62df494cd3ca3a68c56b6f767dcfd23f19d577bd7209643505f695a339"
+          },
+          {
+            "name": "tests.log",
+            "sha256": "90d52f0fae3f50c8c02528490bff8741315eef162fc1124dbfe68244757d26df"
+          }
+        ]
+      },
+      {
+        "directory": "infra/host-tests/work/native-quota-Validate-20260908T092818Z",
+        "passed": true,
+        "files": [
+          {
+            "name": "boot.log",
+            "sha256": "e4fa4e402626a9ec024cace66964301c34115bb2ba1c074f9dedc7a4a147f925"
+          },
+          {
+            "name": "evidence.tar.gz",
+            "sha256": "fa3e4c2810f1ac2a7d4cb6bbc2247b75d6908cbd4208f4228bc4f012cb735523"
+          },
+          {
+            "name": "native-quota.test",
+            "sha256": "6ade1cee7a9481837d1b9801e2f1e705895fdfe1eaa4b771560845b6b0f631cc"
+          },
+          {
+            "name": "tests.log",
+            "sha256": "57e2206d635f08a4395d192bb0ff5531674776c37d94a32791db0f250106d179"
+          }
+        ]
+      },
+      {
+        "directory": "infra/host-tests/work/native-quota-ValidateCurrent-20260908T091929Z",
+        "passed": false,
+        "files": [
+          {
+            "name": "boot.log",
+            "sha256": "a73a2c3c047576a18e6193c57e6e33d32872bbe0979057ba3005db2f102d7e39"
+          },
+          {
+            "name": "evidence.tar.gz",
+            "sha256": "94f229b82f05f69d387eedd2cf08e1b7bdc3c78e454d9a78b7bac455e8751782"
+          },
+          {
+            "name": "native-quota.test",
+            "sha256": "0d9c74bd3830218e651b3024ff6e975e3fee03a0f227095193381f64e2991a81"
+          },
+          {
+            "name": "tests.log",
+            "sha256": "6e2edcdea80c1cc957d1560fc3dc76ee62b553803f6eb7651e38cd1e8e6bde5f"
+          }
+        ]
+      },
+      {
+        "directory": "infra/host-tests/work/native-quota-ValidateCurrent-20260908T092020Z",
+        "passed": true,
+        "files": [
+          {
+            "name": "boot.log",
+            "sha256": "a73a2c3c047576a18e6193c57e6e33d32872bbe0979057ba3005db2f102d7e39"
+          },
+          {
+            "name": "evidence.tar.gz",
+            "sha256": "94f229b82f05f69d387eedd2cf08e1b7bdc3c78e454d9a78b7bac455e8751782"
+          },
+          {
+            "name": "native-quota.test",
+            "sha256": "0d9c74bd3830218e651b3024ff6e975e3fee03a0f227095193381f64e2991a81"
+          },
+          {
+            "name": "tests.log",
+            "sha256": "237323899171f0c027ec7f83adab6641da177e4cd95be62db194da0e050c22f3"
+          }
+        ]
+      }
+    ],
+    "benchmarkArchive": "infra/host-tests/work/native-quota-BenchmarkAfter-20260908T092508Z/evidence.tar.gz",
+    "benchmarkArchiveSHA256": "abb054ce0a4c06ffd66f5c65cabe49cccc09705ca5ab69a392977d2aeaf78d6e",
+    "existingSeparateFilesystemRegression": {
+      "directory": "infra/host-tests/work/storage-image-Validate-20260908T093023Z",
+      "binarySHA256": "6ade1cee7a9481837d1b9801e2f1e705895fdfe1eaa4b771560845b6b0f631cc",
+      "logSHA256": "ca7f8f1c356c755de72064fb1cb8827c8aa13e988195a0cdb1d734d08db5b6a0",
+      "archiveSHA256": "29e6f919594ff6d5c747d4d606115838645ebe0d5e4c841310c61caa3506218d"
+    }
+  },
+  "recovery": {
+    "preConversionCheckpointID": "9e62e0ac-89ad-4851-8ae2-e6b936e40eae",
+    "measuredStateCheckpointID": "ddfe5fb5-6b33-452a-973c-047b04476067",
+    "note": "Both retained for this lab. Evidence was copied locally before replay. No unrelated VM was restored."
+  }
+}

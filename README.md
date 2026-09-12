@@ -15,6 +15,8 @@ the web interface itself a privileged system process.
 > Stackfort is under active development. Phase 6 is in progress, and the
 > project is not ready for production servers or valuable data. No public
 > release is available yet; installation examples require published assets.
+> The first native beta targets disposable Debian 13 test servers only.
+> No independent security review has been performed; support is community-only.
 
 [Documentation](docs/README.md) · [Operations](docs/operations.md) ·
 [Roadmap](docs/roadmap.md) · [Security policy](SECURITY.md) ·
@@ -22,7 +24,9 @@ the web interface itself a privileged system process.
 
 ## Install
 
-For a **fresh, disposable** Debian 13, Ubuntu 26.04 or Rocky Linux 10 server:
+Planned first native beta: **fresh, disposable Debian 13 `amd64` test servers**
+within the [qualified host profile](docs/one-line-installation-readiness.md#scope).
+Public native installation remains blocked until its release gates pass:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/RTBGG/stackfort/main/packaging/installer/install.sh | sudo bash
@@ -30,9 +34,17 @@ curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/RTBGG/st
 
 [Inspect the installer](https://raw.githubusercontent.com/RTBGG/stackfort/main/packaging/installer/install.sh)
 before running it as root. HTTPS-only transport and TLS 1.2 or newer are required
-by this command. **No public release exists yet:** the installer cannot complete
-until matching release assets are published. See the
+by this command. The current script explicitly selects **`0.1.0-beta.4`**, not
+latest stable. **No public release exists yet:** its assets and exact tagged
+installation qualification are still pending. Native setup requires an interactive
+root console/SSH terminal, explicit reboot consent and saving the setup code.
+See the
 [installation guide](docs/installer-installation.md) for prerequisites and options.
+Existing tests on already quota-prepared Debian, Ubuntu and Rocky storage are a
+separate installation path, not qualification of their default root filesystems.
+Disk/inode exhaustion can still make the shared-root test server unavailable;
+there is no durable OS capacity reserve yet. See the
+[experimental limits](docs/one-line-installation-readiness.md#experimental-capacity-limitation).
 
 After installation, [configure a panel subdomain](docs/panel-hostname.md) such as
 `https://panel.example.com/`, with automatic Let's Encrypt issuance and renewal.
@@ -47,7 +59,7 @@ The initial IP-based HTTPS endpoint on port 8443 remains available as a fallback
 | Security | Role and account isolation, MFA, audit chain, Coraza WAF, and hardened services |
 | Databases | Tenant-scoped MariaDB, guided lifecycle, credential rotation, and phpMyAdmin sign-on |
 | File management | Browse, upload, download, copy, move, trash, archives, and local file backups |
-| Installation | Qualified fresh-host installer plus versioned passive DEB/RPM release carriers |
+| Installation | Quota-prepared host installer and passive DEB/RPM carriers; Debian 13 native beta qualification in progress |
 | Containers | Rootless Podman, scanned images, private resources, health-gated Quadlets, routing, and three-OS isolation qualification |
 
 ## Design goals

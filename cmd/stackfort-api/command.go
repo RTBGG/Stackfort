@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	"github.com/RTBGG/stackfort/internal/core"
@@ -15,16 +16,25 @@ import (
 )
 
 func runCommand(ctx context.Context, args []string, output io.Writer) error {
+	return runCommandWithInput(ctx, args, os.Stdin, output)
+}
+
+func runCommandWithInput(ctx context.Context, args []string, input io.Reader, output io.Writer) error {
 	if len(args) >= 2 && args[0] == "database" && (args[1] == "migrate" || args[1] == "check") {
 		if len(args) != 2 {
 			return errors.New("usage: stackfort-api database migrate|check")
 		}
 		return runDatabaseCommand(ctx, args[1], output)
 	}
-	if len(args) < 2 || args[0] != "bootstrap" || args[1] != "create" {
-		return errors.New("usage: stackfort-api bootstrap create [--ttl duration] [--replace] | database migrate|check")
+	if len(args) >= 2 && args[0] == "bootstrap" {
+		switch args[1] {
+		case "create":
+			return runBootstrapCreateCommand(ctx, args[2:], output)
+		case "import-digest":
+			return runBootstrapImportDigestCommand(ctx, args[2:], input, output)
+		}
 	}
-	return runBootstrapCreateCommand(ctx, args[2:], output)
+	return errors.New("usage: stackfort-api bootstrap create [--ttl duration] [--replace] | bootstrap import-digest [--ttl duration] | database migrate|check")
 }
 
 func runDatabaseCommand(ctx context.Context, action string, output io.Writer) (returnErr error) {

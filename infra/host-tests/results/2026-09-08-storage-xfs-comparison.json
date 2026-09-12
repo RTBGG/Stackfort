@@ -1,0 +1,1070 @@
+{
+  "schemaVersion": 1,
+  "kind": "single-disk-xfs-ext4-image-comparison",
+  "baseline": "native root ext4 WITHOUT project quotas",
+  "candidate": "preallocated loop XFS and ext4 WITH project quotas and backing-file direct I/O",
+  "performanceAcceptance": "No demonstrated XFS-over-ext4 image benefit; neither loop-image configuration accepted as the silent production default.",
+  "workloads": [
+    {
+      "workload": "seqread",
+      "latencyMetric": "fio clat_ns p99",
+      "native": {
+        "iops": {
+          "median": 2366.396963,
+          "min": 1579.868053,
+          "max": 11713.557289,
+          "runs": [
+            11713.557289,
+            2366.396963,
+            1579.868053
+          ]
+        },
+        "mibPerSecond": {
+          "median": 2367.8953142166138,
+          "min": 1581.36745262146,
+          "max": 11715.056987762451,
+          "runs": [
+            11715.056987762451,
+            2367.8953142166138,
+            1581.36745262146
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 12.517376,
+          "min": 1.646592,
+          "max": 12.910592,
+          "runs": [
+            1.646592,
+            12.517376,
+            12.910592
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 6.427736657576938,
+          "min": 4.898119122257054,
+          "max": 16.42282370153621,
+          "runs": [
+            16.42282370153621,
+            6.427736657576938,
+            4.898119122257054
+          ]
+        }
+      },
+      "ext4": {
+        "iops": {
+          "median": 2477.122877,
+          "min": 1451.848152,
+          "max": 11701.959608,
+          "runs": [
+            11701.959608,
+            2477.122877,
+            1451.848152
+          ]
+        },
+        "mibPerSecond": {
+          "median": 2478.6213779449463,
+          "min": 1453.3466529846191,
+          "max": 11703.459307670593,
+          "runs": [
+            11703.459307670593,
+            2478.6213779449463,
+            1453.3466529846191
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 11.862016,
+          "min": 1.695744,
+          "max": 12.77952,
+          "runs": [
+            1.695744,
+            11.862016,
+            12.77952
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 6.87378640776699,
+          "min": 5.677368833202819,
+          "max": 19.424198250728864,
+          "runs": [
+            19.424198250728864,
+            6.87378640776699,
+            5.677368833202819
+          ]
+        }
+      },
+      "xfs": {
+        "iops": {
+          "median": 2572.070722,
+          "min": 2318.249925,
+          "max": 11718.256349,
+          "runs": [
+            11718.256349,
+            2572.070722,
+            2318.249925
+          ]
+        },
+        "mibPerSecond": {
+          "median": 2573.569073677063,
+          "min": 2319.7482767105103,
+          "max": 11719.856028556824,
+          "runs": [
+            11719.856028556824,
+            2573.569073677063,
+            2319.7482767105103
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 12.648448,
+          "min": 1.662976,
+          "max": 12.77952,
+          "runs": [
+            1.662976,
+            12.77952,
+            12.648448
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 6.661472536034282,
+          "min": 6.393762183235867,
+          "max": 20.41409371594624,
+          "runs": [
+            20.41409371594624,
+            6.393762183235867,
+            6.661472536034282
+          ]
+        }
+      },
+      "ext4VsNative": {
+        "medianIOPSChangePercent": 4.679092972618881,
+        "pairedIOPSChangePercent": {
+          "median": -0.09901075065293918,
+          "min": -8.103202084307215,
+          "max": 4.679092972618881,
+          "runs": [
+            -0.09901075065293918,
+            4.679092972618881,
+            -8.103202084307215
+          ]
+        }
+      },
+      "xfsVsNative": {
+        "medianIOPSChangePercent": 8.691430990481708,
+        "pairedIOPSChangePercent": {
+          "median": 8.691430990481708,
+          "min": 0.040116421374492006,
+          "max": 46.73693291018146,
+          "runs": [
+            0.040116421374492006,
+            8.691430990481708,
+            46.73693291018146
+          ]
+        }
+      },
+      "xfsVsExt4": {
+        "medianIOPSChangePercent": 3.8329889034406595,
+        "pairedIOPSChangePercent": {
+          "median": 3.8329889034406595,
+          "min": 0.1392650594081557,
+          "max": 59.675784399799966,
+          "runs": [
+            0.1392650594081557,
+            3.8329889034406595,
+            59.675784399799966
+          ]
+        }
+      }
+    },
+    {
+      "workload": "seqwrite",
+      "latencyMetric": "fio clat_ns p99",
+      "native": {
+        "iops": {
+          "median": 3056.149465,
+          "min": 2305.285118,
+          "max": 9078.268693,
+          "runs": [
+            9078.268693,
+            3056.149465,
+            2305.285118
+          ]
+        },
+        "mibPerSecond": {
+          "median": 3057.6481161117554,
+          "min": 2306.7752828598022,
+          "max": 9079.868052482605,
+          "runs": [
+            9079.868052482605,
+            3057.6481161117554,
+            2306.7752828598022
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 16.580608,
+          "min": 3.719168,
+          "max": 18.481152,
+          "runs": [
+            3.719168,
+            16.580608,
+            18.481152
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 23.789392774788624,
+          "min": 16.738533908271265,
+          "max": 49.90306320279178,
+          "runs": [
+            49.90306320279178,
+            23.789392774788624,
+            16.738533908271265
+          ]
+        }
+      },
+      "ext4": {
+        "iops": {
+          "median": 2990.312594,
+          "min": 638.569731,
+          "max": 9100.0999,
+          "runs": [
+            9100.0999,
+            2990.312594,
+            638.569731
+          ]
+        },
+        "mibPerSecond": {
+          "median": 2991.810646057129,
+          "min": 640.0554666519165,
+          "max": 9101.598401069641,
+          "runs": [
+            9101.598401069641,
+            2991.810646057129,
+            640.0554666519165
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 22.413312,
+          "min": 3.35872,
+          "max": 158.334976,
+          "runs": [
+            3.35872,
+            22.413312,
+            158.334976
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 22.690374951681484,
+          "min": 5.968379446640316,
+          "max": 56.40834575260805,
+          "runs": [
+            56.40834575260805,
+            22.690374951681484,
+            5.968379446640316
+          ]
+        }
+      },
+      "xfs": {
+        "iops": {
+          "median": 2916.90802,
+          "min": 2085.580188,
+          "max": 3115.015974,
+          "runs": [
+            2085.580188,
+            3115.015974,
+            2916.90802
+          ]
+        },
+        "mibPerSecond": {
+          "median": 2918.505941390991,
+          "min": 2087.0780906677246,
+          "max": 3116.6134176254272,
+          "runs": [
+            2087.0780906677246,
+            3116.6134176254272,
+            2918.505941390991
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 17.432576,
+          "min": 16.449536,
+          "max": 39.059456,
+          "runs": [
+            39.059456,
+            16.449536,
+            17.432576
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 22.769588828549264,
+          "min": 20.031421838177533,
+          "max": 24.143242202541394,
+          "runs": [
+            20.031421838177533,
+            22.769588828549264,
+            24.143242202541394
+          ]
+        }
+      },
+      "ext4VsNative": {
+        "medianIOPSChangePercent": -2.154242511826887,
+        "pairedIOPSChangePercent": {
+          "median": -2.154242511826887,
+          "min": -72.29975042939569,
+          "max": 0.2404776476469861,
+          "runs": [
+            0.2404776476469861,
+            -2.154242511826887,
+            -72.29975042939569
+          ]
+        }
+      },
+      "xfsVsNative": {
+        "medianIOPSChangePercent": -4.556107173246515,
+        "pairedIOPSChangePercent": {
+          "median": 1.9261659049780722,
+          "min": -77.0266748151205,
+          "max": 26.531334333630152,
+          "runs": [
+            -77.0266748151205,
+            1.9261659049780722,
+            26.531334333630152
+          ]
+        }
+      },
+      "xfsVsExt4": {
+        "medianIOPSChangePercent": -2.454745839859185,
+        "pairedIOPSChangePercent": {
+          "median": 4.170245620816182,
+          "min": -77.08178799223951,
+          "max": 356.78770514727074,
+          "runs": [
+            -77.08178799223951,
+            4.170245620816182,
+            356.78770514727074
+          ]
+        }
+      }
+    },
+    {
+      "workload": "randread",
+      "latencyMetric": "fio clat_ns p99",
+      "native": {
+        "iops": {
+          "median": 122682.931707,
+          "min": 114069.093091,
+          "max": 131438.756124,
+          "runs": [
+            131438.756124,
+            122682.931707,
+            114069.093091
+          ]
+        },
+        "mibPerSecond": {
+          "median": 479.2360601425171,
+          "min": 445.58864402770996,
+          "max": 513.4384994506836,
+          "runs": [
+            513.4384994506836,
+            479.2360601425171,
+            445.58864402770996
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 0.238592,
+          "min": 0.222208,
+          "max": 0.280576,
+          "runs": [
+            0.238592,
+            0.222208,
+            0.280576
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 39.06888958792073,
+          "min": 38.42039018250472,
+          "max": 39.13314624259432,
+          "runs": [
+            39.13314624259432,
+            39.06888958792073,
+            38.42039018250472
+          ]
+        }
+      },
+      "ext4": {
+        "iops": {
+          "median": 103222.577742,
+          "min": 102239.076092,
+          "max": 118341.665833,
+          "runs": [
+            118341.665833,
+            103222.577742,
+            102239.076092
+          ]
+        },
+        "mibPerSecond": {
+          "median": 403.2190523147583,
+          "min": 399.3772497177124,
+          "max": 462.2779903411865,
+          "runs": [
+            462.2779903411865,
+            403.2190523147583,
+            399.3772497177124
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 0.280576,
+          "min": 0.272384,
+          "max": 0.33792,
+          "runs": [
+            0.280576,
+            0.272384,
+            0.33792
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 41.89696349368816,
+          "min": 41.350067842605156,
+          "max": 43.29226557152635,
+          "runs": [
+            43.29226557152635,
+            41.89696349368816,
+            41.350067842605156
+          ]
+        }
+      },
+      "xfs": {
+        "iops": {
+          "median": 103333.866613,
+          "min": 102664.733527,
+          "max": 104973.70263,
+          "runs": [
+            104973.70263,
+            103333.866613,
+            102664.733527
+          ]
+        },
+        "mibPerSecond": {
+          "median": 403.6537752151489,
+          "min": 401.03997325897217,
+          "max": 410.0593843460083,
+          "runs": [
+            410.0593843460083,
+            403.6537752151489,
+            401.03997325897217
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 0.292864,
+          "min": 0.292864,
+          "max": 0.313344,
+          "runs": [
+            0.292864,
+            0.292864,
+            0.313344
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 42.361347397073835,
+          "min": 42.028493894165535,
+          "max": 42.48985115020298,
+          "runs": [
+            42.48985115020298,
+            42.361347397073835,
+            42.028493894165535
+          ]
+        }
+      },
+      "ext4VsNative": {
+        "medianIOPSChangePercent": -15.862315722513532,
+        "pairedIOPSChangePercent": {
+          "median": -10.370922287917605,
+          "min": -15.862315722513532,
+          "max": -9.964405231166474,
+          "runs": [
+            -9.964405231166474,
+            -15.862315722513532,
+            -10.370922287917605
+          ]
+        }
+      },
+      "xfsVsNative": {
+        "medianIOPSChangePercent": -15.771603127491918,
+        "pairedIOPSChangePercent": {
+          "median": -15.771603127491918,
+          "min": -20.134893447281822,
+          "max": -9.997764736239322,
+          "runs": [
+            -20.134893447281822,
+            -15.771603127491918,
+            -9.997764736239322
+          ]
+        }
+      },
+      "xfsVsExt4": {
+        "medianIOPSChangePercent": 0.10781446601553224,
+        "pairedIOPSChangePercent": {
+          "median": 0.10781446601553224,
+          "min": -11.296074893744057,
+          "max": 0.41633536928382675,
+          "runs": [
+            -11.296074893744057,
+            0.10781446601553224,
+            0.41633536928382675
+          ]
+        }
+      }
+    },
+    {
+      "workload": "randwrite",
+      "latencyMetric": "fio clat_ns p99",
+      "native": {
+        "iops": {
+          "median": 203230.484758,
+          "min": 145914.042979,
+          "max": 238227.163702,
+          "runs": [
+            238227.163702,
+            203230.484758,
+            145914.042979
+          ]
+        },
+        "mibPerSecond": {
+          "median": 793.8749370574951,
+          "min": 569.9825859069824,
+          "max": 930.5807132720947,
+          "runs": [
+            930.5807132720947,
+            793.8749370574951,
+            569.9825859069824
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 0.164864,
+          "min": 0.140288,
+          "max": 0.203776,
+          "runs": [
+            0.140288,
+            0.164864,
+            0.203776
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 51.53220762976861,
+          "min": 34.28179636612958,
+          "max": 53.57368753953194,
+          "runs": [
+            53.57368753953194,
+            51.53220762976861,
+            34.28179636612958
+          ]
+        }
+      },
+      "ext4": {
+        "iops": {
+          "median": 177170.946148,
+          "min": 138552.536956,
+          "max": 178969.327605,
+          "runs": [
+            177170.946148,
+            178969.327605,
+            138552.536956
+          ]
+        },
+        "mibPerSecond": {
+          "median": 692.0798616409302,
+          "min": 541.227089881897,
+          "max": 699.1047897338867,
+          "runs": [
+            692.0798616409302,
+            699.1047897338867,
+            541.227089881897
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 0.214016,
+          "min": 0.183296,
+          "max": 0.280576,
+          "runs": [
+            0.183296,
+            0.214016,
+            0.280576
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 57.393747804706706,
+          "min": 43.20318148951554,
+          "max": 58.92857142857143,
+          "runs": [
+            58.92857142857143,
+            57.393747804706706,
+            43.20318148951554
+          ]
+        }
+      },
+      "xfs": {
+        "iops": {
+          "median": 175275.152363,
+          "min": 128001.596328,
+          "max": 181069.044764,
+          "runs": [
+            175275.152363,
+            181069.044764,
+            128001.596328
+          ]
+        },
+        "mibPerSecond": {
+          "median": 684.674807548523,
+          "min": 500.01208114624023,
+          "max": 707.3068103790283,
+          "runs": [
+            684.674807548523,
+            707.3068103790283,
+            500.01208114624023
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 0.197632,
+          "min": 0.187392,
+          "max": 0.222208,
+          "runs": [
+            0.187392,
+            0.222208,
+            0.197632
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 57.37473535638673,
+          "min": 42.908959013420386,
+          "max": 60.484429065743946,
+          "runs": [
+            57.37473535638673,
+            60.484429065743946,
+            42.908959013420386
+          ]
+        }
+      },
+      "ext4VsNative": {
+        "medianIOPSChangePercent": -12.822652389493062,
+        "pairedIOPSChangePercent": {
+          "median": -11.93775490025002,
+          "min": -25.629410435484868,
+          "max": -5.045097697731171,
+          "runs": [
+            -25.629410435484868,
+            -11.93775490025002,
+            -5.045097697731171
+          ]
+        }
+      },
+      "xfsVsNative": {
+        "medianIOPSChangePercent": -13.75548182561699,
+        "pairedIOPSChangePercent": {
+          "median": -12.276026546381114,
+          "min": -26.425202886496646,
+          "max": -10.904584526474515,
+          "runs": [
+            -26.425202886496646,
+            -10.904584526474515,
+            -12.276026546381114
+          ]
+        }
+      },
+      "xfsVsExt4": {
+        "medianIOPSChangePercent": -1.0700364965124276,
+        "pairedIOPSChangePercent": {
+          "median": -1.0700364965124276,
+          "min": -7.615119044229878,
+          "max": 1.1732273832051554,
+          "runs": [
+            -1.0700364965124276,
+            1.1732273832051554,
+            -7.615119044229878
+          ]
+        }
+      }
+    },
+    {
+      "workload": "syncwrite",
+      "latencyMetric": "fio sync.lat_ns p99 (fsync only)",
+      "native": {
+        "iops": {
+          "median": 263.720884,
+          "min": 249.85003,
+          "max": 281.55922,
+          "runs": [
+            249.85003,
+            281.55922,
+            263.720884
+          ]
+        },
+        "mibPerSecond": {
+          "median": 1.0301589965820312,
+          "min": 0.9759759902954102,
+          "max": 1.0998401641845703,
+          "runs": [
+            0.9759759902954102,
+            1.0998401641845703,
+            1.0301589965820312
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 5.144576,
+          "min": 4.620288,
+          "max": 5.931008,
+          "runs": [
+            5.931008,
+            4.620288,
+            5.144576
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 3.5474970437524633,
+          "min": 3.3623417721518987,
+          "max": 3.7899723647848402,
+          "runs": [
+            3.7899723647848402,
+            3.5474970437524633,
+            3.3623417721518987
+          ]
+        }
+      },
+      "ext4": {
+        "iops": {
+          "median": 131.760472,
+          "min": 119.128523,
+          "max": 139.044382,
+          "runs": [
+            131.760472,
+            119.128523,
+            139.044382
+          ]
+        },
+        "mibPerSecond": {
+          "median": 0.5146884918212891,
+          "min": 0.4653453826904297,
+          "max": 0.5431413650512695,
+          "runs": [
+            0.5146884918212891,
+            0.4653453826904297,
+            0.5431413650512695
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 10.551296,
+          "min": 8.978432,
+          "max": 11.075584,
+          "runs": [
+            11.075584,
+            10.551296,
+            8.978432
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 3.9826498422712935,
+          "min": 3.9447731755424065,
+          "max": 4.1518386714116255,
+          "runs": [
+            4.1518386714116255,
+            3.9826498422712935,
+            3.9447731755424065
+          ]
+        }
+      },
+      "xfs": {
+        "iops": {
+          "median": 123.338331,
+          "min": 103.148426,
+          "max": 136.690647,
+          "runs": [
+            123.338331,
+            136.690647,
+            103.148426
+          ]
+        },
+        "mibPerSecond": {
+          "median": 0.48178958892822266,
+          "min": 0.4029226303100586,
+          "max": 0.5339469909667969,
+          "runs": [
+            0.48178958892822266,
+            0.5339469909667969,
+            0.4029226303100586
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 15.663104,
+          "min": 9.371648,
+          "max": 26.083328,
+          "runs": [
+            15.663104,
+            9.371648,
+            26.083328
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 3.6363636363636362,
+          "min": 3.4768866060845514,
+          "max": 3.837025316455696,
+          "runs": [
+            3.837025316455696,
+            3.6363636363636362,
+            3.4768866060845514
+          ]
+        }
+      },
+      "ext4VsNative": {
+        "medianIOPSChangePercent": -50.037907502236344,
+        "pairedIOPSChangePercent": {
+          "median": -47.27593056301146,
+          "min": -57.68970982374506,
+          "max": -47.264176033919234,
+          "runs": [
+            -47.264176033919234,
+            -57.68970982374506,
+            -47.27593056301146
+          ]
+        }
+      },
+      "xfsVsNative": {
+        "medianIOPSChangePercent": -53.2314888645679,
+        "pairedIOPSChangePercent": {
+          "median": -51.452256828954134,
+          "min": -60.88727428958565,
+          "max": -50.63505455652737,
+          "runs": [
+            -50.63505455652737,
+            -51.452256828954134,
+            -60.88727428958565
+          ]
+        }
+      },
+      "xfsVsExt4": {
+        "medianIOPSChangePercent": -6.392008826440754,
+        "pairedIOPSChangePercent": {
+          "median": -6.392008826440754,
+          "min": -25.816185798862413,
+          "max": 14.742165484583403,
+          "runs": [
+            -6.392008826440754,
+            14.742165484583403,
+            -25.816185798862413
+          ]
+        }
+      }
+    }
+  ],
+  "date": "2026-09-08",
+  "sourceBaseCommit": "ef74732bdcb18caf9ddd3d5aa3024b4381c6c3f2",
+  "release": {
+    "productionInstallerChanged": false,
+    "published": false,
+    "distributionQualification": [
+      "Debian 13 laboratory only"
+    ]
+  },
+  "environment": {
+    "vm": "stackfort-storage-prototype-debian-13",
+    "hypervisor": "Hyper-V, VM configuration 12.0",
+    "vCPUs": 2,
+    "memoryBytes": 8589934592,
+    "systemDiskBytes": 53687091200,
+    "auxiliaryDisk": "64 MiB NoCloud seed; not hosting storage",
+    "kernel": "6.12.107+deb13-cloud-amd64",
+    "systemd": "257.13-1~deb13u1",
+    "fio": "3.39",
+    "podman": "5.4.2",
+    "cloudImageSHA512": "8ea9faae810043a0b35b0149f05014f26705c2339ffb11ead308f33e844a87cc3ef46ec81d5262b38817b6a88af404874d48a5857ebe072ef6a31dfb6e371f50",
+    "imageBytes": 8589934592,
+    "rootFeaturesChanged": false,
+    "rootFstabChanged": false,
+    "rootUUID": "a88eaa57-e875-4855-a3cb-c231758653f8",
+    "facts": {
+      "ext4AllocatedBytes": 8589938688,
+      "fioVersion": "fio-3.39",
+      "kernel": "6.12.107+deb13-cloud-amd64",
+      "loops": "NAME       BACK-FILE                                         DIO\n/dev/loop1 /var/lib/stackfort-storage-prototype/hosting.xfs    1\n/dev/loop0 /var/lib/stackfort-storage-prototype/hosting.ext4   1",
+      "method": "three backends; 3 repetitions; rotating order; 512 MiB; 2s ramp + 10s sample; no other guest tests concurrently",
+      "mounts": "/sys sysfs sysfs rw,nosuid,nodev,noexec,relatime\n/proc proc proc rw,nosuid,nodev,noexec,relatime\n/dev udev devtmpfs rw,nosuid,relatime,size=4047380k,nr_inodes=1011845,mode=755,inode64\n/dev/pts devpts devpts rw,nosuid,noexec,relatime,gid=5,mode=600,ptmxmode=000\n/run tmpfs tmpfs rw,nosuid,nodev,noexec,relatime,size=813860k,mode=755,inode64\n/ /dev/sda1 ext4 rw,relatime,discard,errors=remount-ro\n/sys/kernel/security securityfs securityfs rw,nosuid,nodev,noexec,relatime\n/dev/shm tmpfs tmpfs rw,nosuid,nodev,inode64\n/sys/fs/cgroup cgroup2 cgroup2 rw,nosuid,nodev,noexec,relatime,nsdelegate,memory_recursiveprot\n/sys/fs/pstore pstore pstore rw,nosuid,nodev,noexec,relatime\n/sys/firmware/efi/efivars efivarfs efivarfs rw,nosuid,nodev,noexec,relatime\n/sys/fs/bpf bpf bpf rw,nosuid,nodev,noexec,relatime,mode=700\n/proc/sys/fs/binfmt_misc systemd-1 autofs rw,relatime,fd=41,pgrp=1,timeout=0,minproto=5,maxproto=5,direct,pipe_ino=2079\n/dev/mqueue mqueue mqueue rw,nosuid,nodev,noexec,relatime\n/dev/hugepages hugetlbfs hugetlbfs rw,nosuid,nodev,relatime,pagesize=2M\n/run/lock tmpfs tmpfs rw,nosuid,nodev,noexec,relatime,size=5120k,inode64\n/sys/kernel/debug debugfs debugfs rw,nosuid,nodev,noexec,relatime\n/sys/kernel/tracing tracefs tracefs rw,nosuid,nodev,noexec,relatime\n/tmp tmpfs tmpfs rw,nosuid,nodev,size=4069300k,nr_inodes=1048576,inode64\n/run/credentials/systemd-journald.service tmpfs tmpfs ro,nosuid,nodev,noexec,relatime,nosymfollow,size=1024k,nr_inodes=1024,mode=700,inode64,noswap\n/sys/fs/fuse/connections fusectl fusectl rw,nosuid,nodev,noexec,relatime\n/sys/kernel/config configfs configfs rw,nosuid,nodev,noexec,relatime\n/run/credentials/systemd-resolved.service tmpfs tmpfs ro,nosuid,nodev,noexec,relatime,nosymfollow,size=1024k,nr_inodes=1024,mode=700,inode64,noswap\n/run/credentials/systemd-networkd.service tmpfs tmpfs ro,nosuid,nodev,noexec,relatime,nosymfollow,size=1024k,nr_inodes=1024,mode=700,inode64,noswap\n/boot/efi /dev/sda15 vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=mixed,utf8,errors=remount-ro\n/proc/sys/fs/binfmt_misc binfmt_misc binfmt_misc rw,nosuid,nodev,noexec,relatime\n/run/credentials/getty@tty1.service tmpfs tmpfs ro,nosuid,nodev,noexec,relatime,nosymfollow,size=1024k,nr_inodes=1024,mode=700,inode64,noswap\n/srv/stackfortxfs /dev/loop1 xfs rw,nosuid,nodev,relatime,attr2,inode64,logbufs=8,logbsize=32k,prjquota\n/srv/hosting /dev/loop0 ext4 rw,nosuid,nodev,relatime,prjquota\n/run/user/1000 tmpfs tmpfs rw,nosuid,nodev,relatime,size=813856k,nr_inodes=203464,mode=700,uid=1000,gid=1000,inode64\n/run/credentials/serial-getty@ttyS0.service tmpfs tmpfs ro,nosuid,nodev,noexec,relatime,nosymfollow,size=1024k,nr_inodes=1024,mode=700,inode64,noswap",
+      "xfsAllocatedBytes": 8589938688,
+      "xfsInfo": "meta-data=/dev/loop1             isize=512    agcount=4, agsize=524288 blks\n         =                       sectsz=512   attr=2, projid32bit=1\n         =                       crc=1        finobt=1, sparse=1, rmapbt=1\n         =                       reflink=1    bigtime=1 inobtcount=1 nrext64=1\n         =                       exchange=0   metadir=0\ndata     =                       bsize=4096   blocks=2097152, imaxpct=25\n         =                       sunit=0      swidth=0 blks\nnaming   =version 2              bsize=4096   ascii-ci=0, ftype=1, parent=0\nlog      =internal log           bsize=4096   blocks=16384, version=2\n         =                       sectsz=512   sunit=0 blks, lazy-count=1\nrealtime =none                   extsz=4096   blocks=0, rtextents=0\n         =                       rgcount=0    rgsize=0 extents"
+    }
+  },
+  "method": {
+    "measuredJobs": 45,
+    "backends": 3,
+    "repetitions": 3,
+    "fileBytes": 536870912,
+    "rampSeconds": 2,
+    "measurementSeconds": 10,
+    "ioengine": "libaio",
+    "applicationDirectIO": true,
+    "backingFileDirectIO": true,
+    "rotation": [
+      [
+        "native",
+        "ext4",
+        "xfs"
+      ],
+      [
+        "ext4",
+        "xfs",
+        "native"
+      ],
+      [
+        "xfs",
+        "native",
+        "ext4"
+      ]
+    ],
+    "projectID": 249580,
+    "projectByteLimit": 1073741824,
+    "quotasAppliedBeforeFileCreation": true
+  },
+  "functionalChecks": {
+    "xfsProvisioning": "passed; exclusive image creation, full guest preallocation, default XFS features, exact backing file/UUID, project accounting and enforcement",
+    "xfsProjectQuotaAndIsolation": "passed before and after real reboot; byte/inode/account isolation and CPU/memory/PID regression",
+    "xfsOCIPrivateResources": "passed",
+    "xfsOCIDeploymentLifecycle": "passed",
+    "xfsContainerSubUIDQuota": {
+      "result": "passed; observed ENOSPC with ample pool space; causal account-limit increase permits the same subordinate UID to append",
+      "containerImageID": "881a32046cbec149de5f57d15349042946d52f9aeb49e430146b0c6ee714e7a5",
+      "initialQuotaBytes": 268435456,
+      "partialFileBytes": 203423744,
+      "fileUID": 3273867840,
+      "accountUID": 249940,
+      "increasedQuotaBytes": 335544320,
+      "recoveredAppendBytes": 16777216
+    },
+    "xfsBandwidth": "passed on fresh per-cgroup files; native, loop and outer device, direct/buffered; configured 4 MiB/s, wall-inclusive observed 3.57–3.65 MiB/s",
+    "xfsIOPS": {
+      "configured": 500,
+      "read": 499.8,
+      "write": 499.6,
+      "note": "Rounded log values; raw fio retained"
+    },
+    "xfsFullImage": {
+      "result": "passed; actual write ENOSPC, outer OS remains writable",
+      "allocatedProbeBytes": 8325681152,
+      "availableBlocks": 6,
+      "blockBytes": 4096
+    },
+    "xfsTrimAndMountLoss": "passed before and after reboot; explicit discard rejected, consumer stops on mount loss, refuses missing image, exact image restored",
+    "xfsReboot": "passed; changed boot ID, automatic consumers checked BEFORE manual safety-test restarts, both mounts and root fingerprint correct, sentinel retained, quotas revalidated",
+    "ext4Regression": "passed with the same updated test binary after the XFS comparison/reboot; sentinel/root fingerprint, full-image zero available blocks, subordinate-UID quota and 16 MiB append after quota increase",
+    "finalMounts": "original ext4 restored at /srv/hosting; XFS at /srv/stackfortxfs; both consumers active and both backing DIO=1 before graceful lab shutdown"
+  },
+  "initialValidationFailure": {
+    "retained": true,
+    "cause": "Two ext4-specific test assumptions: required quota error text, and exactly zero available blocks at ENOSPC. XFS returned ENOSPC at account quota and retained 6 blocks at pool exhaustion.",
+    "correction": "Require ample pool space and same-UID successful append after changing ONLY account quota; permit <=1 MiB allocation reserve for XFS full-pool test while still requiring actual failed write. Production reconcilers unchanged.",
+    "rerun": "all seven functional subtests passed; updated shared tests also passed on ext4"
+  },
+  "limitations": [
+    "Native root has no project quotas; image-vs-native includes quota/filesystem/layer differences. This is not a native-XFS or native-project-quota comparison.",
+    "One short three-round Hyper-V Debian experiment, 512 MiB files; host caches, thin virtual disk and changing storage state remain in the path. No inferential significance claim.",
+    "Sequential throughput varies several-fold. Paired order is rotated, not simultaneous; sequential deltas are not a reliable ranking.",
+    "These are fio storage measurements, not HTTP, PHP, WAF, database transaction or customer VPS performance.",
+    "CPU is guest-wide busy time including warm-up/startup/background; per-operation fsync p99 comes from sync.lat_ns, not write clat_ns.",
+    "I/O enforcement tests use fresh per-cgroup files. Shared-inode writeback attribution remains unqualified; no product package I/O-limit UI was added.",
+    "Only synthetic service dependencies. Production provisioning/recovery, real service wiring, safe growth, power-loss recovery, migration and Ubuntu/Rocky qualification are outstanding.",
+    "XFS provisioning was not subjected to the prior ext4 worker-interruption injection; both are experimental.",
+    "Sources and binaries evolved during prototype work; individual evidence hashes are retained, not represented as one immutable release qualification."
+  ],
+  "artifacts": {
+    "benchmarkResultDirectory": "results-f91a905b-8cef-4423-8eef-25fe7b18e71c",
+    "phases": [
+      {
+        "directory": "infra/host-tests/work/storage-image-XFSProvision-20260908T083340Z",
+        "files": [
+          {
+            "name": "evidence.tar.gz",
+            "sha256": "cc4b795360f282b0e4811da577eba22f1212e894f56e000b5a0d725aefb2abf3"
+          },
+          {
+            "name": "storage-image.test",
+            "sha256": "69cdbec9cf71ff1633d8e2f92c142c18d82afcae59b140e5b49576f325699469"
+          },
+          {
+            "name": "tests.log",
+            "sha256": "d89ac6e6209d6e77bced570128493f2690c2b4510d89f11a4f7c2ecc8c985796"
+          }
+        ]
+      },
+      {
+        "directory": "infra/host-tests/work/storage-image-XFSValidate-20260908T083400Z",
+        "files": [
+          {
+            "name": "evidence.tar.gz",
+            "sha256": "389f8a675869b0b0f2d4f9a447eb26424bdc6c106d20f3ddef5911f0a03ad17b"
+          },
+          {
+            "name": "storage-image.test",
+            "sha256": "69cdbec9cf71ff1633d8e2f92c142c18d82afcae59b140e5b49576f325699469"
+          },
+          {
+            "name": "tests.log",
+            "sha256": "448d3b93d16f98c193b4d0a2e6d6bdb740cbc67659bb30bb0e1036f8e29a2606"
+          }
+        ]
+      },
+      {
+        "directory": "infra/host-tests/work/storage-image-XFSValidate-20260908T083708Z",
+        "files": [
+          {
+            "name": "evidence.tar.gz",
+            "sha256": "f51091ddc4439d2d44d71e3bad4f135acbd4c06f282ece3aa0a3f9aaa24f7b12"
+          },
+          {
+            "name": "storage-image.test",
+            "sha256": "edd5589ddf754c313e92c86745c2f3099adcedf850ed318ce2a9b1d8a3abe4e0"
+          },
+          {
+            "name": "tests.log",
+            "sha256": "743db7d185acd71f878e2b4582fa07faf819dc991af3cdcc326ca5b685320a97"
+          }
+        ]
+      },
+      {
+        "directory": "infra/host-tests/work/storage-image-XFSComparison-20260908T083939Z",
+        "files": [
+          {
+            "name": "evidence.tar.gz",
+            "sha256": "ef7dbe490282b6c7e81c79c18c41291471e6e965f460c31fda83cd926079c1f8"
+          },
+          {
+            "name": "storage-image.test",
+            "sha256": "edd5589ddf754c313e92c86745c2f3099adcedf850ed318ce2a9b1d8a3abe4e0"
+          },
+          {
+            "name": "tests.log",
+            "sha256": "ea11e2b956e2afb23fab65f8a53b5b5294e7495ac29dee221f33b6b57aa9ebe9"
+          }
+        ]
+      },
+      {
+        "directory": "infra/host-tests/work/storage-image-XFSReboot-20260908T084921Z",
+        "files": [
+          {
+            "name": "evidence.tar.gz",
+            "sha256": "2792f0341e7b41514f5e3ccbd85e041463e0f3f857cd7814355c9fc78d551e38"
+          },
+          {
+            "name": "storage-image.test",
+            "sha256": "edd5589ddf754c313e92c86745c2f3099adcedf850ed318ce2a9b1d8a3abe4e0"
+          },
+          {
+            "name": "tests.log",
+            "sha256": "540e9fd8e9240f93438cb6d0260422286e409629be2f90bb7ea0a71b9bd1739e"
+          }
+        ]
+      },
+      {
+        "directory": "infra/host-tests/work/storage-image-Ext4Regression-20260908T085023Z",
+        "files": [
+          {
+            "name": "tests.log",
+            "sha256": "88abb33777b5f9d1aecf57ab768146a0b616b4277ddbee1645353f6384f1d5fc"
+          }
+        ]
+      }
+    ]
+  }
+}

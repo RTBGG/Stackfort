@@ -65,93 +65,23 @@ func deriveArgon2id(password, salt []byte, iterations, memory uint32, parallelis
 // CreateBootstrapCapability creates a short-lived capability whose raw token
 // exists only in this return value. SQLite receives only its SHA-256 digest.
 func (r *Repository) CreateBootstrapCapability(ctx context.Context, params CreateBootstrapCapabilityParams) (BootstrapCapability, error) {
-	ttl := params.TTL
-	if ttl == 0 {
-		ttl = bootstrapDefaultTTL
-	}
-	if ttl < bootstrapMinimumTTL || ttl > bootstrapMaximumTTL {
-		return BootstrapCapability{}, fmt.Errorf("%w: bootstrap TTL must be between %s and %s", ErrInvalidInput, bootstrapMinimumTTL, bootstrapMaximumTTL)
-	}
-	requestID, err := validateOptionalText(params.RequestID, "requestId", 128)
+	ttl, requestID, err := validateBootstrapRegistration(params.TTL, params.RequestID)
 	if err != nil {
 		return BootstrapCapability{}, err
 	}
 
 	raw := make([]byte, bootstrapTokenBytes)
+	defer clear(raw)
 	if _, err := io.ReadFull(r.random, raw); err != nil {
 		return BootstrapCapability{}, fmt.Errorf("generate bootstrap capability: %w", err)
 	}
 	token := bootstrapTokenPrefix + base64.RawURLEncoding.EncodeToString(raw)
 	tokenHash := sha256.Sum256([]byte(token))
-	id, err := r.newID()
+	registered, err := r.registerBootstrapDigest(ctx, BootstrapCapabilityDigest(tokenHash), ttl, params.Replace, false, requestID)
 	if err != nil {
 		return BootstrapCapability{}, err
 	}
-	now := r.timestamp()
-	capability := BootstrapCapability{ID: id, Token: token, CreatedAt: now, ExpiresAt: now.Add(ttl)}
-
-	err = r.state.Write(ctx, func(executor store.Executor) error {
-		administratorExists, err := platformAdministratorExistsTx(ctx, executor)
-		if err != nil {
-			return err
-		}
-		if administratorExists {
-			return ErrBootstrapDisabled
-		}
-
-		var activeID, activeExpiresAt string
-		replacedActive := false
-		err = executor.QueryRowContext(ctx, `
-			SELECT id, expires_at FROM bootstrap_capabilities
-			WHERE consumed_at IS NULL AND invalidated_at IS NULL`).Scan(&activeID, &activeExpiresAt)
-		switch {
-		case err == nil:
-			expiry, err := parseTime(activeExpiresAt)
-			if err != nil {
-				return err
-			}
-			reason := "expired"
-			if expiry.After(now) {
-				if !params.Replace {
-					return ErrConflict
-				}
-				reason = "replaced"
-				replacedActive = true
-			}
-			if _, err := executor.ExecContext(ctx, `
-				UPDATE bootstrap_capabilities
-				SET invalidated_at = ?, invalidation_reason = ?
-				WHERE id = ?`, formatTime(now), reason, activeID); err != nil {
-				return err
-			}
-		case errors.Is(err, sql.ErrNoRows):
-		case err != nil:
-			return err
-		}
-
-		if _, err := executor.ExecContext(ctx, `
-			INSERT INTO bootstrap_capabilities (
-				id, active_slot, token_hash, created_at, expires_at
-			) VALUES (?, 1, ?, ?, ?)`,
-			string(capability.ID), tokenHash[:], formatTime(capability.CreatedAt), formatTime(capability.ExpiresAt)); err != nil {
-			return err
-		}
-		return r.appendAuditTx(ctx, executor, AppendAuditEventParams{
-			Action:     "bootstrap.capability_created",
-			TargetType: "bootstrap_capability",
-			TargetID:   string(capability.ID),
-			RequestID:  requestID,
-			Result:     AuditSuccess,
-			Details: map[string]any{
-				"expiresAt": formatTime(capability.ExpiresAt),
-				"replaced":  replacedActive,
-			},
-		}, now)
-	})
-	if err != nil {
-		return BootstrapCapability{}, classifyDatabaseError(err)
-	}
-	return capability, nil
+	return BootstrapCapability{ID: registered.ID, Token: token, CreatedAt: registered.CreatedAt, ExpiresAt: registered.ExpiresAt}, nil
 }
 
 // AdministratorBootstrapStatus exposes no capability material.

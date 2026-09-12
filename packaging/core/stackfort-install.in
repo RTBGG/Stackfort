@@ -7,7 +7,7 @@ release_root='/usr/lib/stackfort/releases/@STACKFORT_VERSION@'
 installer="$release_root/bin/stackfort-installer"
 
 case "${1:-}" in
-  preflight | version | panel)
+  preflight | version | panel | native | native-host)
     command="$1"
     shift
     exec "$installer" "$command" "$@"

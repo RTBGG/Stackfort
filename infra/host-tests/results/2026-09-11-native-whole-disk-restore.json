@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "scope": "Debian pre-installation whole-disk rescue/restore qualification; no public activation",
+  "lab": {
+    "SchemaVersion": 1,
+    "Root": "C:\\Users\\Administrator\\Documents\\Codex\\2026-08-13\\erstellen\\outputs\\stackfort\\infra\\host-tests\\work\\native-disk-restore-afd7a865f8474ddb8e205af9d82d0aab",
+    "OriginalVM": "4361f439-15e9-4f9e-a690-9a8e44b6cbd3",
+    "Snapshot": "9e62e0ac-89ad-4851-8ae2-e6b936e40eae",
+    "Source": "C:\\ProgramData\\Stackfort\\Hyper-V\\vms\\stackfort-native-quota-debian-13\\system.vhdx",
+    "SourceSHA256": "a30939d0176771ad9d3df8ddeb99c74954b4ed4f443372cbbdd1cd542fa686ff",
+    "Backup": "C:\\Users\\Administrator\\Documents\\Codex\\2026-08-13\\erstellen\\outputs\\stackfort\\infra\\host-tests\\work\\native-disk-restore-afd7a865f8474ddb8e205af9d82d0aab\\pre-conversion-backup.vhdx",
+    "BackupSHA256": "cdbbffa97c09585277d2c408cf223705a09b98f4472a2191ddc933f5a695aaad",
+    "Bytes": 53687091200,
+    "RescueVM": "ba098b0e-82fe-4293-9343-b2584253ccb4",
+    "RescueDMI": "3fea2402-cf8a-49af-aede-c1c6eb1159ef",
+    "RescueSystem": "C:\\Users\\Administrator\\Documents\\Codex\\2026-08-13\\erstellen\\outputs\\stackfort\\infra\\host-tests\\work\\native-disk-restore-afd7a865f8474ddb8e205af9d82d0aab\\rescue-system.vhdx",
+    "Target": "C:\\Users\\Administrator\\Documents\\Codex\\2026-08-13\\erstellen\\outputs\\stackfort\\infra\\host-tests\\work\\native-disk-restore-afd7a865f8474ddb8e205af9d82d0aab\\replacement-system.vhdx",
+    "TargetDiskIdentifier": "1636e52b-b559-462a-9ac4-2c1db3eef871"
+  },
+  "restore": {
+    "backupUnchanged": true,
+    "foreignWWNRejected": true,
+    "fullReadbackExact": true,
+    "logicalBytes": 53687091200,
+    "repeatRestoreRejected": true,
+    "rescueDMI": "3fea2402-cf8a-49af-aede-c1c6eb1159ef",
+    "schemaVersion": 1,
+    "sha256": "eb2eea722d0dfd8926e0e017e6eb8ee9c47d350ce61ac544f64220df69b6e32e",
+    "skippedVerifiedZeroBytes": 51150585856,
+    "targetWWN": "naa.600224802be5361659b52c1db3eef871",
+    "writtenBytes": 2536505344
+  },
+  "firstBoot": {
+    "bootID": "7ba93986-258d-41a0-b148-8efcc95210a0",
+    "efi": "/dev/sda15",
+    "files": {
+      "/boot/grub/grub.cfg": "891001826b878eaeb6a734a429d46c6fb38b9dbbdf25aa6ef21be72ecb26dcdf",
+      "/boot/grub/grubenv": "f64122858064885ef0733e42c6a3d2d3fd642671f714db0d974b880c0f087430",
+      "/boot/initrd.img-6.12.107+deb13-cloud-amd64": "c7f492f6b7bd2970188dad1689cfd7092562167c54868dd02a9be8142a94b1b6",
+      "/boot/vmlinuz-6.12.107+deb13-cloud-amd64": "d1bc2c60a78ae6979736d081bc3c90e45ace6baf414f767dff588e319d3492bd",
+      "/etc/fstab": "1e34e36ed0bf1837b172fa48094c5425520ac92bb3f641c38084e1171b185f4a",
+      "/etc/hostname": "7412bc2958357b7c23f73992e0f0e3343505bf192ff4835fb2941c6f7fea6b7f",
+      "/etc/machine-id": "4c31a963d463b36a5a54754449f2acaf964ade2febf245e5b4d5e8ff6eb7ef90",
+      "/etc/ssh/ssh_host_ed25519_key.pub": "0f05af405375787603fca05b029e470e7785aa46e5cd1a9acdd1c753a7a48fde"
+    },
+    "kernel": "6.12.107+deb13-cloud-amd64",
+    "nativeReplayAbsent": true,
+    "normalSystemdBoot": true,
+    "rescueDMI": "3fea2402-cf8a-49af-aede-c1c6eb1159ef",
+    "root": "/dev/sda1",
+    "schemaVersion": 1,
+    "secureBoot": true,
+    "targetWWN": "naa.600224802be5361659b52c1db3eef871"
+  },
+  "normalBoot": {
+    "bootID": "b821e23d-5daf-41bf-97fa-5e375fe843de",
+    "efi": "/dev/sdb15",
+    "files": {
+      "/boot/grub/grub.cfg": "891001826b878eaeb6a734a429d46c6fb38b9dbbdf25aa6ef21be72ecb26dcdf",
+      "/boot/grub/grubenv": "f64122858064885ef0733e42c6a3d2d3fd642671f714db0d974b880c0f087430",
+      "/boot/initrd.img-6.12.107+deb13-cloud-amd64": "c7f492f6b7bd2970188dad1689cfd7092562167c54868dd02a9be8142a94b1b6",
+      "/boot/vmlinuz-6.12.107+deb13-cloud-amd64": "d1bc2c60a78ae6979736d081bc3c90e45ace6baf414f767dff588e319d3492bd",
+      "/etc/fstab": "1e34e36ed0bf1837b172fa48094c5425520ac92bb3f641c38084e1171b185f4a",
+      "/etc/hostname": "7412bc2958357b7c23f73992e0f0e3343505bf192ff4835fb2941c6f7fea6b7f",
+      "/etc/machine-id": "4c31a963d463b36a5a54754449f2acaf964ade2febf245e5b4d5e8ff6eb7ef90",
+      "/etc/ssh/ssh_host_ed25519_key.pub": "0f05af405375787603fca05b029e470e7785aa46e5cd1a9acdd1c753a7a48fde"
+    },
+    "kernel": "6.12.107+deb13-cloud-amd64",
+    "nativeReplayAbsent": true,
+    "normalSystemdBoot": true,
+    "rescueDMI": "3fea2402-cf8a-49af-aede-c1c6eb1159ef",
+    "root": "/dev/sdb1",
+    "schemaVersion": 1,
+    "secureBoot": true,
+    "targetWWN": "naa.600224802be5361659b52c1db3eef871"
+  },
+  "checkpointId": "df9fd73b-486e-41df-805c-f7a317ab2e64",
+  "originalPreserved": true,
+  "allVMsOff": true,
+  "offHostDisasterRecoveryTested": false
+}

@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/RTBGG/stackfort/internal/storageprep"
 	"golang.org/x/sys/unix"
 )
 
@@ -82,6 +83,17 @@ func (lock *Lock) Close() error {
 }
 
 func (store *FileStore) Load() (Journal, bool, error) {
+	// Recheck under the installation lock in Engine.Install, not only during
+	// CLI preflight. Never replay package/service stages over pending root work.
+	if err := storageprep.CheckInactive(); err != nil {
+		return Journal{}, false, err
+	}
+	return store.loadJournal()
+}
+
+// Private: the native continuation adapter supplies its own held-lock,
+// manifest-bound authorization. Ordinary callers must use Load.
+func (store *FileStore) loadJournal() (Journal, bool, error) {
 	fd, err := unix.Open(store.path, unix.O_RDONLY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
 	if errors.Is(err, os.ErrNotExist) {
 		return Journal{}, false, nil
@@ -96,6 +108,9 @@ func (store *FileStore) Load() (Journal, bool, error) {
 	}
 	defer file.Close()
 	info, err := file.Stat()
+	if err != nil {
+		return Journal{}, false, err
+	}
 	stat, ok := info.Sys().(*syscall.Stat_t)
 	if err != nil || !ok || stat.Uid != 0 || stat.Gid != 0 || !info.Mode().IsRegular() ||
 		info.Mode().Perm() != 0o600 || info.Size() > maximumJournalBytes {

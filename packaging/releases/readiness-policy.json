@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "policy": "stackfort-release-readiness-v1",
+  "repository": "RTBGG/Stackfort",
+  "experimentalBeta": {
+    "authorizedBy": "RTBGG",
+    "authorizedOn": "2026-09-12",
+    "independentReview": "not-performed",
+    "freshDisposableOnly": true,
+    "productionUseAllowed": false,
+    "importantDataAllowed": false
+  },
+  "support": {
+    "model": "community-only",
+    "maintainer": "RTBGG",
+    "channels": [
+      "github-issues",
+      "github-private-security-reporting"
+    ],
+    "guaranteedResponse": false,
+    "guaranteedFixes": false,
+    "supportEnds": null
+  },
+  "installationMatrix": [
+    {
+      "distribution": "debian",
+      "version": "13",
+      "architecture": "amd64",
+      "entryPoint": "one-line",
+      "storageProfile": "fresh-default"
+    }
+  ]
+}

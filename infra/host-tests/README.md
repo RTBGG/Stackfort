@@ -42,6 +42,128 @@ overwritten. Runtime state and the dedicated SSH key live below
 The cloud-init login is `stackfort-test`; `stackfort` is reserved for the
 installer's locked service identity.
 
+For ordinary single-system-disk VPS onboarding, `New-StackfortHyperVVm.ps1
+-SingleDisk` omits both the quota disk and its cloud-init formatting. The
+separate [storage image experiment](../../docs/storage-image-prototype.md)
+documents its fixed-name disposable VM and validation harness. It is not yet a
+production installer path. `-ImageCacheRoot` selects an independent cache when
+the vendor's rolling image changes; a cached image is never accepted against a
+different current checksum. Converted bases include the requested disk size in
+their cache key.
+
+The separate [native ext4 quota experiment](../../docs/native-quota-prototype.md)
+tests early-boot root preparation and automatic resume on a fresh, checkpointed
+single-disk Debian VM. Its fixed-name harness is lab-only; it does not add a
+production installer path.
+
+Its [journal-bound boot follow-up](../../docs/native-quota-boot-handoff.md) uses
+`Test-StackfortNativeJournalBootHyperVVm.ps1` to qualify a separate one-shot
+initrd, unchanged normal boot artifacts, successful resume and terminal recovery
+cases. Each sequence requires an explicit fresh-checkpoint restore; the harness
+does not restore snapshots or retry failed preparation automatically.
+
+The [durable release staging follow-up](../../docs/native-quota-release-staging.md)
+tests a real retained candidate in a private mount namespace and verifies it in
+a new process after bootstrap cleanup. It does not execute the candidate or
+modify the actual host's storage/installation journal.
+
+The [release-origin binding](../../docs/native-quota-release-origin.md) adds
+actual signature checks and negative tests in private namespaces. The journal
+boot harness's `Prepare -WithRelease` connects the same retained candidate and
+its authentication receipt to a real one-shot conversion/resume. It executes
+only the independently pinned verifier, not the candidate installer. Initial
+trust-root discovery may require HTTPS; post-boot checks use retained evidence.
+
+The additional [post-boot installation opt-in](../../docs/native-quota-install-continuation.md)
+is `Prepare -WithRelease -WithInstallation`. It starts a separate post-mount
+service that runs all real installer stages from the retained candidate, with
+the native plan checked before every stage. `Validate` waits for package/service
+completion; `NormalBoot` requires a verified already-installed rerun. This
+remains a dedicated-VM experiment, not public installer activation.
+See the [dated installation/reboot evidence](results/2026-09-09-native-install-continuation.md).
+
+The [admission/recovery follow-up](../../docs/native-quota-service-admission.md)
+adds a separate closed web gate and explicit two-digest recovery. Its optional
+sealed `pause-services-once` fault supports `InterruptInstall`,
+`InspectAdmission`, `RecoverInstallation`, `ValidateCurrent` and
+`WebGateProbe` stages. Only the dedicated Debian VM is eligible; these stages
+do not enable a public installer or interrupt a running package transaction.
+The [operator follow-up](../../docs/native-installer-operator.md) also builds
+and seals the actual installer CLI as a separate lab artifact. Recovery tests
+exercise its status/approve/cancel commands and the supervisor's durable
+single-consumption path. Existing candidate archives remain unchanged.
+
+The [real installer runtime follow-up](../../docs/native-installer-runtime.md)
+adds `Prepare -WithRelease -WithInstallation -WithRuntime`. This seals the
+current installer as the post-ready dispatcher before creating storage state;
+early gate, live verification, admission and quarantine units no longer invoke
+the test binary. Only the first conversion boot uses the proof-conditioned lab
+resumer. `RuntimeInterrupt` exercises SIGKILL during revalidation of an already
+complete installation (never during apt/dpkg), followed by the same reviewed
+`RecoverInstallation` flow. Do not combine this profile with the legacy
+in-process `pause-services-once` test hook.
+
+The [power-loss containment follow-up](../../docs/native-installer-power-loss.md)
+adds `Test-StackfortNativePowerCutHyperVVm.ps1`. It explicitly starts and hard-stops
+only the fixed disposable Debian VM, observes the real installer over serial,
+and verifies recovery with an unmounted root. Restore the exact reviewed offline
+armed checkpoint separately for each case; never run this on another VM.
+This tests the boot safety stop, not sector-tear recovery or automatic repair.
+
+The [deterministic crash-image follow-up](../../docs/native-installer-crash-replay.md)
+adds `Test-StackfortNativeCrashReplayHyperVVm.ps1` on the already-running,
+normally installed fixed Debian VM. It records real conversion writes through
+dm-log-writes on new scratch images, checks write/sector prefixes and synthetic
+half-sector tears, and verifies a complete file-image backup/restore. It never
+converts root, mounts or repairs the crash images, restores a VM checkpoint or
+changes VM power state. JSON/logs and raw images are retained. This does not yet
+qualify external rescue and whole-system disk restoration.
+
+The [whole-disk rescue follow-up](../../docs/native-installer-whole-disk-recovery.md)
+adds `New-StackfortNativeRestoreLab.ps1`, the fixed Linux disk-restore/inspection/
+boot integration tests and `Start-StackfortRestoredDisk.ps1`. It exports a complete
+offline pre-conversion disk, restores only an independently identified empty
+replacement from a separate rescue OS, compares every logical byte and boots
+the restored disk twice. The original VM is never restored or booted. The clone
+retains duplicate OS/network identity, so it must never run alongside the original.
+All fixtures remain lab-only; the public installer has no automatic restore command.
+
+The [recovery-policy handoff](../../docs/native-installer-recovery-policy.md)
+adds read-only `native recovery-plan` advice. Its Linux
+`TestDisposableNativeRecoveryInspection` uses an isolated mount namespace to
+check unsafe/missing/busy state without changing the real installation. The
+[dated result](results/2026-09-11-native-recovery-policy.md) also covers the actual
+CLI against recorded Debian state. It does not authorize backup/restore.
+The [subsequent decision-binding qualification](results/2026-09-11-native-recovery-choice.md)
+adds `TestDisposableNativeRecoveryChoiceBoundaries`, an exclusive pre-prerequisite
+receipt and reviewed host/source bindings through APT, sealing and offline boot.
+Only the explicit fresh-disposable mode is accepted; external backup verification
+and public consent/activation are not implemented.
+
+The [package-guard follow-up](../../docs/native-installer-package-coordination.md)
+adds `TestDisposableNativePackageGuard` (private mount namespace and scratch dpkg
+database), real APT/dpkg lock-conflict tests, exact package-delta checks, and
+`TestDisposableNativePackageBaseline` (read-only real package inventory with
+private synthetic receipts). Full preparation/boot/normal-boot evidence is in the
+[dated qualification](results/2026-09-12-native-package-guard.md). Process-lifetime
+guards do not yet complete the persistent package/kernel coordination gate.
+
+The [host eligibility follow-up](../../docs/native-installer-host-eligibility.md)
+also exercises the same boot path starting from the exact offline
+`native-host-missing-prerequisites` checkpoint, where only `quota` and `nftables`
+were removed from the disposable fixture. The installer must install both,
+complete the bound prerequisite receipt and retain unchanged normal boot pins
+before arming. Isolated Linux tests cover read-only checks, reserved UDP ports,
+prerequisite journal transitions and the public gate.
+
+The [all-real boot preparation follow-up](../../docs/native-installer-preparation.md)
+uses `Test-StackfortNativeBootHyperVVm.ps1` on the explicitly started disposable
+Debian VM. Run `Prepare -AcceptDisposableReinstallationRisk`, `Arm`, `Validate`,
+then `NormalBoot`. The driver supplies
+the authenticated candidate and checks results; no test executable enters the
+initramfs or finalization units. It refuses mixing a changed installer into a
+sealed operation. Checkpoint restoration is a separate, explicit offline action.
+
 Rocky's Windows download uses the catalogued Hochschule Esslingen HTTPS mirror
 because the vendor CDN can be severely throttled on some routes. The mirror
 payload is still accepted only when it matches Rocky Linux's checksum fetched

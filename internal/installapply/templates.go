@@ -3,14 +3,23 @@
 package installapply
 
 import (
-	"fmt"
 	"runtime"
 	"sort"
 
 	"github.com/RTBGG/stackfort/internal/hostinglogs"
+	"github.com/RTBGG/stackfort/internal/hostingresources"
+	"github.com/RTBGG/stackfort/internal/phpruntime"
 )
 
 const managedHeader = "# Managed by Stackfort. Do not edit.\n"
+
+const phpRuntimeTmpfilesPath = "/etc/tmpfiles.d/stackfort-php.conf"
+
+// The socket parent is shared by independently managed PHP pools and must not
+// disappear when any one pool stops. Recreate only the parent at every boot.
+func phpRuntimeTmpfiles() string {
+	return managedHeader + "d " + phpruntime.RuntimeRoot + " 0755 root root - -\n"
+}
 
 const selinuxNGINXPanelPolicyPath = "/etc/stackfort/stackfort-nginx-panel.te"
 
@@ -33,6 +42,11 @@ func serviceUnits(distribution string) map[string]string {
 	apiSandbox := ""
 	if distribution == "debian" || distribution == "ubuntu" {
 		apiSandbox = "AppArmorProfile=stackfort-api\n"
+	}
+	processorCount := runtime.NumCPU()
+	if processorCount < 1 {
+		// Never turn an invalid signed count into an enormous account quota.
+		processorCount = 1
 	}
 	return map[string]string{
 		"stackfort-panel-renew.service": managedHeader + `[Unit]
@@ -78,25 +92,8 @@ WantedBy=timers.target
 		"stackfort.slice": managedHeader + `[Unit]
 Description=Stackfort service hierarchy
 `,
-		"stackfort-core.slice": managedHeader + `[Unit]
-Description=Stackfort platform and control-plane services
-
-[Slice]
-CPUWeight=10000
-IOWeight=10000
-MemoryLow=20%
-`,
-		"stackfort-accounts.slice": managedHeader + fmt.Sprintf(`[Unit]
-Description=Stackfort hosting account workloads
-
-[Slice]
-CPUQuota=%d%%
-CPUQuotaPeriodSec=100ms
-CPUWeight=100
-IOWeight=100
-MemoryHigh=75%%
-MemoryMax=80%%
-`, runtime.NumCPU()*80),
+		"stackfort-core.slice":     hostingresources.CoreSliceUnit(),
+		"stackfort-accounts.slice": hostingresources.AccountsSliceUnit(uint64(processorCount)),
 		"stackfort-agent.service": managedHeader + `[Unit]
 Description=Stackfort privileged host agent
 After=local-fs.target

@@ -430,7 +430,9 @@ log retention.
 
 ## 6. Security release gates
 
-Before public beta:
+Before public beta, retain the following technical checks. Independent review is
+required for the reviewed-release class; the explicitly authorized experimental
+class below discloses that it has not been performed.
 
 - automated authorization matrix tests;
 - cross-account filesystem, PHP, backup, database, and OCI tests;
@@ -442,13 +444,33 @@ Before public beta:
 - WAF/cache bypass and false-positive test corpus;
 - documented vulnerability reporting and supported-version policy;
 - independent review of authentication, agent RPC, file/archive operations,
-  phpMyAdmin handoff, and updater.
+  phpMyAdmin handoff, updater, and the native installer.
+
+No independent review is complete and a professional paid audit is not currently
+funded. A genuinely independent voluntary/community review is welcome; CI,
+automated scanning and agent review cannot be relabeled as that review. On
+2026-09-12, RTBGG explicitly authorized an experimental beta without independent
+review, strictly for fresh disposable test servers without important data and
+never production. Its [distinct publication contract](../packaging/releases/README.md)
+requires a beta version, explicit `not-performed` disclosure, all technical gates
+and candidate-specific maintainer approval. The general authorization is not an
+audit claim or approval of any untested artifact. Voluntary review remains welcome.
+
+Support is community-only through GitHub by RTBGG and possible future volunteers,
+with no guaranteed response, fix, support period or SLA. These support terms do
+not assert security review or production readiness; see [SECURITY.md](../SECURITY.md).
 
 ## 7. Known residual risks
 
 - Containers and Unix accounts share one kernel; this is not virtual-machine
   isolation.
 - Shared MariaDB makes exact per-account I/O and memory enforcement impractical.
+- The experimental native shared-root profile has no durable OS disk/inode
+  reserve or complete aggregate account/platform capacity admission yet. Root
+  exhaustion can make the whole test server unavailable despite individual
+  project quotas; the initial headroom check is not ongoing protection. This
+  blocks production capacity claims and must be disclosed in experimental
+  release notes and deployment limits.
 - A privileged host compromise can defeat local secrets and audit guarantees.
 - WAF rules reduce common application attacks but cannot make vulnerable hosted
   code safe.

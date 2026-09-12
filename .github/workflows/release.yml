@@ -47,6 +47,7 @@ jobs:
           printf 'version=%s\nchannel=%s\n' "${version}" "${channel}" >>"$GITHUB_OUTPUT"
   waf-packages:
     name: WAF package — ${{ matrix.name }}
+    if: github.event_name == 'workflow_dispatch'
     needs: release_policy
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -94,6 +95,7 @@ jobs:
 
   vinyl-packages:
     name: Vinyl package — ${{ matrix.name }}
+    if: github.event_name == 'workflow_dispatch'
     needs: release_policy
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -137,6 +139,7 @@ jobs:
 
   build:
     name: Build, inventory, and attest
+    if: github.event_name == 'workflow_dispatch'
     needs: [release_policy, waf-packages, vinyl-packages]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -186,12 +189,6 @@ jobs:
           SOURCE_DATE_EPOCH="$(git show -s --format=%ct "$COMMIT")"
           export SOURCE_DATE_EPOCH
           bash scripts/build-release.sh
-      - name: Enforce supported-predecessor upgrade evidence
-        if: github.event_name == 'push'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ needs.release_policy.outputs.version }}
-        run: bash scripts/verify-upgrade-matrix.sh
       - name: Generate SPDX SBOM
         uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
         with:
@@ -204,8 +201,77 @@ jobs:
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: dist/*
+      - name: Upload unpublished build candidate
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: stackfort-${{ needs.release_policy.outputs.version }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30
+
+  promote:
+    name: Qualify and promote exact retained candidate
+    if: github.event_name == 'push'
+    needs: release_policy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      actions: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Check out the exact tag source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Go for upgrade evidence validation
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Set up Node.js for promotion validation
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Verify and download exact retained candidate without rebuilding
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.release_policy.outputs.version }}
+        run: bash scripts/promote-release-candidate.sh
+      - name: Attest unpublished candidate for exact-tag native qualification
+        id: qualification_attestation
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: dist/*
+      - name: Retain exact-tag attestation bundle
+        env:
+          BUNDLE_PATH: ${{ steps.qualification_attestation.outputs.bundle-path }}
+        run: install -m 0644 "$BUNDLE_PATH" dist/build-attestation.jsonl
+      - name: Upload unpublished tag-qualified candidate before publication gates
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: stackfort-tag-candidate-${{ needs.release_policy.outputs.version }}-attempt-${{ github.run_attempt }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30
+      - name: Enforce exact-candidate public release readiness
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.release_policy.outputs.version }}
+        run: bash scripts/verify-release-readiness.sh
+      - name: Enforce supported-predecessor upgrade evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.release_policy.outputs.version }}
+        run: bash scripts/verify-upgrade-matrix.sh
+      - name: Attest complete publication assets after all gates pass
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: dist/*
       - name: Publish immutable GitHub release assets
-        if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.ref_name }}
@@ -215,7 +281,11 @@ jobs:
             printf 'Release %s already exists; refusing to replace immutable assets.\n' "$RELEASE_TAG" >&2
             exit 1
           fi
-          release_flags=(--verify-tag --generate-notes --title "Stackfort $RELEASE_TAG")
+          notes="$RUNNER_TEMP/stackfort-release-notice.md"
+          jq -r '.independentReviewDisclosure' dist/release-readiness.json >"$notes"
+          printf '\nFresh disposable test servers only. Not for production or important data. Native fresh-default installation is limited to Debian 13 amd64.\n\nCommunity-only GitHub support by RTBGG and possible volunteers; no guaranteed response, fixes, SLA or support period.\n' >>"$notes"
+          printf '\nHosting quotas share the root filesystem. Aggregate capacity admission and a guaranteed OS disk/inode reserve are not implemented; exhaustion can make the server unavailable and require reinstallation.\n' >>"$notes"
+          release_flags=(--verify-tag --generate-notes --notes-file "$notes" --title "Stackfort $RELEASE_TAG")
           if [[ "$RELEASE_CHANNEL" == beta ]]; then
             release_flags+=(--prerelease --latest=false)
           else
@@ -235,10 +305,3 @@ jobs:
             exit 1
           fi
           gh release verify "$RELEASE_TAG" >/dev/null
-      - name: Upload release candidate
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: stackfort-${{ needs.release_policy.outputs.version }}
-          path: dist/*
-          if-no-files-found: error
-          retention-days: 30

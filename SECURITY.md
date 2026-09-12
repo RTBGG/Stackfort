@@ -31,8 +31,15 @@ Stackfort is currently pre-beta. No public release has been published and no
 version is supported for production use. Findings against `main` are welcome;
 development artifacts and local rehearsal versions are not supported releases.
 
-Before public beta, maintainers must publish the supported versions, support
-end dates, and upgrade expectations here and in release notes. The
+Support is **community-only through GitHub**, provided voluntarily by
+[RTBGG](https://github.com/RTBGG) and any future community contributors. There is
+no commercial support, service-level agreement, guaranteed response or fix, or
+promised support period/end date. Contributions and voluntary reviews are welcome;
+their availability must not be assumed.
+
+Before public beta, maintainers must identify the released versions, upgrade
+expectations and deployment limits here and in release notes under these
+community-only terms. Do not invent support end dates or maintenance guarantees. The
 [upgrade catalog](packaging/upgrades/supported-releases.json) records the exact
 published predecessors that require upgrade qualification; retirement requires
 an explicit reason. It does not by itself create a production support promise.
@@ -41,7 +48,7 @@ See the [release checklist](docs/release-checklist.md).
 ## Handling and disclosure
 
 Reports are handled on a best-effort basis; there is no guaranteed response
-time, paid incident-response service, or promised bounty. Maintainers use the
+time or fix, paid incident-response service, or promised bounty. Maintainers use the
 private report to assess impact, coordinate a fix and regression test, and
 agree on disclosure and attribution with the reporter where possible. A fix
 must retain the normal integrity, provenance, health, and rollback gates.
@@ -57,4 +64,22 @@ database access, WAF/cache boundaries, OCI workloads, and installation/updates
 are all security-sensitive. The [security model](docs/security.md) documents
 threats and residual risks; the [operations guide](docs/operations.md) describes
 the current operating and recovery limits. Neither is an independent security
-audit or a guarantee that hosted applications are safe.
+audit or a guarantee that hosted applications are safe. No independent security
+review has been completed. A professional paid audit is not currently funded;
+an actual independent voluntary/community review is welcome, but automated or
+agent-generated checks cannot be presented as such a review.
+
+On 2026-09-12, RTBGG explicitly authorized an experimental beta without an
+independent review, only for fresh disposable test servers with no important
+data and never for production. This general policy does not mean a candidate
+has passed technical tests or received publication approval. Any such release
+must prominently disclose the missing review, meet the technical gates and
+record candidate-specific approval. The first native fresh-root scope is Debian
+13 amd64; prepared-storage qualification on other systems is a separate path.
+
+The native experimental profile does not yet guarantee a durable OS disk/inode
+reserve. Aggregate account usage or platform data can exhaust the shared root
+filesystem and make the entire test server unavailable, even when individual
+account quotas are enforced. Initial installation headroom is not ongoing
+capacity protection. This is a production blocker and must remain an explicit
+experimental release limitation; see the [capacity boundary](docs/one-line-installation-readiness.md#experimental-capacity-limitation).

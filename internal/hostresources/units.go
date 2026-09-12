@@ -26,40 +26,13 @@ func renderUnits(spec hostingresources.Spec, processorCount int) ([]renderedUnit
 	if err != nil {
 		return nil, ErrMutationFailed
 	}
-	accountCapacity := uint64(processorCount) * hostingresources.DefaultAccountCapacityPercent
-	reservedCapacity := uint64(100) - hostingresources.DefaultAccountCapacityPercent
 	properties, err := hostingresources.SystemdProperties(spec)
 	if err != nil {
 		return nil, ErrMutationFailed
 	}
 
-	core := managedUnitHeader + `[Unit]
-Description=Stackfort platform and control-plane services
-
-[Slice]
-CPUAccounting=yes
-CPUWeight=10000
-IOAccounting=yes
-IOWeight=10000
-MemoryAccounting=yes
-MemoryLow=` + strconv.FormatUint(reservedCapacity, 10) + `%
-TasksAccounting=yes
-`
-	accounts := managedUnitHeader + `[Unit]
-Description=Stackfort hosting account workloads
-
-[Slice]
-CPUAccounting=yes
-CPUQuota=` + strconv.FormatUint(accountCapacity, 10) + `%
-CPUQuotaPeriodSec=100ms
-CPUWeight=100
-IOAccounting=yes
-IOWeight=100
-MemoryAccounting=yes
-MemoryHigh=75%
-MemoryMax=` + strconv.FormatUint(hostingresources.DefaultAccountCapacityPercent, 10) + `%
-TasksAccounting=yes
-`
+	core := hostingresources.CoreSliceUnit()
+	accounts := hostingresources.AccountsSliceUnit(uint64(processorCount))
 	var account strings.Builder
 	account.WriteString(managedUnitHeader)
 	account.WriteString("[Unit]\nDescription=Stackfort hosting account ")

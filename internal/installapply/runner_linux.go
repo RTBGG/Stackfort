@@ -31,6 +31,7 @@ import (
 	"github.com/RTBGG/stackfort/internal/nginxbaseline"
 	"github.com/RTBGG/stackfort/internal/ociimage"
 	"github.com/RTBGG/stackfort/internal/phpruntime"
+	"github.com/RTBGG/stackfort/internal/storageprep"
 	"github.com/RTBGG/stackfort/internal/wafconfig"
 )
 
@@ -89,6 +90,20 @@ func stackfortSELinuxRestorePaths() []string {
 }
 
 func NewLinuxRunner(output io.Writer) (*LinuxRunner, error) {
+	if os.Geteuid() != 0 {
+		return nil, errors.New("Stackfort installation must run as root")
+	}
+	// Also covers updater construction. Automatic conversion/resume remains
+	// disabled; no saved phase alone authorizes production host mutation.
+	if err := storageprep.CheckInactive(); err != nil {
+		return nil, err
+	}
+	return newLinuxRunner(output)
+}
+
+// Only the manifest-bound continuation coordinator may construct this runner
+// with a native journal present. Never expose a skip-guard flag on the CLI.
+func newLinuxRunner(output io.Writer) (*LinuxRunner, error) {
 	if os.Geteuid() != 0 {
 		return nil, errors.New("Stackfort installation must run as root")
 	}
@@ -742,6 +757,11 @@ func (runner *LinuxRunner) applyConfiguration(ctx context.Context, source Source
 		return changed, err
 	}
 	changed = changed || retentionChanged
+	runtimeChanged, err := reconcileFile(phpRuntimeTmpfilesPath, []byte(phpRuntimeTmpfiles()), 0, 0, 0o644, false)
+	if err != nil {
+		return changed, err
+	}
+	changed = changed || runtimeChanged
 	for _, secret := range []struct {
 		path           string
 		size, uid, gid int
@@ -848,6 +868,9 @@ func (runner *LinuxRunner) verifyConfiguration(ctx context.Context, source Sourc
 		return err
 	}
 	if err := verifyFile("/etc/logrotate.d/stackfort", []byte(logrotateFile()), 0, 0, 0o644); err != nil {
+		return err
+	}
+	if err := verifyFile(phpRuntimeTmpfilesPath, []byte(phpRuntimeTmpfiles()), 0, 0, 0o644); err != nil {
 		return err
 	}
 	if runner.distribution == "rocky" {
@@ -1079,6 +1102,17 @@ func hasSELinuxPortLabel(output, kind, protocol, port string) bool {
 }
 
 func (runner *LinuxRunner) verifyNGINX(ctx context.Context) error {
+	if err := runner.verifyNGINXIntent(ctx); err != nil {
+		return err
+	}
+	if !runner.commandSucceeds(ctx, "/usr/bin/systemctl", "is-active", "--quiet", "nginx.service") ||
+		!runner.commandSucceeds(ctx, "/usr/bin/systemctl", "is-enabled", "--quiet", "nginx.service") {
+		return errors.New("managed NGINX service is not active and enabled")
+	}
+	return panelStaticHealth(ctx)
+}
+
+func (runner *LinuxRunner) verifyNGINXIntent(ctx context.Context) error {
 	spec, err := nginxbaseline.ForDistribution(runner.distribution)
 	if err != nil {
 		return err
@@ -1089,10 +1123,6 @@ func (runner *LinuxRunner) verifyNGINX(ctx context.Context) error {
 	marker, err := os.ReadFile("/etc/nginx/stackfort/.stackfort-managed")
 	if err != nil || string(marker) != "stackfort-nginx-baseline-v1\n" {
 		return errors.New("Stackfort NGINX ownership marker is unavailable")
-	}
-	if !runner.commandSucceeds(ctx, "/usr/bin/systemctl", "is-active", "--quiet", "nginx.service") ||
-		!runner.commandSucceeds(ctx, "/usr/bin/systemctl", "is-enabled", "--quiet", "nginx.service") {
-		return errors.New("managed NGINX service is not active and enabled")
 	}
 	if err := verifyFile(nginxbaseline.PanelConfigurationPath, []byte(nginxbaseline.Panel(spec)), 0, 0, 0o640); err != nil {
 		return err
@@ -1116,7 +1146,25 @@ func (runner *LinuxRunner) verifyNGINX(ctx context.Context) error {
 	if err := runner.run(ctx, nil, "/usr/sbin/nginx", "-t", "-q", "-c", "/etc/nginx/stackfort/nginx.conf"); err != nil {
 		return err
 	}
-	return panelStaticHealth(ctx)
+	return nil
+}
+
+// The admission caller retains the shared lock and a verified network gate.
+// Do not restart unchecked installed executables to discover their health.
+func (runner *LinuxRunner) startForAdmission(ctx context.Context, source Source) error {
+	for _, stage := range []StageID{StagePackages, StageWAFPackage, StageVinylPackage, StageIdentity, StagePayload, StageConfiguration, StageSecurity} {
+		if err := runner.Verify(ctx, stage, source); err != nil {
+			return fmt.Errorf("verify quarantined %s: %w", stage, err)
+		}
+	}
+	if err := runner.verifyNGINXIntent(ctx); err != nil {
+		return err
+	}
+	if err := runner.run(ctx, nil, "/usr/bin/systemctl", "start", "nginx.service"); err != nil {
+		return err
+	}
+	_, err := runner.applyServices(ctx)
+	return err
 }
 
 func (runner *LinuxRunner) applyNGINX(ctx context.Context) (bool, error) {

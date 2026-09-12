@@ -60,14 +60,23 @@ public releases and do not establish a support commitment.
    `packaging/upgrades/evidence/<candidate-version>.json`. Its `kind` must be
    `release-candidate`. Keep the candidate source commit from step 1 unchanged.
 6. Tag **that tested candidate commit**, not the later evidence commit. The tag
-   workflow rebuilds the same archive, resolves a fixed `main` commit for the
-   reviewed evidence, and checks every source/target digest and matrix cell
-   before publication. A changed build requires fresh qualification.
+   workflow [promotes the exact retained artifact](../packaging/releases/PROMOTION.md)
+   without rebuilding, uploads genuine tag-provenance qualification material
+   before publication gates, and checks every source/target digest and matrix
+   cell before publication. For native qualification, obtain that unpublished
+   tag material before the host tests, then commit evidence and rerun the blocked
+   promotion job. A changed build requires fresh qualification.
 
 The first release has no predecessors; the gate permits its empty matrix only
 after confirming the empty published inventory. Its clean-host installation
 qualification remains necessary. Manual candidate builds deliberately do not
 require upgrade evidence: they supply the artifacts that qualification needs.
+The [2026-09-12 gate review](../infra/host-tests/results/2026-09-12-release-readiness-validation.md)
+confirmed this first-release path and its missing/null-inventory negative tests.
+Unpublished tag artifacts do not create predecessors. The current upgrade
+matrix still hardcodes all three OS profiles per supported predecessor; review
+release-specific support scope before the next candidate rather than silently
+claiming the Debian-only first native beta was qualified on Ubuntu/Rocky.
 
 ## What the host matrix checks
 

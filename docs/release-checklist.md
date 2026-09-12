@@ -1,7 +1,8 @@
 # Maintainer release checklist
 
 This checklist does not publish a release. Stackfort remains pre-beta, and the
-first public release still needs an explicit support-window decision and the
+first public release still needs its exact release scope under the agreed
+community-only support policy and the
 remaining [Phase 6](roadmap.md#phase-6-installer-updater-and-public-beta) exit
 review. Do not interpret development/rehearsal version numbers as published
 releases or claim independent review from automated tests alone.
@@ -21,11 +22,18 @@ releases or claim independent review from automated tests alone.
   distribution, as required by the product specification. Passive carrier
   removal tests do not cover removal of the active platform.
 - [ ] Complete the independent security review required by the
-  [security model](security.md#6-security-release-gates), or explicitly keep
-  publication blocked; CI is not an independent audit.
-- [ ] Decide and publish exact supported beta versions, support end dates,
-  upgrade expectations, and deployment limits in [SECURITY.md](../SECURITY.md)
-  and release notes. Do not invent an LTS or backport promise.
+  [security model](security.md#6-security-release-gates), or use the explicitly
+  authorized experimental-beta contract with accurate missing-review disclosure
+  and candidate-specific RTBGG approval; CI is not an independent audit. A voluntary/community
+  review may satisfy this requirement if it is genuinely independent and its
+  scope/findings are recorded. No paid audit is currently funded and no
+  independent review is complete. The 2026-09-12 experimental policy authorization
+  permits only fresh disposable test servers, not production or important data;
+  it does not satisfy any technical test or approve a particular candidate.
+- [ ] Publish exact beta versions, upgrade expectations and deployment limits
+  in [SECURITY.md](../SECURITY.md) and release notes under community-only GitHub
+  support by RTBGG and possible future contributors. There is no guaranteed
+  response, fix, support period/end date, LTS or backport promise.
 - [ ] Verify private vulnerability reporting and the report link still work;
   confirm who will receive and triage reports. It was enabled with owner
   approval on 2026-09-06.
@@ -33,6 +41,10 @@ releases or claim independent review from automated tests alone.
   bootstrap-certificate boundary, and [benchmark caveats](benchmarks.md).
   No database/full-host backup or general production-readiness claim is implied.
   Include FastCGI's shared soft cache bounds and whole-domain purge limitation.
+  Explicitly disclose the native shared-root disk/inode exhaustion risk and
+  possible whole-server unavailability: initial free-space/inode checks are not
+  durable OS reserves. Aggregate/unlimited account admission and platform usage
+  bounds remain production blockers, not completed experimental protections.
 
 ## For every candidate
 
@@ -42,10 +54,18 @@ releases or claim independent review from automated tests alone.
 2. Run CI and security gates, build the native WAF/Vinyl matrices and passive
    DEB/RPM carriers, and require reproducible archives, an SBOM, and provenance.
    Manual release-workflow dispatch produces a candidate, not a publication.
-3. Qualify the **exact candidate archive** on clean Debian 13, Ubuntu 26.04,
-   and Rocky Linux 10 amd64 hosts. Retain first-install/no-op, host-security,
+3. Qualify the **exact candidate archive** on each advertised installation
+   profile. The first native fresh-default beta is Debian 13 amd64 only;
+   prepared-quota installation on Debian/Ubuntu/Rocky is a separate route.
+   Retain first-install/no-op, host-security,
    service, tenant-isolation, WAF/cache, and OCI evidence appropriate to the
    release. Historical result links alone do not qualify a changed archive.
+   The [2026-09-12 private-image/kernel cycle](../infra/host-tests/results/2026-09-12-native-private-image-kernel-lifecycle.md)
+   passed internally on beta.3 platform files with a separately pinned installer;
+   it is not final beta.4 archive/public-onboarding evidence.
+   Retain the real positive fresh-host firewall eligibility check as well as
+   listener/reload/failure/reboot tests; passing isolated rule tests alone does
+   not qualify the complete installer path.
 4. Follow the complete [upgrade-matrix procedure](upgrade-matrix.md). Keep all
    published predecessors in the catalog with explicit support/retirement;
    verify all pages of the release inventory and every required scenario.
@@ -59,8 +79,16 @@ releases or claim independent review from automated tests alone.
 
 - Verify repository release immutability is enabled. Follow the
   [channel/publication contract](update-channels-and-checks.md).
-- Tag the **tested candidate source commit**, not the later evidence commit.
-  If any input changes, rebuild and requalify; do not relabel previous evidence.
+- Satisfy the [machine-validated readiness contract](../packaging/releases/README.md)
+  using real artifact-bound installation evidence, live CI/security results and
+  recorded human decisions. Its default is closed, not an audit waiver.
+  The [Linux validator/promotion suites](../infra/host-tests/results/2026-09-12-release-readiness-validation.md)
+  passed with 110 Node and four Python tests; synthetic machinery tests are not
+  the candidate evidence or approval required to open that gate.
+- Follow [exact artifact promotion](../packaging/releases/PROMOTION.md): tag the
+  fixed candidate source, obtain unpublished genuine tag provenance, qualify it,
+  then commit evidence and rerun the blocked promotion job. Never rebuild or
+  relabel old evidence to substitute different payload bytes at publication.
 - Confirm the workflow passed the full inventory/evidence gate and published
   the expected immutable release with all digested assets, SBOM and provenance.
   Beta releases must remain prereleases and must not replace latest stable.

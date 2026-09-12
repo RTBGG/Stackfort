@@ -136,6 +136,9 @@ func TestRenderUnitsReservesHostCapacityAndMapsAllAccountLimits(t *testing.T) {
 		t.Fatalf("platform units = %#v", units)
 	}
 	account := units[2].content
+	if units[0].content != hostingresources.CoreSliceUnit() || units[1].content != hostingresources.AccountsSliceUnit(4) {
+		t.Fatal("account reconciler differs from shared installer platform slices")
+	}
 	for _, line := range []string{
 		"CPUQuota=250%\n", "CPUWeight=800\n", "MemoryMax=536870912\n",
 		"MemorySwapMax=0\n", "TasksMax=64\n",

@@ -996,6 +996,15 @@ func (runner *Runner) Run(ctx context.Context, invocation Invocation) (Result, e
 	if containsInvalidArgument(arguments) {
 		return Result{}, newRunError(ErrInvalidInvocation, nil)
 	}
+	if invocation.Profile == ProfileSetProjectQuota {
+		// Only host-observed placement may select the root filesystem. The RPC
+		// still supplies no mountpoint, device or extra command argument.
+		target, err := projectQuotaTarget()
+		if err != nil || len(arguments) != 7 || arguments[6] != "/srv/hosting" {
+			return Result{}, newRunError(ErrInvalidInvocation, nil)
+		}
+		arguments[6] = target
+	}
 	secrets := sensitiveValues(invocation.Values, profile.sensitiveInputs)
 
 	runContext, cancel := context.WithTimeout(ctx, profile.timeout)

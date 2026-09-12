@@ -1,0 +1,571 @@
+{
+  "schemaVersion": 1,
+  "kind": "single-disk-storage-image-experiment",
+  "baseline": "native root ext4 WITHOUT project quotas",
+  "candidate": "preallocated loop ext4 WITH project quotas and backing-file direct I/O",
+  "performanceAcceptance": "not accepted as the production default",
+  "workloads": [
+    {
+      "workload": "seqread",
+      "latencyMetric": "fio clat_ns p99",
+      "native": {
+        "iops": {
+          "median": 4784.286285,
+          "min": 2253.820797,
+          "max": 11750.34993,
+          "runs": [
+            11750.34993,
+            4784.286285,
+            2253.820797
+          ]
+        },
+        "mibPerSecond": {
+          "median": 4785.785685539246,
+          "min": 2255.3191480636597,
+          "max": 11751.84962940216,
+          "runs": [
+            11751.84962940216,
+            4785.785685539246,
+            2255.3191480636597
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 5.865472,
+          "min": 1.646592,
+          "max": 12.255232,
+          "runs": [
+            1.646592,
+            5.865472,
+            12.255232
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 8.387590961317503,
+          "min": 6.571318129107074,
+          "max": 17.806731813246472,
+          "runs": [
+            17.806731813246472,
+            8.387590961317503,
+            6.571318129107074
+          ]
+        }
+      },
+      "image": {
+        "iops": {
+          "median": 4808.957313,
+          "min": 2663.869743,
+          "max": 11753.74925,
+          "runs": [
+            11753.74925,
+            4808.957313,
+            2663.869743
+          ]
+        },
+        "mibPerSecond": {
+          "median": 4810.456862449646,
+          "min": 2665.368094444275,
+          "max": 11755.348929405212,
+          "runs": [
+            11755.348929405212,
+            4810.456862449646,
+            2665.368094444275
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 5.341184,
+          "min": 1.59744,
+          "max": 12.12416,
+          "runs": [
+            1.59744,
+            5.341184,
+            12.12416
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 9.831029185867896,
+          "min": 7.212097712291586,
+          "max": 20.777333817653467,
+          "runs": [
+            20.777333817653467,
+            9.831029185867896,
+            7.212097712291586
+          ]
+        }
+      },
+      "imageMedianIOPSChangePercent": 0.515667887127691,
+      "pairedIOPSChangePercent": {
+        "median": 0.515667887127691,
+        "min": 0.02892952142063976,
+        "max": 18.193502630990245,
+        "runs": [
+          0.02892952142063976,
+          0.515667887127691,
+          18.193502630990245
+        ]
+      }
+    },
+    {
+      "workload": "seqwrite",
+      "latencyMetric": "fio clat_ns p99",
+      "native": {
+        "iops": {
+          "median": 2964.731741,
+          "min": 2828.03757,
+          "max": 8823.870452,
+          "runs": [
+            8823.870452,
+            2964.731741,
+            2828.03757
+          ]
+        },
+        "mibPerSecond": {
+          "median": 2966.2303924560547,
+          "min": 2829.536370277405,
+          "max": 8825.469811439514,
+          "runs": [
+            8825.469811439514,
+            2966.2303924560547,
+            2829.536370277405
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 17.170432,
+          "min": 2.998272,
+          "max": 22.9376,
+          "runs": [
+            2.998272,
+            17.170432,
+            22.9376
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 22.85171102661597,
+          "min": 21.37081247593377,
+          "max": 49.056603773584904,
+          "runs": [
+            49.056603773584904,
+            22.85171102661597,
+            21.37081247593377
+          ]
+        }
+      },
+      "image": {
+        "iops": {
+          "median": 2978.82541,
+          "min": 2325.609269,
+          "max": 8880.307723,
+          "runs": [
+            8880.307723,
+            2325.609269,
+            2978.82541
+          ]
+        },
+        "mibPerSecond": {
+          "median": 2980.3236112594604,
+          "min": 2327.10747051239,
+          "max": 8881.906284332275,
+          "runs": [
+            8881.906284332275,
+            2327.10747051239,
+            2980.3236112594604
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 17.170432,
+          "min": 3.35872,
+          "max": 55.312384,
+          "runs": [
+            3.35872,
+            55.312384,
+            17.170432
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 21.853281853281853,
+          "min": 17.477960904561133,
+          "max": 56.68647845468053,
+          "runs": [
+            56.68647845468053,
+            17.477960904561133,
+            21.853281853281853
+          ]
+        }
+      },
+      "imageMedianIOPSChangePercent": 0.47537754614002115,
+      "pairedIOPSChangePercent": {
+        "median": 0.6395976834316475,
+        "min": -21.55751440042345,
+        "max": 5.331889561849068,
+        "runs": [
+          0.6395976834316475,
+          -21.55751440042345,
+          5.331889561849068
+        ]
+      }
+    },
+    {
+      "workload": "randread",
+      "latencyMetric": "fio clat_ns p99",
+      "native": {
+        "iops": {
+          "median": 119962.70373,
+          "min": 117139.486051,
+          "max": 129432.956704,
+          "runs": [
+            129432.956704,
+            117139.486051,
+            119962.70373
+          ]
+        },
+        "mibPerSecond": {
+          "median": 468.61016941070557,
+          "min": 457.58197593688965,
+          "max": 505.6033458709717,
+          "runs": [
+            505.6033458709717,
+            457.58197593688965,
+            468.61016941070557
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 0.248832,
+          "min": 0.228352,
+          "max": 0.248832,
+          "runs": [
+            0.228352,
+            0.248832,
+            0.248832
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 38.625,
+          "min": 38.54101440200375,
+          "max": 39.88639949510887,
+          "runs": [
+            39.88639949510887,
+            38.625,
+            38.54101440200375
+          ]
+        }
+      },
+      "image": {
+        "iops": {
+          "median": 105755.024498,
+          "min": 101452.954705,
+          "max": 132962.80372,
+          "runs": [
+            132962.80372,
+            101452.954705,
+            105755.024498
+          ]
+        },
+        "mibPerSecond": {
+          "median": 413.1114225387573,
+          "min": 396.30685329437256,
+          "max": 519.3918104171753,
+          "runs": [
+            519.3918104171753,
+            396.30685329437256,
+            413.1114225387573
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 0.29696,
+          "min": 0.26112,
+          "max": 0.374784,
+          "runs": [
+            0.26112,
+            0.29696,
+            0.374784
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 42.43754220121539,
+          "min": 42.41101410342512,
+          "max": 44.554794520547944,
+          "runs": [
+            44.554794520547944,
+            42.43754220121539,
+            42.41101410342512
+          ]
+        }
+      },
+      "imageMedianIOPSChangePercent": -11.843413652944346,
+      "pairedIOPSChangePercent": {
+        "median": -11.843413652944346,
+        "min": -13.391326763351541,
+        "max": 2.7271624676491024,
+        "runs": [
+          2.7271624676491024,
+          -13.391326763351541,
+          -11.843413652944346
+        ]
+      }
+    },
+    {
+      "workload": "randwrite",
+      "latencyMetric": "fio clat_ns p99",
+      "native": {
+        "iops": {
+          "median": 216638.48076,
+          "min": 212793.682527,
+          "max": 231279.96002,
+          "runs": [
+            231279.96002,
+            212793.682527,
+            216638.48076
+          ]
+        },
+        "mibPerSecond": {
+          "median": 846.249921798706,
+          "min": 831.2315692901611,
+          "max": 903.4435901641846,
+          "runs": [
+            903.4435901641846,
+            831.2315692901611,
+            846.249921798706
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 0.152576,
+          "min": 0.14848,
+          "max": 0.152576,
+          "runs": [
+            0.14848,
+            0.152576,
+            0.152576
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 52.26775101657804,
+          "min": 51.45846544071021,
+          "max": 54.85284909204759,
+          "runs": [
+            54.85284909204759,
+            51.45846544071021,
+            52.26775101657804
+          ]
+        }
+      },
+      "image": {
+        "iops": {
+          "median": 177952.542712,
+          "min": 174556.454836,
+          "max": 185418.922969,
+          "runs": [
+            177952.542712,
+            185418.922969,
+            174556.454836
+          ]
+        },
+        "mibPerSecond": {
+          "median": 695.1329736709595,
+          "min": 681.8673963546753,
+          "max": 724.2985210418701,
+          "runs": [
+            695.1329736709595,
+            724.2985210418701,
+            681.8673963546753
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 0.226304,
+          "min": 0.193536,
+          "max": 0.259072,
+          "runs": [
+            0.193536,
+            0.226304,
+            0.259072
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 60.2519244226732,
+          "min": 59.612724757952975,
+          "max": 60.559006211180126,
+          "runs": [
+            60.2519244226732,
+            60.559006211180126,
+            59.612724757952975
+          ]
+        }
+      },
+      "imageMedianIOPSChangePercent": -17.857371373859344,
+      "pairedIOPSChangePercent": {
+        "median": -19.425000478386856,
+        "min": -23.05751752265458,
+        "max": -12.864460651705013,
+        "runs": [
+          -23.05751752265458,
+          -12.864460651705013,
+          -19.425000478386856
+        ]
+      }
+    },
+    {
+      "workload": "syncwrite",
+      "latencyMetric": "fio sync.lat_ns p99 (fsync only)",
+      "native": {
+        "iops": {
+          "median": 245.35093,
+          "min": 226.877312,
+          "max": 290.112966,
+          "runs": [
+            226.877312,
+            245.35093,
+            290.112966
+          ]
+        },
+        "mibPerSecond": {
+          "median": 0.9584016799926758,
+          "min": 0.8862390518188477,
+          "max": 1.1332530975341797,
+          "runs": [
+            0.8862390518188477,
+            0.9584016799926758,
+            1.1332530975341797
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 6.586368,
+          "min": 4.489216,
+          "max": 6.914048,
+          "runs": [
+            6.914048,
+            6.586368,
+            4.489216
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 3.5233570863024544,
+          "min": 1.570048309178744,
+          "max": 3.8899803536345776,
+          "runs": [
+            1.570048309178744,
+            3.5233570863024544,
+            3.8899803536345776
+          ]
+        }
+      },
+      "image": {
+        "iops": {
+          "median": 123.85046,
+          "min": 100.419664,
+          "max": 127.44902,
+          "runs": [
+            100.419664,
+            127.44902,
+            123.85046
+          ]
+        },
+        "mibPerSecond": {
+          "median": 0.48379039764404297,
+          "min": 0.39226341247558594,
+          "max": 0.4978475570678711,
+          "runs": [
+            0.39226341247558594,
+            0.4978475570678711,
+            0.48379039764404297
+          ]
+        },
+        "p99Milliseconds": {
+          "median": 10.682368,
+          "min": 9.764864,
+          "max": 14.352384,
+          "runs": [
+            14.352384,
+            9.764864,
+            10.682368
+          ]
+        },
+        "guestBusyPercent": {
+          "median": 4.183109707971586,
+          "min": 3.801980198019802,
+          "max": 4.256996452502956,
+          "runs": [
+            4.183109707971586,
+            3.801980198019802,
+            4.256996452502956
+          ]
+        }
+      },
+      "imageMedianIOPSChangePercent": -49.52109617028964,
+      "pairedIOPSChangePercent": {
+        "median": -55.738340200363446,
+        "min": -57.30957436766201,
+        "max": -48.05439702225706,
+        "runs": [
+          -55.738340200363446,
+          -48.05439702225706,
+          -57.30957436766201
+        ]
+      }
+    }
+  ],
+  "date": "2026-09-08",
+  "sourceBaseCommit": "ef74732bdcb18caf9ddd3d5aa3024b4381c6c3f2",
+  "release": {
+    "productionInstallerChanged": false,
+    "published": false,
+    "distributionQualification": [
+      "Debian 13 laboratory only"
+    ]
+  },
+  "environment": {
+    "vm": "stackfort-storage-prototype-debian-13",
+    "hypervisor": "Hyper-V, VM configuration 12.0",
+    "vCPUs": 2,
+    "memoryBytes": 8589934592,
+    "systemDiskBytes": 53687091200,
+    "auxiliaryDisk": "64 MiB NoCloud seed; not hosting storage",
+    "kernel": "6.12.107+deb13-cloud-amd64",
+    "systemd": "257.13-1~deb13u1",
+    "fio": "3.39",
+    "podman": "5.4.2",
+    "cloudImageSHA512": "8ea9faae810043a0b35b0149f05014f26705c2339ffb11ead308f33e844a87cc3ef46ec81d5262b38817b6a88af404874d48a5857ebe072ef6a31dfb6e371f50",
+    "imageBytes": 8589934592,
+    "allocatedOuterBytes": 8589938688,
+    "rootFeaturesChanged": false,
+    "rootFstabChanged": false
+  },
+  "functionalChecks": {
+    "provisioning": "passed; exclusive creation and two injected child-process exits",
+    "nativePreflight": "ready=true; storage capacity, filesystem, project quota passed",
+    "projectQuotaAndIsolation": "passed before and after reboot; byte/inode limits and account isolation",
+    "containerSubUIDQuota": "passed; account UID 249940, file UID 3273867840, EDQUOT under 256 MiB account quota",
+    "ociPrivateResources": "passed",
+    "ociDeploymentLifecycle": "passed",
+    "reservationAndTrim": "passed; format preserves allocation and explicit fstrim is rejected by loop queue",
+    "missingImageAndMount": "passed; synthetic consumer stops and cannot restart while backing image is absent",
+    "boundedENOSPC": "passed; 8331350016 bytes allocated until inner available blocks=0; actual write returns ENOSPC, outer root remains writable",
+    "reboot": "passed; automatic mount, consumer startup, sentinel, quota enforcement, stable root UUID/features/options/fstab",
+    "bandwidth": "passed on fresh per-cgroup files; native root, loop device and outer device; direct and buffered; configured 4 MiB/s, observed wall-inclusive 3.58–3.59 MiB/s",
+    "IOPS": {
+      "configured": 500,
+      "read": 499.95,
+      "write": 496.48,
+      "note": "Rounded observed values; raw JSON retained"
+    }
+  },
+  "limitations": [
+    "Native baseline does not have project quotas; not an equal-features native-quota comparison.",
+    "Host/hypervisor cache and storage fluctuations are present; sequential throughput spans several-fold across runs.",
+    "Rewriting an inode dirtied by another cgroup escaped the initial short buffered throttle test; fresh per-cgroup ownership passes. Shared-writer attribution is not qualified.",
+    "Only synthetic mount-dependent service wiring; not a complete one-line install or real service failure matrix.",
+    "No Ubuntu/Rocky qualification, customer VPS benchmark, unclean power-loss/fsck recovery, automatic growth or production safety review.",
+    "CPU measurements are guest-wide busy percentages including workload warm-up and process startup.",
+    "Prototype binaries evolved during debugging; per-phase hashes are recorded, not presented as one immutable release qualification."
+  ],
+  "artifacts": {
+    "provisionGuardBinarySHA256": "6e9692e8f09ddb9e1074146a8c49315955830cc0bf4c1e7d6ce24ea7e284f607",
+    "benchmarkBinarySHA256": "11093058b74b29b975faca5f4ba1fa75d5966570ad6bcd49802bfa8767a956da",
+    "validationBinarySHA256": "1bb71dcf2506cd88dbab0ff745ba63c947d32f56275b95e021b4013cbe922937",
+    "rebootBinarySHA256": "71ee6a71c60323650ee14c4574c7a36c8971e240fb1474c23bd372b16fcc7b5b",
+    "benchmarkLogSHA256": "d69ae0c3526aa54ff23a5ba1ac0660b4a45ef8a290d6fee4cc6aa11ed1555698",
+    "validationLogSHA256": "c7bf62932cfc991c64f1257f7d44afd365db1f176874e9f6e77fcab9d4a9c157",
+    "fullImageLogSHA256": "2392cad46faff17e21720c2b3de896da7e9531db3db73dc453aab652bfb201cd",
+    "rebootLogSHA256": "ebb80d0889e1d6e20c94826bef4af0ed86149693d250cc1d19e51d1ec3915a82",
+    "evidenceArchive": "infra/host-tests/work/storage-image-Reboot-20260908T081044Z/evidence.tar.gz",
+    "evidenceArchiveSHA256": "1688fde037b906cc053d3478e690042c72c4d676a6068889c562dc82dfce38ce",
+    "benchmarkResultDirectory": "results-790b07f6-a62c-402e-9a79-200d63626265"
+  }
+}

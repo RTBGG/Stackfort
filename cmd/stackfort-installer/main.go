@@ -29,6 +29,25 @@ func main() {
 }
 
 func run(ctx context.Context, arguments []string, stdout, stderr io.Writer, inspect inspectFunc) int {
+	if len(arguments) > 0 && arguments[0] == "onboard" {
+		if err := runOnboardInteractive(ctx, arguments[1:], stdout); err != nil {
+			_, _ = fmt.Fprintln(stderr, "onboarding stopped:", err)
+			return exitError
+		}
+		return exitReady
+	}
+	if len(arguments) > 0 && arguments[0] == "native-host" {
+		return runNativeHost(ctx, arguments[1:], stdout, stderr, installapply.InspectNativeHost)
+	}
+	if len(arguments) > 0 && arguments[0] == "native-prerequisite-check" {
+		return runNativePrerequisiteCheck(ctx, arguments[1:], os.Stdin, stderr)
+	}
+	if len(arguments) > 0 && arguments[0] == "native-boot" {
+		return runNativeBoot(ctx, arguments[1:], stdout, stderr)
+	}
+	if len(arguments) > 0 && arguments[0] == "native-service" {
+		return runNativeService(ctx, arguments[1:], stdout, stderr)
+	}
 	if len(arguments) == 1 && arguments[0] == "version" {
 		build := buildinfo.Current()
 		if _, err := fmt.Fprintf(stdout, "stackfort-installer %s (%s, %s)\n", build.Version, build.Commit, build.BuildDate); err != nil {
@@ -41,6 +60,9 @@ func run(ctx context.Context, arguments []string, stdout, stderr io.Writer, insp
 	}
 	if len(arguments) > 0 && arguments[0] == "panel" {
 		return runPanel(ctx, arguments[1:], stdout, stderr, nil)
+	}
+	if len(arguments) > 0 && arguments[0] == "native" {
+		return runNative(ctx, arguments[1:], stdout, stderr, nil)
 	}
 	if len(arguments) == 0 || arguments[0] != "preflight" {
 		writeUsage(stderr)
@@ -83,9 +105,15 @@ func run(ctx context.Context, arguments []string, stdout, stderr io.Writer, insp
 }
 
 func writeUsage(output io.Writer) {
+	_, _ = fmt.Fprintln(output, "usage: stackfort-installer onboard --source-dir=/absolute/release/path --archive=/absolute/archive.tar.gz --attestations=/absolute/build-attestation.jsonl --version=X.Y.Z-beta.N (experimental Debian 13; interactive consent required)")
+	_, _ = fmt.Fprintln(output, "usage: stackfort-installer native-host [--format=text|json] (read-only qualification check)")
 	_, _ = fmt.Fprintln(output, "usage: stackfort-installer preflight [--format=text|json]")
 	_, _ = fmt.Fprintln(output, "       stackfort-installer install --source-dir=/absolute/release/path --yes [--format=text|json]")
 	_, _ = fmt.Fprintln(output, "       stackfort-installer version")
+	_, _ = fmt.Fprintln(output, "       stackfort-installer native status [--format=text|json]")
+	_, _ = fmt.Fprintln(output, "       stackfort-installer native recovery-plan [--format=text|json]")
+	_, _ = fmt.Fprintln(output, "       stackfort-installer native approve-recovery --state-sha256=<reviewed> --package-sha256=<reviewed> --yes")
+	_, _ = fmt.Fprintln(output, "       stackfort-installer native cancel-recovery --approval-sha256=<reviewed> --yes")
 	_, _ = fmt.Fprintln(output, "       stackfort-installer panel configure --hostname=panel.example.com --certificate=/root/fullchain.pem --private-key=/root/privkey.pem --yes")
 	_, _ = fmt.Fprintln(output, "       stackfort-installer panel status | disable --yes | recover --yes")
 	_, _ = fmt.Fprintln(output, "       stackfort-installer panel issue --hostname=panel.example.com --email=admin@example.com --accept-terms --yes")

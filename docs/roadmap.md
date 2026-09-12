@@ -278,6 +278,201 @@ panel/private-CA and selected hosting regressions on all three supported
 distributions; see the [artifact-bound evidence](../infra/host-tests/results/2026-09-08-panel-hostname-candidate.md).
 This does not close the remaining browser/manual-review or public-release gates.
 
+Single-disk onboarding follow-up (2026-09-08): a real Debian VPS exposed that the
+installer still assumes a prepared quota filesystem. The new
+[storage image prototype](storage-image-prototype.md) provisions a quota-capable
+hosting image without changing root filesystem features. Its Debian hard quota,
+OCI, I/O-control, full-image and reboot/fail-closed tests pass, but random-write
+and fsync benchmarks show material overhead; see the
+[experimental evidence](../infra/host-tests/results/2026-09-08-storage-image-prototype.md).
+The [three-way XFS follow-up](../infra/host-tests/results/2026-09-08-storage-xfs-comparison.md)
+also passes functional/reboot checks but shows no useful XFS-over-ext4 image
+performance improvement; neither image configuration is adopted as the default.
+This is not a production installer implementation or a release qualification.
+Automatic safe storage provisioning on ordinary single-disk VPS images remains
+an explicit open release gate; prepared-disk installer results do not close it.
+
+The [native ext4 quota follow-up](native-quota-prototype.md) now passes an
+unattended fresh-checkpoint Debian replay: offline preparation, reboot/resume,
+hard quotas, OCI and fail-closed tests. The verified native-root quota execution
+path distinguishes accounting from actual enforcement. Its before/after fio
+run does not show the image experiments' fsync collapse; see the
+[native evidence](../infra/host-tests/results/2026-09-08-native-quota-prototype.md).
+Production installer/reboot-state integration, recovery and ordinary three-OS
+qualification are still open; no automatic root conversion ships yet.
+
+The [native installation-state foundation](native-quota-installation-state.md)
+now persists source/host-bound phases with a shared installer lock, one-shot
+staging/resume and terminal recovery. Installer/update entry points reject any
+unqualified storage journal. Protocol failure injection and actual Linux
+journal/gate tests pass; see the [state-protocol evidence](../infra/host-tests/results/2026-09-08-native-storage-journal.md).
+The offline backend, one-shot boot dispatch, real service continuation, OS
+reserve, power-loss recovery and three-OS qualification remain open. The public
+installer still requires prepared hosting storage.
+
+The [journal-bound one-shot boot experiment](native-quota-boot-handoff.md) connects
+the durable protocol to the Debian offline helper. Main GRUB configuration and
+normal initrd remain unchanged; fresh conversion/resume and normal-reboot quota/
+OCI regressions pass. This is a lab backend, not an enabled installer feature;
+production boot recovery, release staging, real installer continuation and the
+remaining multi-OS/capacity gates stay open.
+
+The [durable release staging API](native-quota-release-staging.md) now retains
+an operation-bound copy outside bootstrap temporary paths and verifies its full
+content/metadata in a new process after the original download is removed. The
+real beta.3 source, shared-lock conflicts, tampering and incomplete-stage tests
+pass on Debian; see the [staging evidence](../infra/host-tests/results/2026-09-08-resume-source-staging.md).
+Staging alone is a local integrity/persistence component, not publisher
+authentication or an enabled resume path.
+
+The [release-origin/manifest follow-up](native-quota-release-origin.md)
+(2026-09-09) now verifies the retained candidate's actual attestation with an
+independently pinned verifier, compares its archive to the staged source, and
+seals source, origin, host and boot intent under the shared lock. The same final
+binary passes eight origin/tampering scenarios and the real Debian conversion
+and normal-reboot quota/OCI checks with the original source path absent; see
+the [origin/boot evidence](../infra/host-tests/results/2026-09-09-native-release-origin.md).
+The `main`-signed candidate is explicitly lab-only, not a qualified tag release.
+That follow-up did not yet execute real package stages. Production recovery,
+external package/kernel coordination, capacity reserve and multi-OS onboarding
+remain open. No public native-storage activation or new release is included.
+
+The [post-boot installation continuation](native-quota-install-continuation.md)
+(2026-09-09) now holds the shared installer/storage lock while the current
+coordinator executes all nine real stages from the retained authenticated
+candidate. The package journal is separately bound to the exact native plan.
+Fresh Debian installation and a normal reboot pass with no package-stage replay;
+quotas, OCI and health checks pass on both boots. The tests also exposed and
+corrected a missing boot-time PHP runtime directory and divergent shared-slice
+templates. Separate actual boots with an incomplete package journal or changed
+retained-source metadata leave the mount and all checked consumers inactive.
+See the [installation/reboot evidence](../infra/host-tests/results/2026-09-09-native-install-continuation.md).
+This remains an internal API and opt-in lab: old candidate binaries do not
+become a qualified native release.
+
+The [service-admission and recovery follow-up](native-quota-service-admission.md)
+(2026-09-09) adds durable admission state, a dedicated closed web-port gate,
+supervisor quarantine and recovery bound to exact admission/package digests.
+The Debian lab exercises real process loss after package transactions, explicit
+continuation, installed-file metadata rejection and repeated boot admission.
+See the [admission evidence](../infra/host-tests/results/2026-09-09-native-service-admission.md).
+This closes the tested fixed-web-listener failure boundary, not general
+production onboarding. Next are packaged boot/coordinator/recovery entry points,
+prerequisite ordering and full listener/firewall integration, then a fresh signed
+native-runtime candidate and the remaining coordination/capacity/multi-OS gates.
+
+The [native installer operator interface](native-installer-operator.md)
+(2026-09-09) adds `native status`, `approve-recovery` and
+`cancel-recovery` to the real installer and native-package wrapper.
+Inspection never creates state; explicit approvals are durable, source/plan
+bound, cancellable by digest and consumed once under the existing shared lock.
+The Debian supervisor now uses this interface instead of its ad-hoc request
+file. See the [CLI/continuation evidence](../infra/host-tests/results/2026-09-09-native-installer-operator.md).
+Production preparation/boot dispatch and automatic continuation are still
+disabled. The next integration step is the packaged boot backend and supervisor,
+with prerequisite ordering and listener/firewall qualification.
+
+The [real installer boot-service integration](native-installer-runtime.md)
+(2026-09-10) moves post-ready storage verification, service admission and
+independent process-loss quarantine out of the test executable. A runtime plan
+and executable are sealed before the storage journal; normal boots use the real
+installer dispatcher and cannot invoke conversion. The initial proof-bearing
+offline transition still uses the qualified Debian lab helper. See the
+[runtime evidence](../infra/host-tests/results/2026-09-10-native-installer-runtime.md).
+The final Debian artifact pair passes fresh installation, normal boots, real
+dispatcher SIGKILL/quarantine, blocked boot without approval, single-use reviewed
+recovery, and live fstab-metadata rejection before mounting hosting storage.
+All 100 Linux package/CLI tests pass; the qualified checkpoint is retained offline.
+The [initial installer preparation and boot handoff](native-installer-preparation.md)
+(2026-09-11) now also run from regular installer components: sealed preparation,
+separate one-shot initrd with the real installer, offline authorization/conversion,
+current-boot finalization, and the existing verified installation/admission.
+No test executable remains in this profile's boot path. Fresh Debian installation,
+a normal non-converting/non-reinstalling boot, real quota/OCI checks, and all
+108 Linux package/CLI tests pass. The successful checkpoint is retained offline.
+Post-arm fstab drift is rejected before offline mutation, and a further normal
+reboot stays quarantined without repeating preparation.
+See the [preparation evidence](../infra/host-tests/results/2026-09-11-native-installer-preparation.md).
+
+The [host eligibility and prerequisite follow-up](native-installer-host-eligibility.md)
+adds conservative Debian 13 fresh-host checks and installs only missing
+quota/nftables prerequisites before sealing boot artifacts. Exact new-package
+plans are checked again against APT's actual transaction, and a durable receipt
+is verified in initramfs and runtime. Public activation is still disabled;
+provider-wide image coverage remains unqualified.
+The real missing-prerequisite install, offline conversion, normal reboot and
+quota/OCI checks pass with the final dispatcher, along with all 116 Linux
+package/CLI tests. See the [host/prerequisite evidence](../infra/host-tests/results/2026-09-11-native-host-eligibility.md).
+The successful checkpoint is retained offline.
+
+The [power-loss containment follow-up](native-installer-power-loss.md) adds a sealed
+recovery-first temporary GRUB default, raw-device flush barriers and an initramfs
+stop on every uncertain guarded boot. Real VM hard-power-off and recovery-console
+checks exercise the safety stop without test executables or pause switches in
+the boot path. This is containment, not automatic filesystem repair.
+Four hard-off cases reach recovery without mounting root or repeating conversion.
+The successful install/normal-boot quota and OCI tests and all 119 Linux package/CLI
+tests pass; see the [dated containment evidence](../infra/host-tests/results/2026-09-11-native-power-loss.md).
+The successful and interrupted lab checkpoints are retained offline.
+
+The [deterministic crash-image follow-up](native-installer-crash-replay.md) records
+the same pinned conversion tools through dm-log-writes on scratch ext4 images.
+It checks write and sector boundaries plus synthetic half-sector tears, proves
+full replay matches the real converted bytes, preserves inconsistent evidence
+and verifies a complete file-image backup/restore. The final run passes 167 cases
+(26 distinct byte states), including 112 intra-write sector boundaries and 38
+half-sector variants; 110 cases produce expected nonzero read-only fsck diagnoses.
+See the [replay evidence](../infra/host-tests/results/2026-09-11-native-crash-replay.md).
+This is not a physical torn-write guarantee or a bootable whole-disk restore.
+
+The [whole-disk rescue follow-up](native-installer-whole-disk-recovery.md) now
+passes complete 50 GiB readback, offline root/EFI checks, eight boot-file pins
+and two normal Secure Boot starts from a new replacement disk. An independent
+rescue OS reads a backup retained outside the affected guest disk; the original
+VM/checkpoints are preserved. WWN-based lookup also survives a changed Linux
+disk name on the second boot. See the [whole-system evidence](../infra/host-tests/results/2026-09-11-native-whole-disk-restore.md).
+This qualifies the Debian lab recovery route, not off-host disaster recovery,
+automatic repair or a portable end-user restore feature.
+
+The [recovery policy and operator handoff](native-installer-recovery-policy.md)
+now define backup/reinstallation boundaries and implement the read-only
+`native recovery-plan` command. It distinguishes prerequisite, storage and
+admission states, suppresses unsafe partial evidence, and cannot grant backup,
+restore, repair or reinstallation authority. Windows checks and Linux isolated
+inspection plus the real recorded Debian state pass; see the
+[dated evidence](../infra/host-tests/results/2026-09-11-native-recovery-policy.md).
+
+The [explicit preparation decision](native-installer-recovery-policy.md) now
+binds fresh-disposable acceptance to the operation, authenticated release,
+dispatcher, host/root and reviewed package/boot snapshot before prerequisites.
+The exclusive durable receipt blocks reuse and public installation even before
+a storage journal exists; APT, sealing and offline/runtime checks enforce its
+binding. The [dated qualification](../infra/host-tests/results/2026-09-11-native-recovery-choice.md)
+records boundary tests and a new real Debian preparation/conversion/install plus
+normal reboot with quota/OCI checks.
+
+Point 3's scoped whole-system restore experiment, diagnostic handoff and internal
+fresh-disposable decision binding are complete. External-backup mode remains
+rejected until independent backup verification is implemented; no generic restore
+or provider reinstallation exists. Public consent transport and activation remain
+open.
+
+The [package-coordination follow-up](native-installer-package-coordination.md)
+adds held OFD locks compatible with APT/dpkg during host inspection, preparation
+outside its own APT calls, and boot-image arming. Checked APT handoffs reject
+unrelated full-inventory changes, and arming rejects a changed sealed package
+baseline. These are process-lifetime guards, not a persistent reboot fence;
+direct kernel/initramfs/GRUB tool calls remain outside their exclusion boundary.
+The [dated qualification](../infra/host-tests/results/2026-09-12-native-package-guard.md)
+passes 134 Linux package/CLI tests, real APT/dpkg conflict cases, and complete
+Debian preparation/conversion/install plus normal reboot with quota/OCI checks.
+The next safety step is durable operation-bound package/boot coordination through
+process exit, shutdown and reboot, with failure handling and safe release.
+Public activation, external
+package/kernel serialization, capacity reserve, full listener/firewall
+qualification, additional OS boot variants and a signed native-runtime candidate
+remain open.
+
 ## Post-beta candidates
 
 - SFTP/SSH-key management and constrained shell access.

@@ -65,6 +65,16 @@ setquota -P <immutable project ID> <KiB soft> <KiB hard> \
   <inode soft> <inode hard> /srv/hosting
 ```
 
+For native hosting on the ext4 root filesystem, the runner internally selects
+the literal `/` instead: quota-tools excludes subtree bind mounts. It first
+opens the managed ancestors without following symlinks, rejects unsafe ownership
+or permissions, verifies that hosting and root share a device, and requires
+kernel mount evidence plus active project accounting **and enforcement**.
+Separate hosting filesystems keep the command above. The RPC does not gain a
+target-path parameter, and errors never trigger a broad-target retry. Automatic
+root preparation remains a [lab prototype](native-quota-prototype.md), not an
+installer feature or release qualification.
+
 Soft and hard values are equal so enforcement is immediate rather than
 grace-period based. The RPC caller supplies no executable, option, mount path,
 or raw argument list; the shared typed storage specification is revalidated by
@@ -114,4 +124,3 @@ References:
 - [`quotactl(2)` project quota semantics](https://man7.org/linux/man-pages/man2/quotactl.2.html)
 - [`setquota(8)` project mode](https://man7.org/linux/man-pages/man8/setquota.8.html)
 - [`FS_IOC_FSGETXATTR(2)` and project inheritance](https://man7.org/linux/man-pages/man2/ioctl_xfs_fsgetxattr.2.html)
-

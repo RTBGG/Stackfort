@@ -57,6 +57,21 @@ func TestVersionCLI(t *testing.T) {
 	}
 }
 
+func TestOnboardDispatchRejectsConsentFlagsWithoutInspectingOrEchoingInput(t *testing.T) {
+	t.Parallel()
+	for _, arguments := range [][]string{{"onboard"}, {"onboard", "--yes"}, {"onboard", "--token=never-echo-this-secret"}} {
+		var stdout, stderr bytes.Buffer
+		inspect := func(context.Context) (installpreflight.Result, error) {
+			t.Fatal("invalid onboard request reached ordinary preflight")
+			return installpreflight.Result{}, nil
+		}
+		if run(t.Context(), arguments, &stdout, &stderr, inspect) != exitError || stdout.Len() != 0 ||
+			!strings.Contains(stderr.String(), "onboarding stopped:") || strings.Contains(stderr.String(), "never-echo-this-secret") {
+			t.Fatal("invalid onboard invocation was not rejected safely")
+		}
+	}
+}
+
 func TestTextInstallResultIncludesSecurePanelHandoff(t *testing.T) {
 	t.Parallel()
 	var output bytes.Buffer

@@ -3,10 +3,32 @@
 package installapply
 
 import (
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/RTBGG/stackfort/internal/hostingresources"
 )
+
+func TestInstallerSharesPlatformSlicesWithAccountRuntime(t *testing.T) {
+	t.Parallel()
+	for _, distribution := range []string{"debian", "ubuntu", "rocky"} {
+		units := serviceUnits(distribution)
+		if units["stackfort-core.slice"] != hostingresources.CoreSliceUnit() ||
+			units["stackfort-accounts.slice"] != hostingresources.AccountsSliceUnit(uint64(runtime.NumCPU())) {
+			t.Fatal("installer platform slice differs from account runtime", distribution)
+		}
+	}
+}
+
+func TestPHPRuntimeTmpfilesIsSharedAndNonDestructive(t *testing.T) {
+	t.Parallel()
+	if phpRuntimeTmpfilesPath != "/etc/tmpfiles.d/stackfort-php.conf" ||
+		phpRuntimeTmpfiles() != managedHeader+"d /run/stackfort-php 0755 root root - -\n" {
+		t.Fatal("PHP runtime must recreate only the root-owned parent without cleanup or recursive changes")
+	}
+}
 
 func TestInstalledServiceInventoryIncludesRenewalUnits(t *testing.T) {
 	t.Parallel()
