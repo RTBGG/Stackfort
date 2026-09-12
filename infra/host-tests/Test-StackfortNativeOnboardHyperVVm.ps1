@@ -6,7 +6,7 @@
 param(
     [ValidateSet('Onboard')][string] $Stage = 'Onboard',
     [Parameter(Mandatory)][string] $ArchiveDirectory,
-    [ValidateSet('0.1.0-beta.4')][string] $Version = '0.1.0-beta.4',
+    [ValidateSet('0.1.0-beta.5')][string] $Version = '0.1.0-beta.5',
     [Parameter(Mandatory)][ValidatePattern('^[0-9a-f]{40}$')][string] $Commit,
     [Parameter(Mandatory)][ValidatePattern('^[0-9a-f]{64}$')][string] $ArchiveSHA256,
     [Parameter(Mandatory)][ValidatePattern('^[0-9a-f]{64}$')][string] $ChecksumsSHA256,
@@ -205,7 +205,7 @@ public static class StackfortNativeOnboardProbeV1 {
                 try {
                     code = Marshal.PtrToStringUni(pointer);
                     password = Convert.ToBase64String(passwordBytes) + "aA1!";
-                    const string email = "native-beta4-qualification@example.invalid";
+                    const string email = "native-candidate-qualification@example.invalid";
                     bootstrapBody = JsonSerializer.Serialize(new { token = code, email, displayName = "Disposable Native Qualification", password, locale = "en" });
                     string identity;
                     using (var created = Request(client, HttpMethod.Post, "api/v1/bootstrap", bootstrapBody, 201)) {

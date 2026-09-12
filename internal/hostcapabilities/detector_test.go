@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/RTBGG/stackfort/internal/agentprotocol"
+	"github.com/RTBGG/stackfort/internal/phpworkspace"
 )
 
 func TestSupportedDistributionFixtures(t *testing.T) {
@@ -82,6 +83,66 @@ func TestSupportedDistributionFixtures(t *testing.T) {
 				t.Fatalf("probe calls = %#v", runner.calls)
 			}
 		})
+	}
+}
+
+func TestManagedPHPDetectionUsesExactNativeRuntime(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct {
+		fixture, version, packageName, unit, alternativePackage string
+	}{
+		{"debian-13", "8.4", "php8.4-fpm", "php8.4-fpm.service", "php-fpm"},
+		{"ubuntu-26.04", "8.5", "php8.5-fpm", "php8.5-fpm.service", "php-fpm"},
+		{"rocky-10", "8.3", "php-fpm", "php-fpm.service", "php8.4-fpm"},
+	} {
+		for _, installed := range []bool{true, false} {
+			name := test.fixture + "/approved-runtime-missing"
+			if installed {
+				name = test.fixture + "/only-approved-runtime-installed"
+			}
+			t.Run(name, func(t *testing.T) {
+				runner := &fixtureRunner{phpInstalledPackages: map[string]bool{
+					test.packageName: installed, test.alternativePackage: !installed,
+				}}
+				report, err := fixtureInspector(filepath.Join("testdata", test.fixture), runner).Inspect(t.Context())
+				if err != nil {
+					t.Fatal(err)
+				}
+				php := findPackage(t, report.Packages, "php-fpm")
+				service := findService(t, report.Services, "php-fpm")
+				if php.PackageName != test.packageName || service.Unit != test.unit {
+					t.Fatalf("PHP package/service do not match native profile: %#v / %#v", php, service)
+				}
+				// Exercise the same downstream selection used by the admin API's
+				// managedPhpVersions field, not just detector field names.
+				versions, state := phpworkspace.HostRuntime(report)
+				if installed {
+					if php.Availability.Status != agentprotocol.CapabilityAvailable ||
+						state.Status != agentprotocol.CapabilityAvailable || len(versions) != 1 || versions[0] != test.version {
+						t.Fatalf("installed native PHP unavailable: package=%#v versions=%v state=%#v", php, versions, state)
+					}
+				} else if len(versions) != 0 || state.Status != agentprotocol.CapabilityUnavailable ||
+					state.ReasonCode != "package-not-installed" {
+					t.Fatalf("alternative PHP package advertised a managed runtime: versions=%v state=%#v", versions, state)
+				}
+				queries := 0
+				for _, call := range runner.calls {
+					if call.executable != "/usr/bin/dpkg-query" && call.executable != "/usr/bin/rpm" {
+						continue
+					}
+					queriedPackage := call.arguments[len(call.arguments)-1]
+					if strings.HasPrefix(queriedPackage, "php") {
+						queries++
+						if queriedPackage != test.packageName {
+							t.Fatalf("queried unapproved PHP package %q", queriedPackage)
+						}
+					}
+				}
+				if queries != 1 {
+					t.Fatalf("PHP package queries = %d, want exactly one", queries)
+				}
+			})
+		}
 	}
 }
 
@@ -223,8 +284,9 @@ type fixtureCall struct {
 }
 
 type fixtureRunner struct {
-	calls               []fixtureCall
-	podmanUnitFileState string
+	calls                []fixtureCall
+	podmanUnitFileState  string
+	phpInstalledPackages map[string]bool
 }
 
 type staticRunner struct {
@@ -242,6 +304,10 @@ func (runner *fixtureRunner) Run(_ context.Context, executable string, arguments
 		return commandResult{}, errors.New("missing fixture arguments")
 	}
 	name := arguments[len(arguments)-1]
+	if runner.phpInstalledPackages != nil && strings.HasPrefix(name, "php") &&
+		(executable == "/usr/bin/dpkg-query" || executable == "/usr/bin/rpm") && !runner.phpInstalledPackages[name] {
+		return commandResult{ExitCode: 1}, nil
+	}
 	switch executable {
 	case "/usr/bin/dpkg-query":
 		if name == "vinyl-cache" {

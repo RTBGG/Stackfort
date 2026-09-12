@@ -18,7 +18,57 @@ import (
 	"github.com/RTBGG/stackfort/internal/ocideployment"
 	"github.com/RTBGG/stackfort/internal/ociimage"
 	"github.com/RTBGG/stackfort/internal/ociresources"
+	"github.com/RTBGG/stackfort/internal/phpruntime"
 )
+
+func TestPHPQueryProfilesMatchApprovedNativeRuntimes(t *testing.T) {
+	t.Parallel()
+	runner := NewRunner()
+	for _, test := range []struct {
+		distribution string
+		queryProfile ProfileID
+	}{
+		{"debian", ProfileDpkgQuery}, {"ubuntu", ProfileDpkgQuery}, {"rocky", ProfileRPMQuery},
+	} {
+		t.Run(test.distribution, func(t *testing.T) {
+			version, err := phpruntime.ApprovedVersion(test.distribution)
+			if err != nil {
+				t.Fatal(err)
+			}
+			php, err := phpruntime.ForDistribution(test.distribution, version)
+			if err != nil {
+				t.Fatal(err)
+			}
+			query := runner.profiles[test.queryProfile]
+			arguments, err := query.resolve([]string{php.PackageName})
+			if err != nil || len(arguments) == 0 || arguments[len(arguments)-1] != php.PackageName {
+				t.Fatalf("approved package query rejected: arguments=%v error=%v", arguments, err)
+			}
+			if _, err := runner.profiles[ProfileSystemctlShow].resolve([]string{php.VendorUnit}); err != nil {
+				t.Fatalf("approved vendor service query rejected: %v", err)
+			}
+		})
+	}
+	for _, test := range []struct {
+		profile ProfileID
+		name    string
+	}{
+		{ProfileDpkgQuery, "php-fpm"},
+		{ProfileDpkgQuery, "php8.3-fpm"},
+		{ProfileDpkgQuery, "php8.6-fpm"},
+		{ProfileDpkgQuery, "php*-fpm"},
+		{ProfileDpkgQuery, "--help"},
+		{ProfileDpkgQuery, "php8.4-fpm\nnginx"},
+		{ProfileRPMQuery, "php8.4-fpm"},
+		{ProfileRPMQuery, "php8.5-fpm"},
+		{ProfileRPMQuery, "php*-fpm"},
+		{ProfileSystemctlShow, "php8.6-fpm.service"},
+	} {
+		if _, err := runner.profiles[test.profile].resolve([]string{test.name}); !errors.Is(err, ErrNotAllowlisted) {
+			t.Fatalf("unapproved %s query %q error=%v", test.profile, test.name, err)
+		}
+	}
+}
 
 func TestProductionProfilesUseFixedPathsAndTemplates(t *testing.T) {
 	t.Parallel()

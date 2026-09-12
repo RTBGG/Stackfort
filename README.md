@@ -36,7 +36,7 @@ curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/RTBGG/st
 
 [Inspect the installer](https://raw.githubusercontent.com/RTBGG/stackfort/main/packaging/installer/install.sh)
 before running it as root. HTTPS-only transport and TLS 1.2 or newer are required
-by this command. The current script explicitly selects **`0.1.0-beta.4`**, not
+by this command. The current script explicitly selects **`0.1.0-beta.5`**, not
 latest stable. **No public release exists yet:** its assets and exact tagged
 installation qualification are still pending. Native setup requires an interactive
 root console/SSH terminal, explicit reboot consent and saving the setup code.

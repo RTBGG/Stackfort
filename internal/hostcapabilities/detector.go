@@ -19,6 +19,7 @@ import (
 
 	"github.com/RTBGG/stackfort/internal/agentprotocol"
 	"github.com/RTBGG/stackfort/internal/ociimage"
+	"github.com/RTBGG/stackfort/internal/phpruntime"
 )
 
 const (
@@ -562,22 +563,27 @@ type packageDefinition struct{ key, name string }
 type serviceDefinition struct{ key, unit string }
 
 func packageDefinitions(distribution string) ([]packageDefinition, bool) {
+	phpProfile, phpSupported := approvedPHPProfile(distribution)
+	phpPackage := "php-fpm"
+	if phpSupported {
+		phpPackage = phpProfile.PackageName
+	}
 	definitions := []packageDefinition{
-		{"nginx", "nginx"}, {"php-fpm", "php-fpm"}, {"mariadb", "mariadb-server"},
+		{"nginx", "nginx"}, {"php-fpm", phpPackage}, {"mariadb", "mariadb-server"},
 		{"vinyl", "vinyl-cache"}, {"podman", "podman"}, {"netavark", "netavark"},
 		{"aardvark-dns", "aardvark-dns"}, {"passt", "passt"}, {"slirp4netns", "slirp4netns"},
 		{"fuse-overlayfs", "fuse-overlayfs"}, {"uidmap", "uidmap"}, {"coraza", "stackfort-waf"},
 	}
 	switch distribution {
 	case "debian", "ubuntu":
-		return definitions, true
+		return definitions, phpSupported
 	case "rocky":
 		for index := range definitions {
 			if definitions[index].key == "uidmap" {
 				definitions[index].name = "shadow-utils-subid"
 			}
 		}
-		return definitions, true
+		return definitions, phpSupported
 	default:
 		return definitions, false
 	}
@@ -585,18 +591,30 @@ func packageDefinitions(distribution string) ([]packageDefinition, bool) {
 
 func serviceDefinitions(distribution string) []serviceDefinition {
 	phpUnit := "php-fpm.service"
+	if profile, supported := approvedPHPProfile(distribution); supported {
+		phpUnit = profile.VendorUnit
+	}
 	firewallUnit := "firewalld.service"
 	switch distribution {
-	case "debian":
-		phpUnit, firewallUnit = "php8.4-fpm.service", "nftables.service"
-	case "ubuntu":
-		phpUnit, firewallUnit = "php8.5-fpm.service", "nftables.service"
+	case "debian", "ubuntu":
+		firewallUnit = "nftables.service"
 	}
 	return []serviceDefinition{
 		{"nginx", "nginx.service"}, {"php-fpm", phpUnit}, {"mariadb", "mariadb.service"},
 		{"vinyl", "vinyl.service"}, {"podman", "podman.socket"}, {"firewall", firewallUnit},
 		{"stackfort-api", "stackfort-api.service"}, {"stackfort-agent", "stackfort-agent.service"},
 	}
+}
+
+// Keep detection aligned with the exact package installed for managed pools;
+// a distribution's generic PHP metapackage is not evidence of that runtime.
+func approvedPHPProfile(distribution string) (phpruntime.Profile, bool) {
+	version, err := phpruntime.ApprovedVersion(distribution)
+	if err != nil {
+		return phpruntime.Profile{}, false
+	}
+	profile, err := phpruntime.ForDistribution(distribution, version)
+	return profile, err == nil
 }
 
 func parseOSRelease(content string) (map[string]string, error) {

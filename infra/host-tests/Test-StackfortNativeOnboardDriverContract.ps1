@@ -31,7 +31,7 @@ $contractWait = $contractAst.FindAll({ param($node)
 . ([scriptblock]::Create($contractWait.Extent.Text))
 function Get-OnboardAddress { return '192.0.2.10' }
 function Start-Sleep { param([int] $Seconds) }
-$Version = '0.1.0-beta.4'
+$Version = '0.1.0-beta.5'
 $taskInitialBoot = '11111111-1111-4111-8111-111111111111'
 $taskIdentity = @($taskInitialBoot, '22222222-2222-4222-8222-222222222222', '33333333-3333-4333-8333-333333333333', '44444444-4444-4444-8444-444444444444')
 $taskCapture = [pscustomobject]@{ OperationID = '55555555-5555-4555-8555-555555555555'; SetupSHA256 = ('a' * 64) }

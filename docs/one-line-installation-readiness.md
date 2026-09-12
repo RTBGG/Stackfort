@@ -4,6 +4,12 @@ Audit date: 2026-09-12. Status: **not ready for public native installation**.
 The public GitHub Releases API returned HTTP 200 with an empty inventory.
 Unpublished workflow candidates are not public releases.
 
+The [exact beta.4 onboarding attempt](../infra/host-tests/results/2026-09-12-beta4-onboarding-php-capability-failure.md)
+completed automatic quota preparation, installation and original setup redemption,
+but failed the product smoke because the installed PHP package was not detected.
+That tag remains unchanged and is not approved for publication. Beta.5 must be
+built and qualified separately after the detector correction.
+
 ## Required execution order
 
 1. Retain and extend native boot-safety qualification: isolated initramfs construction,
@@ -16,7 +22,7 @@ Unpublished workflow candidates are not public releases.
    drift and process-loss tests without claiming hermetic privileged-hook safety.
    The [internal private-image/kernel cycle](../infra/host-tests/results/2026-09-12-native-private-image-kernel-lifecycle.md)
    passed using beta.3 payloads plus a separately pinned installer. This does not
-   qualify the final beta.4 archived installer/public onboarding path.
+   qualify the final archived installer/public onboarding path.
 2. Verify the native installation headroom check (at least 8 GiB free root space
    and 100,000 free inodes) and actual account project-quota enforcement. Disclose
    that this is not a durable OS disk/inode reserve: aggregate account admission,
@@ -76,7 +82,7 @@ fail-closed boot, firewall or exact-candidate functional tests.
 
 ### Bootstrap selection and availability
 
-The bare bootstrap now explicitly selects `0.1.0-beta.4` for a fresh invocation,
+The bare bootstrap now explicitly selects `0.1.0-beta.5` for a fresh invocation,
 not GitHub's latest-stable channel. Explicit versions and existing journal pins
 remain supported; a beta is never relabeled stable. The public handler is
 registered, but final tagged-candidate qualification and public release assets

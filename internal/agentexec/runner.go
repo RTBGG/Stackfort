@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"maps"
 	"os/exec"
 	"path"
 	"regexp"
@@ -184,21 +185,40 @@ type Runner struct {
 // NewRunner returns the complete production profile registry.
 func NewRunner() *Runner {
 	packages := stringSet(
-		"nginx", "php-fpm", "mariadb-server", "vinyl-cache", "podman", "netavark",
+		"nginx", "mariadb-server", "vinyl-cache", "podman", "netavark",
 		"aardvark-dns", "passt", "slirp4netns", "fuse-overlayfs", "uidmap", "shadow-utils-subid",
 		"stackfort-waf",
 	)
 	units := stringSet(
-		"nginx.service", "php-fpm.service", "php8.4-fpm.service", "php8.5-fpm.service",
+		"nginx.service",
 		"mariadb.service", "vinyl.service", "podman.socket", "nftables.service",
 		"firewalld.service", "stackfort-api.service", "stackfort-agent.service",
 	)
+	dpkgPackages, rpmPackages := maps.Clone(packages), maps.Clone(packages)
+	// PHP query authority is limited to the same native profiles used by the
+	// installer and capability detector, never a caller-supplied package pattern.
+	for _, distribution := range []string{"debian", "ubuntu", "rocky"} {
+		version, err := phpruntime.ApprovedVersion(distribution)
+		if err != nil {
+			continue
+		}
+		profile, err := phpruntime.ForDistribution(distribution, version)
+		if err != nil {
+			continue
+		}
+		if distribution == "rocky" {
+			rpmPackages[profile.PackageName] = struct{}{}
+		} else {
+			dpkgPackages[profile.PackageName] = struct{}{}
+		}
+		units[profile.VendorUnit] = struct{}{}
+	}
 	return &Runner{profiles: map[ProfileID]executionProfile{
 		ProfileDpkgQuery: newProfile("/usr/bin/dpkg-query", exactValueResolver(
-			[]string{"-W", "-f=${db:Status-Abbrev}\\t${Version}\\n"}, packages,
+			[]string{"-W", "-f=${db:Status-Abbrev}\\t${Version}\\n"}, dpkgPackages,
 		)),
 		ProfileRPMQuery: newProfile("/usr/bin/rpm", exactValueResolver(
-			[]string{"-q", "--qf", "%{VERSION}-%{RELEASE}\\n"}, packages,
+			[]string{"-q", "--qf", "%{VERSION}-%{RELEASE}\\n"}, rpmPackages,
 		)),
 		ProfileSystemctlShow: newProfile("/usr/bin/systemctl", exactValueResolver(
 			[]string{

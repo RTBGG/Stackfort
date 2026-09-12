@@ -23,7 +23,7 @@ passive package removal is insufficient. Review the
 [removal scope](experimental-beta-removal.md) before installing.
 
 No public release has been published yet. The current bootstrap explicitly pins
-`0.1.0-beta.4`; that is a planned experimental candidate, not a claim that its
+`0.1.0-beta.5`; that is a planned experimental candidate, not a claim that its
 assets exist or its exact tagged installation has passed qualification. The
 commands below require matching published assets from the
 [release list](https://github.com/RTBGG/Stackfort/releases).
@@ -61,11 +61,11 @@ bootstrap itself, replace `main` in its URL with a reviewed full commit SHA;
 curl --proto '=https' --tlsv1.2 -fSLo stackfort-install.sh \
   https://raw.githubusercontent.com/RTBGG/stackfort/main/packaging/installer/install.sh
 less stackfort-install.sh
-sudo env STACKFORT_VERSION=0.1.0-beta.4 bash stackfort-install.sh
+sudo env STACKFORT_VERSION=0.1.0-beta.5 bash stackfort-install.sh
 ```
 
 With no journal or explicit `STACKFORT_VERSION`, the current script selects
-`0.1.0-beta.4`. It does not query GitHub's latest-stable channel or dynamically
+`0.1.0-beta.5`. It does not query GitHub's latest-stable channel or dynamically
 choose a newer beta. An explicit version may select another published release;
 an existing journal pins its original version and conflicting selections stop.
 This bootstrap selection is separate from the panel's stable/beta update-check

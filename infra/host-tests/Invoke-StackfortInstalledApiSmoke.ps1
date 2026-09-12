@@ -282,6 +282,9 @@ function Invoke-StackfortInstalledApiSmoke {
     } catch {
         # Preserve only this locally selected stage, never the caught HTTP or
         # PowerShell exception (which may contain caller-bound secret objects).
+        # The outer C# credential owner deliberately discards exception chains;
+        # emit this already-sanitized diagnostic before crossing that boundary.
+        Write-Host "STACKFORT_QUALIFICATION_FAILURE stage=$stage fixture=$fixture$($diagnostic.Note)"
         throw "Installed product API smoke failed at stage '$stage'; candidate fixtures '$fixture' are retained for inspection.$($diagnostic.Note)"
     } finally {
         $publicClient.Dispose()
