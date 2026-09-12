@@ -142,6 +142,41 @@ work paths are reusable local outputs, not frozen release artifacts. Their
 hashes identify the observed report snapshot only; future reruns require a new
 record or separately retained output and cannot inherit exact-candidate approval.
 
+## Real API adapter and final focused regressions
+
+A subsequent disposable private-mount-namespace test invoked the real freshly
+built API through the production `runuser`/stdin adapter. It used a separately
+mounted temporary SQLite directory and fixed synthetic digest; no usable bearer
+token was generated and the host's installed binary/database were not replaced
+outside that namespace. Fixture SHA-256:
+`29d5c66c779ebd0350ad61cc956af399c133d0ef85246f6472b5774cf8a2d960`.
+
+The actual service identity was UID `995`, GID `987`. The test passed private
+service ownership checks, exact one-hour activation, idempotent same-digest retry
+with unchanged expiry, rejection of a different active digest, and read-only
+verification of exactly one capability row and one creation audit row. This
+qualifies the local adapter, not public terminal delivery or browser redemption
+of the final tagged candidate.
+
+Linux quota-ABI/write-log tests, focused origin-hardening tests and unprivileged
+agentexec/installapply suites also passed. The unprivileged fixture had needed
+an explicit private `0700` directory rather than assuming the host's `0002`
+umask; this was a test-fixture correction, not a relaxation of runtime checks.
+The subsequent Windows `go test ./...` run passed. Linux-target gosec analysis
+of `./cmd/... ./internal/... ./tests/...` reported zero findings across 310
+production files; Linux-target `go vet ./...` also passed. These local checks
+do not substitute for the exact candidate's live GitHub CI/security results.
+
+| Follow-up local log | SHA-256 |
+| --- | --- |
+| `native-oneline-real-setup-import.log` | `fb03542a08a7788c305a973dce261683dfe51db46027a90887aac9a61756e56c` |
+| `native-oneline-quota-abi-writelog.log` | `1b6a03d56029fc2a98ae80a8a9514d6c3580c008335457cc552ba3fd348a95d6` |
+| `native-oneline-origin-hardening.log` | `483f3ea950b841b2fbf339fafe52067bebb973652b75c07ab45b3cf498f9913b` |
+| `native-oneline-unprivileged-tests.log` | `aeed8686479eea1e30f970f1c35473bf3037ccabcbdbdceafc4bbca67d1dfb6d` |
+
+These are observed ignored-work-log snapshots, not immutable public release
+evidence or approvals. Later reruns must not be mistaken for the recorded bytes.
+
 ## Remaining release boundary
 
 This closes the previously missing internal real-image/kernel-lifecycle

@@ -115,8 +115,12 @@ The existing create/explicit-replace, HTTP and bootstrap tests remain applicable
 Installer tests additionally cover terminal refusal/acknowledgement ordering,
 output/close failures before arming, setup-bound preparation, canonical and unsafe
 records, registration lifetime/idempotent receipts, legacy versus tag-origin
-requirements, and supervised completed-rerun result validation. Namespace fixtures
-use synthetic records and do not create a real administrator capability.
+requirements, and supervised completed-rerun result validation. Record-parser
+namespace fixtures use synthetic records. A separate
+[real API adapter test](../infra/host-tests/results/2026-09-12-native-private-image-kernel-lifecycle.md#real-api-adapter-and-final-focused-regressions)
+also passed in a private namespace/database: actual service-owned SQLite writes,
+one capability/audit row, unchanged expiry on retry and foreign-digest rejection.
+It generated no usable bearer token and did not change the host's real database.
 
 The [latest source-suite evidence](../infra/host-tests/results/2026-09-12-native-private-image-kernel-lifecycle.md#later-same-day-source-and-namespace-validation)
 and [shell-routing evidence](../infra/host-tests/results/2026-09-12-release-readiness-validation.md#bootstrap-routing-follow-up)
