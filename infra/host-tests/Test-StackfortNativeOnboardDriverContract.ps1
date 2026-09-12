@@ -10,6 +10,43 @@ $contractPath = Join-Path $PSScriptRoot 'Test-StackfortNativeOnboardHyperVVm.ps1
 $contractTokens = $null; $contractErrors = $null
 $contractAst = [System.Management.Automation.Language.Parser]::ParseFile($contractPath, [ref] $contractTokens, [ref] $contractErrors)
 if ($contractErrors.Count -ne 0) { throw 'Driver syntax check failed.' }
+
+# Pure command builder only: never execute these remote command strings.
+$contractBuilder = $contractAst.FindAll({ param($node)
+    $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Get-OnboardBootstrapCommand'
+}, $true) | Select-Object -First 1
+. ([scriptblock]::Create($contractBuilder.Extent.Text))
+$contractCommit = 'f' * 40
+$contractFixture = '/var/tmp/stackfort-onboard-qualification-' + ('a' * 32)
+$contractEnvironment = 'sudo -n env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME=/root LANG=C LC_ALL=C STACKFORT_VERSION=0.1.0-beta.6'
+$contractPublic = Get-OnboardBootstrapCommand -Transport public-github -PinnedVersion '0.1.0-beta.6' -PinnedCommit $contractCommit
+$contractExpectedPublic = "$contractEnvironment /bin/bash -o pipefail -c 'curl --proto `"=https`" --tlsv1.2 --proto-redir `"=https`" -fsSL https://raw.githubusercontent.com/RTBGG/stackfort/$contractCommit/packaging/installer/install.sh | /bin/bash'"
+if ($contractPublic -cne $contractExpectedPublic -or $contractPublic -match 'STACKFORT_BOOTSTRAP|/var/tmp|/tmp|latest|/main/|\|\|') {
+    throw 'Public transport lost its immutable HTTPS/pipefail/no-fixture/no-fallback contract.'
+}
+$contractRetained = Get-OnboardBootstrapCommand -Transport retained-fixture -PinnedVersion '0.1.0-beta.6' -PinnedCommit $contractCommit -FixtureDirectory $contractFixture
+if ($contractRetained -cne "$contractEnvironment STACKFORT_BOOTSTRAP_TESTING=1 STACKFORT_BOOTSTRAP_TEST_FIXTURE=$contractFixture /bin/bash $contractFixture/install.sh") {
+    throw 'Existing retained fixture transport changed.'
+}
+foreach ($invalid in @(
+    @{ Transport = 'public-github'; PinnedVersion = '0.1.0-beta.6'; PinnedCommit = 'main' },
+    @{ Transport = 'public-github'; PinnedVersion = 'latest'; PinnedCommit = $contractCommit },
+    @{ Transport = 'public-github'; PinnedVersion = '0.1.0-beta.6'; PinnedCommit = ('F' * 40) },
+    @{ Transport = 'public-github'; PinnedVersion = '0.1.0-beta.6'; PinnedCommit = $contractCommit; FixtureDirectory = $contractFixture },
+    @{ Transport = 'retained-fixture'; PinnedVersion = '0.1.0-beta.6'; PinnedCommit = $contractCommit; FixtureDirectory = "$contractFixture;echo injected" },
+    @{ Transport = 'public-github'; PinnedVersion = '0.1.0-beta.6;echo injected'; PinnedCommit = $contractCommit }
+)) {
+    $rejected = $false
+    try { [void] (Get-OnboardBootstrapCommand @invalid) } catch { $rejected = $true }
+    if (-not $rejected) { throw 'An unpinned, injected or fixture-backed public command was accepted.' }
+}
+$contractTransport = @($contractAst.ParamBlock.Parameters | Where-Object { $_.Name.VariablePath.UserPath -ceq 'Transport' })
+if ($contractTransport.Count -ne 1 -or $contractTransport[0].DefaultValue.Value -cne 'retained-fixture') { throw 'The driver transport must remain explicitly selectable with its existing default.' }
+$contractResult = $contractAst.FindAll({ param($node)
+    $node -is [System.Management.Automation.Language.AssignmentStatementAst] -and $node.Left.Extent.Text -ceq '$taskResult'
+}, $true) | Select-Object -First 1
+if (-not $contractResult.Extent.Text.Contains('Transport = $Transport')) { throw 'Redacted evidence must distinguish public GitHub from retained fixture transport.' }
+
 $contractDefinition = $contractAst.FindAll({ param($node)
     $node -is [System.Management.Automation.Language.StringConstantExpressionAst] -and $node.Value.StartsWith('using System;')
 }, $true) | Select-Object -First 1
@@ -80,7 +117,7 @@ if (-not $rejected) { throw 'Whole setup commitment digest mismatch was accepted
 $contractCallback = $contractAst.FindAll({ param($node)
     $node -is [System.Management.Automation.Language.AssignmentStatementAst] -and $node.Left.Extent.Text -ceq '$taskSmoke'
 }, $true) | Select-Object -First 1
-$taskAddress = '192.0.2.10'; $taskCommand = 'synthetic exact-bootstrap-command'
+$taskAddress = '192.0.2.10'; $taskCommand = $contractPublic
 $script:contractCallOrder = [Collections.Generic.List[string]]::new()
 $contractClient = [Net.Http.HttpClient]::new()
 $contractBaseUri = [Uri] 'https://192.0.2.10:8443/'
@@ -109,4 +146,4 @@ try {
     $taskSmoke.Invoke($contractClient, $contractBaseUri, 'synthetic-csrf')
     if (($script:contractCallOrder -join ',') -cne 'smoke,rerun,same-boot,persistence,reboot,readmission,persistence' -or $script:taskOnboardPersistence.FinalBootID -cne $contractReboot.BootID) { throw 'Callback rerun/reboot/persistence ordering mismatch.' }
 } finally { $contractClient.Dispose() }
-Write-Host 'LOCAL CONTRACT PASS: parser/CSharp, process bounds, transient polling, first/consecutive boot receipts, digest rejection, same-session rerun/reboot callback. No VM or network actions performed.'
+Write-Host 'LOCAL CONTRACT PASS: exact public/fixture transport builders, parser/CSharp, process bounds, transient polling, first/consecutive boot receipts, digest rejection, same-session rerun/reboot callback. No VM or network actions performed.'

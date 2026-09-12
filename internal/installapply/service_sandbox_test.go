@@ -11,13 +11,14 @@ import (
 func TestAgentConfigurationWritesPreserveRemainingSystemSandbox(t *testing.T) {
 	t.Parallel()
 	for _, distribution := range []string{"debian", "ubuntu", "rocky"} {
-		unit := serviceUnits(distribution)["stackfort-agent.service"]
+		units := serviceUnits(distribution)
+		unit := units["stackfort-agent.service"]
 		if strings.Count(unit, "ReadWritePaths=") != 1 || !strings.Contains(unit, "\nReadWritePaths=/etc\n") {
 			t.Fatalf("%s agent must permit atomic /etc directory operations, not per-file binds or unrelated writable roots", distribution)
 		}
 		for _, remaining := range []string{
 			"ProtectSystem=yes", "ProtectHome=no", "InaccessiblePaths=/home /root", "PrivateTmp=yes", "PrivateDevices=no",
-			"NoNewPrivileges=no", "ProtectControlGroups=yes", "ProtectKernelModules=yes",
+			"NoNewPrivileges=no", "ProtectControlGroups=no", "ProtectKernelModules=yes",
 			"ProtectKernelTunables=yes", "ProtectKernelLogs=yes", "ProtectClock=yes",
 			"RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK",
 		} {
@@ -25,10 +26,15 @@ func TestAgentConfigurationWritesPreserveRemainingSystemSandbox(t *testing.T) {
 				t.Fatalf("%s agent lost unrelated protection %s", distribution, remaining)
 			}
 		}
+		for name, otherUnit := range units {
+			if name != "stackfort-agent.service" && strings.Contains(otherUnit, "\nProtectControlGroups=no\n") {
+				t.Fatalf("privileged broker cgroup exception leaked into %s", name)
+			}
+		}
 		controlUnit := serviceUnits(distribution)["stackfort-api.service"]
 		if strings.Contains(controlUnit, "ReadWritePaths=/etc") || !strings.Contains(controlUnit, "ProtectSystem=strict\n") ||
 			!strings.Contains(controlUnit, "NoNewPrivileges=yes\n") || !strings.Contains(controlUnit, "PrivateDevices=yes\n") ||
-			!strings.Contains(controlUnit, "ProtectHome=yes\n") {
+			!strings.Contains(controlUnit, "ProtectHome=yes\n") || !strings.Contains(controlUnit, "ProtectControlGroups=yes\n") {
 			t.Fatal("privileged broker exception leaked into the control API")
 		}
 	}
@@ -48,7 +54,7 @@ func TestServiceAdmissionRejectsAgentWritablePathDrift(t *testing.T) {
 			t.Fatalf("admission accepted stale or expanded writable paths %q", paths)
 		}
 	}
-	for _, property := range []string{"User", "ProtectSystem", "PrivateDevices", "NoNewPrivileges"} {
+	for _, property := range []string{"User", "ProtectSystem", "PrivateDevices", "NoNewPrivileges", "ProtectControlGroups"} {
 		observed := maps.Clone(good)
 		delete(observed, property)
 		if verifyServiceSandbox(unit, observed) == nil {
@@ -57,7 +63,7 @@ func TestServiceAdmissionRejectsAgentWritablePathDrift(t *testing.T) {
 	}
 	for property, changed := range map[string]string{
 		"ProtectSystem": "no", "ProtectHome": "yes", "InaccessiblePaths": "/home",
-		"NoNewPrivileges": "yes", "PrivateDevices": "yes", "ProtectControlGroups": "no",
+		"NoNewPrivileges": "yes", "PrivateDevices": "yes", "ProtectControlGroups": "yes",
 		"RestrictAddressFamilies": "AF_UNIX AF_INET AF_INET6", "ProtectKernelModules": "no",
 	} {
 		observed := maps.Clone(good)

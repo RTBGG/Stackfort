@@ -118,7 +118,7 @@ cross-tenant identifier substitution have automated negative coverage. See
 The installed agent is a **privileged root provisioning broker**, not a sandbox
 for tenant application code. Its service retains read-only `/usr` and `/boot`
 (`ProtectSystem=yes`), private temporary files, inaccessible `/home` and `/root`,
-kernel/clock protections, and the existing cgroup protection. It deliberately
+and kernel/clock protections. It deliberately
 needs writable `/etc`: shadow-utils create locks and temporary files and
 atomically replace identity databases, while managed NGINX/PHP/systemd/container
 and SELinux configuration also lives there. Per-file writable bind mounts do not
@@ -140,6 +140,20 @@ these exceptions and retained protections; they must not accept stale or
 broadened drop-ins. Real installed-agent provisioning and OCI qualification are
 still required: a test executable run outside the service does not exercise its
 inherited namespace/seccomp restrictions.
+
+The broker also deliberately uses `ProtectControlGroups=no`. A real rootless
+Containerfile `RUN` reached crun but failed with the broker's read-only cgroup
+view; Podman's persistent pause process retained that namespace even when a
+later CLI was started outside the agent service. A service restart alone does
+not provide a clean comparison: qualification must use a new disposable account.
+This exception does not change tenant UID/GID drops, cgroup filesystem ownership
+or systemd's per-account delegation. Rootless processes still have only their
+delegated account subtree, with the existing account CPU/memory/PID constraints
+and build limits; no limits, container isolation or image scanning are disabled.
+Only the privileged broker's mount-view setting changes. Other service sandboxes
+remain unchanged, and admission rejects the old incompatible setting as drift.
+Actual installed-agent build and deployment tests must verify both success and
+the resulting account cgroup membership/limits before release qualification.
 
 D-001 implements the first local privilege boundary: the filesystem Unix socket
 is owned for the control API service group, while Linux `SO_PEERCRED` requires

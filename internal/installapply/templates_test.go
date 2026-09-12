@@ -68,7 +68,7 @@ func TestServiceUnitsContainRequiredSandboxAndOwnershipContract(t *testing.T) {
 	}
 	for _, required := range []string{
 		"User=root\n", "NoNewPrivileges=no\n", "PrivateDevices=no\n", "PrivateTmp=yes\n",
-		"ProtectSystem=yes\n", "ProtectControlGroups=yes\n", "Slice=stackfort-core.slice\n",
+		"ProtectSystem=yes\n", "ProtectControlGroups=no\n", "Slice=stackfort-core.slice\n",
 		"ProtectHome=no\n", "InaccessiblePaths=/home /root\n", "ReadWritePaths=/etc\n",
 		"RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK\n",
 		"ExecStart=/usr/local/sbin/stackfort-agent\n",

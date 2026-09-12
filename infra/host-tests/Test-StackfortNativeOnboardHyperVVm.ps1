@@ -5,6 +5,7 @@
 [CmdletBinding()]
 param(
     [ValidateSet('Onboard')][string] $Stage = 'Onboard',
+    [ValidateSet('retained-fixture', 'public-github')][string] $Transport = 'retained-fixture',
     [Parameter(Mandatory)][string] $ArchiveDirectory,
     [ValidateSet('0.1.0-beta.6')][string] $Version = '0.1.0-beta.6',
     [Parameter(Mandatory)][ValidatePattern('^[0-9a-f]{40}$')][string] $Commit,
@@ -245,6 +246,32 @@ public static class StackfortNativeOnboardProbeV1 {
 '@
 }
 
+function Get-OnboardBootstrapCommand {
+    param(
+        [Parameter(Mandatory)][ValidateSet('retained-fixture', 'public-github')][string] $Transport,
+        [Parameter(Mandatory)][string] $PinnedVersion,
+        [Parameter(Mandatory)][string] $PinnedCommit,
+        [string] $FixtureDirectory = ''
+    )
+    if ($PinnedVersion -cne '0.1.0-beta.6' -or $PinnedCommit -cnotmatch '^[0-9a-f]{40}$') {
+        throw 'Bootstrap transport requires the exact supported version and immutable lowercase commit.'
+    }
+    $environment = "sudo -n env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME=/root LANG=C LC_ALL=C STACKFORT_VERSION=$PinnedVersion"
+    if ($Transport -ceq 'public-github') {
+        if ($FixtureDirectory -cne '') { throw 'Public GitHub transport must not receive a retained fixture source.' }
+        # An actual HTTPS pipe through the immutable reviewed commit. The
+        # unchanged bootstrap downloads its real release assets from GitHub;
+        # env -i excludes any inherited fixture switch, and pipefail makes a
+        # failed script download fail the whole command. There is no fallback.
+        $url = "https://raw.githubusercontent.com/RTBGG/stackfort/$PinnedCommit/packaging/installer/install.sh"
+        return "$environment /bin/bash -o pipefail -c 'curl --proto `"=https`" --tlsv1.2 --proto-redir `"=https`" -fsSL $url | /bin/bash'"
+    }
+    if ($Transport -cne 'retained-fixture' -or $FixtureDirectory -cnotmatch '^/var/tmp/stackfort-onboard-qualification-[0-9a-f]{32}$') {
+        throw 'Invalid retained bootstrap fixture transport.'
+    }
+    return "$environment STACKFORT_BOOTSTRAP_TESTING=1 STACKFORT_BOOTSTRAP_TEST_FIXTURE=$FixtureDirectory /bin/bash $FixtureDirectory/install.sh"
+}
+
 $taskVMName = 'stackfort-native-quota-debian-13'
 $taskVM = Get-VM -Name $taskVMName
 if ($taskVM.Id -ne '4361f439-15e9-4f9e-a690-9a8e44b6cbd3' -or $taskVM.State -ne 'Running') { throw 'Requires the exact already-running disposable Debian VM.' }
@@ -372,7 +399,11 @@ $taskCapture = $null
 $script:taskOnboardPhase = 'native-onboarding'
 try {
     Write-Host 'Starting exact-tag native onboarding on the verified disposable VM; terminal output and setup secrets will not be logged.'
-    $taskCommand = "sudo -n env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME=/root LANG=C LC_ALL=C STACKFORT_VERSION=$Version STACKFORT_BOOTSTRAP_TESTING=1 STACKFORT_BOOTSTRAP_TEST_FIXTURE=$taskFixture /bin/bash $taskFixture/install.sh"
+    $taskCommand = if ($Transport -ceq 'public-github') {
+        Get-OnboardBootstrapCommand -Transport $Transport -PinnedVersion $Version -PinnedCommit $Commit
+    } else {
+        Get-OnboardBootstrapCommand -Transport $Transport -PinnedVersion $Version -PinnedCommit $Commit -FixtureDirectory $taskFixture
+    }
     $taskCapture = [StackfortNativeOnboardProbeV1]::Onboard($taskSSHPath, @($taskSSH) + @('-tt', "stackfort-test@$taskAddress", $taskCommand),
         $Version, $Commit, $taskIdentity[1], $taskIdentity[2], $taskIdentity[3], $taskInitialBoot, $taskInstallerSHA)
     Write-Host 'Exact interactive review acknowledged and original setup code retained only in process memory; waiting for the authorized reboot/install.'
@@ -410,7 +441,7 @@ try {
     }
     $taskRedemption = [StackfortNativeOnboardProbeV1]::Redeem($taskAddress, $taskCertificate.Output, $taskCapture.SetupCode, $taskSmoke)
     $taskResult = [pscustomobject]@{
-        Stage = $Stage; VM = $taskVMName; Version = $Version; Commit = $Commit; ArchiveSHA256 = $ArchiveSHA256; AttestationSHA256 = $AttestationSHA256;
+        Stage = $Stage; Transport = $Transport; VM = $taskVMName; Version = $Version; Commit = $Commit; ArchiveSHA256 = $ArchiveSHA256; AttestationSHA256 = $AttestationSHA256;
         BootstrapSHA256 = $BootstrapSHA256; InstallerSHA256 = $taskInstallerSHA; OperationID = $taskCapture.OperationID; ReviewSHA256 = $taskCapture.ReviewSHA256;
         InitialBootID = $taskInitialBoot; ConversionBootID = $taskFinalBoot; FinalBootID = $script:taskOnboardPersistence.FinalBootID; CertificateSHA256 = $taskRedemption.CertificateSHA256;
         OriginalSetupRedeemed = $taskRedemption.Redeemed; SetupReplayRejected = $taskRedemption.ReuseRejected; AdministratorLoginVerified = $taskRedemption.LoginVerified;

@@ -21,6 +21,8 @@ const agentWritableConfigurationExplanation = "# The root provisioning broker re
 	"# ProtectSystem=yes keeps /usr and /boot read-only; full would also lock /etc.\n" +
 	"# Rootless UID-map helpers need privilege transitions after the account UID\n" +
 	"# drop. Quota/FUSE need host devices, and Podman needs netlink plus /run/user.\n" +
+	"# Rootless pause namespaces must retain the writable delegated cgroup view;\n" +
+	"# per-account ownership/delegation and resource limits remain authoritative.\n" +
 	"# This is a privileged broker, NOT a sandbox for tenant application code.\n"
 
 // Use the same exact properties for initial activation and completed native
@@ -35,7 +37,7 @@ func requiredServiceSandboxes() map[string]map[string]string {
 			"User": "root", "Group": "root", "Slice": "stackfort-core.slice", "NoNewPrivileges": "no",
 			"PrivateDevices": "no", "PrivateTmp": "yes", "ProtectSystem": "yes",
 			"ProtectHome": "no", "InaccessiblePaths": "/home /root", "ReadWritePaths": agentWritableConfigurationRoot,
-			"ProtectClock": "yes", "ProtectControlGroups": "yes", "ProtectKernelLogs": "yes",
+			"ProtectClock": "yes", "ProtectControlGroups": "no", "ProtectKernelLogs": "yes",
 			"ProtectKernelModules": "yes", "ProtectKernelTunables": "yes", "LockPersonality": "yes",
 			"RestrictRealtime": "yes", "RestrictAddressFamilies": "AF_UNIX AF_INET AF_INET6 AF_NETLINK",
 		},

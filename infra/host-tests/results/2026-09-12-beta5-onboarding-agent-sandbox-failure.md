@@ -154,6 +154,50 @@ Ignored v2 evidence under `infra/host-tests/work/candidate-broker-rpc-probe-v2/`
 - `mount-namespace-podman-info.log`: SHA-256 `f908c9496bc0c5638790cacdc8395f99889e3dd9716e4b4a32885f2704f59d69`.
 - `mount-namespace-podman-info-hosting-fixed.log`: SHA-256 `9dccdd68ed4bb1b0182f01b354d7f3ddfa397e76b1be057c8cea2255e71ead6f`.
 
+## Real Containerfile RUN and inherited cgroup namespace
+
+The diagnostic host next received an explicitly non-release agent built from
+`139e5a97150b72d2f17fb294e00e2e152d2621d3` (version
+`dev-beta6-diagnostic`, binary SHA-256
+`760ac45bdddfb6737c84d7f2b1c27bf6d94c600c8d6a93e32ee52a35a82903c6`).
+The original beta.5 binary remains preserved. This mixed installation must not
+be treated as an exact candidate, nor used for a completed installer recheck.
+
+Five pure v3 helper groups passed. The actual installed-socket probe used new
+account `01a0952a-aaf3-7a84-aec9-9adeac9ab0b3`, UID/GID 249941. Its base,
+filesystem/quota, resource and runtime operations returned 200. Image operation
+`01a0952a-aced-7df3-ad83-84204341a864` returned a correctly typed HTTP 503 with
+`oci-image-build-failed`; the stricter protocol validator was not relaxed.
+
+A fixed, synthetic-source build with the production limits reached its real
+Containerfile `RUN`, but crun could not create the build cgroup. The same build
+failed both inside and outside the agent mount namespace: Podman's persistent
+pause process had inherited and retained a read-only `/sys/fs/cgroup` from the
+broker. The account's systemd manager was delegated and its account subtree
+existed. Restarting the broker alone does not replace that pause namespace.
+
+Checkpoint `native-beta6-139e5a9-rpc-v3-failure`, ID
+`317e22af-c82a-4d47-8daf-309aae7b086f`, preserves this failure. A second guarded
+diagnostic drop-in then changed only the broker to `ProtectControlGroups=no`.
+Its actual cgroup mount became writable. A fresh account and a complete actual
+build/scan/deploy plus account-isolation test are still required; this mount
+observation alone is not a successful OCI qualification. Stopping the agent also
+stopped the dependent API; the API has not yet been restarted on this mixed host.
+
+The v3 helper additionally exposed a cleanup defect: installed Podman does not
+support `network rm --ignore`. After removing its own image it preserved the
+remaining fixture when that command failed. The replacement helper must probe
+`network exists`, distinguish absence from runtime errors, and remove only its
+own network without `--force`; old failed fixtures are not reused or erased.
+
+Ignored v3 evidence under `infra/host-tests/work/candidate-broker-rpc-probe-v3/`:
+
+- Probe binary SHA-256 `10f1e94c463bdc8ec5e5392b22ac0ee3493a37b0d33265ab6bd1e992158e25ca`.
+- `actual-helper-tests.log`: SHA-256 `e7aabde72b89225f8545c94f25cb9a6990a337bf7724ea00e5bc0698c143ce34`.
+- `actual-rpc-probe.log`: SHA-256 `ed96daf306339cc67267be26d2c38c371284c5db5d210659a141d7f0a4a3af6f`.
+- `mount-namespace-synthetic-build.log`: SHA-256 `d0a7caa7f947e072244d76fdd0b6687ea0eb7da07482ea30f3da2d84bcbdb97b`.
+- `global-namespace-synthetic-build.log`: SHA-256 `f379cbc245e38a34d71c4a24884a95fc15a8c34a7b3596b3354f72413db78272`.
+
 ## Collector limitation found during diagnosis
 
 The version-1 read-only collector observed matching installed artifact hashes
