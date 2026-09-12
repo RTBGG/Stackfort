@@ -7,8 +7,15 @@ Unpublished workflow candidates are not public releases.
 The [exact beta.4 onboarding attempt](../infra/host-tests/results/2026-09-12-beta4-onboarding-php-capability-failure.md)
 completed automatic quota preparation, installation and original setup redemption,
 but failed the product smoke because the installed PHP package was not detected.
-That tag remains unchanged and is not approved for publication. Beta.5 must be
-built and qualified separately after the detector correction.
+That tag remains unchanged and is not approved for publication. The subsequent
+[exact beta.5 attempt](../infra/host-tests/results/2026-09-12-beta5-onboarding-agent-sandbox-failure.md)
+passed PHP detection but failed its first hosting-account operation because the
+privileged agent could not update Linux account files. Follow-up installed-agent
+diagnostics also exposed umask-sensitive hosting/transaction traversal and an
+inherited read-only cgroup view preventing a real Containerfile `RUN`. These
+findings are corrected in source with regression tests; the modified diagnostic
+installation is not release qualification. Beta.5 remains unpublished and its
+tag unchanged. Beta.6 needs a new immutable build and complete fresh-host test.
 
 ## Required execution order
 

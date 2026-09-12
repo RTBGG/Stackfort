@@ -198,6 +198,65 @@ Ignored v3 evidence under `infra/host-tests/work/candidate-broker-rpc-probe-v3/`
 - `mount-namespace-synthetic-build.log`: SHA-256 `d0a7caa7f947e072244d76fdd0b6687ea0eb7da07482ea30f3da2d84bcbdb97b`.
 - `global-namespace-synthetic-build.log`: SHA-256 `f379cbc245e38a34d71c4a24884a95fc15a8c34a7b3596b3354f72413db78272`.
 
+## Follow-up procfs A/B, still not release qualification
+
+The final v4 helper (`47bab7ce75fb43b70f922993c93bd5a6bd2e44cf16797b8c3462a2a070a5eb77`)
+passed six Linux helper test groups, including clean EOF versus a descendant-held
+output pipe after exit 1. Its new real-socket account was
+`01a0953a-3465-7c41-a54d-e32666b75848`, UID/GID 249942, application
+`01a0953a-3465-7c4a-8852-6532c44705a6`. Identity, filesystem, resources and
+runtime returned 200, but preparation `01a0953a-3659-78bf-846d-c30be49d8935`
+still returned `oci-image-build-failed`. Cleanup removed its runtime, files and
+identity, then failed the quota reset: the helper used the subtree bind mount
+`/srv/hosting`, whereas the production quota profile verifies and selects `/`
+for this native-root layout. A residual test project-quota record may remain;
+this cleanup failure is not a successful removal test.
+
+Checkpoint `native-beta6-v4-before-v3-runtime-reprobe`, ID
+`d9d0bdbb-523c-48a0-b422-74f56d324c8d`, preserves that state. Main then deliberately
+reused only the already identified v3 synthetic fixture, after terminating and
+restarting its exact user manager to remove the old pause namespace. The original
+v3 failure remains in earlier checkpoints; its live fixture is now diagnostic
+reprobe state, not untouched evidence.
+
+With writable broker cgroups, the same limited scratch-image build progressed
+to a different crun error: mounting `proc` was not permitted. Main independently
+tested the broker's two proc-masking settings, resetting the fixture's pause
+namespace for each case. These are direct synthetic builds in the actual agent
+mount namespace, not the final RPC build/scan/deploy qualification:
+
+| ProtectKernelLogs | ProtectKernelTunables | Actual Containerfile RUN |
+| --- | --- | --- |
+| yes | yes | fail: proc mount EPERM |
+| yes | no | fail: proc mount EPERM |
+| no | yes | fail: proc mount EPERM |
+| no | no | pass as UID/GID 1000, confirmed twice |
+
+The rapid diagnostic restart loop reached the synthetic user manager's start
+burst limit once. Main reset only `user@249941.service`'s failed state and
+continued; no production restart limit was changed. The broker currently uses
+the two diagnostic exceptions, remains the source-139 diagnostic binary, and
+the API remains inactive. The manually built image is unscanned and must not be
+published or counted as a deployable candidate. A new complete actual-socket
+probe, then a fresh exact release installation, are still required.
+
+The primary
+[kernel visibility check](https://github.com/torvalds/linux/blob/v6.12/fs/namespace.c)
+and [systemd proc masking implementation](https://github.com/systemd/systemd/blob/v257/src/core/namespace.c)
+explain the observed conflict: locked child mounts hide nonempty parts of procfs,
+so a new procfs mount in the rootless user namespace is rejected. Disabling these
+two broker restrictions is a documented compatibility/security tradeoff, not a
+claim that the root service retains those defense-in-depth protections. Other
+service sandboxes and container/account limits were not relaxed by these probes.
+
+Ignored v4 evidence under `infra/host-tests/work/candidate-broker-rpc-probe-v4/`:
+
+- `actual-helper-tests.log`: SHA-256 `4ce587a60abe8a822902b4086554c120b4a813a610599dd4b454314fc69a4c1c`.
+- `actual-rpc-probe.log`: SHA-256 `9a5addbd18a9cae6f3c331ce18abaca0bcc3753c344a1f7c00921f5de989f48e`.
+- `v3-reset-runtime-synthetic-build.log`, `proc-ab-logs-on.log`, `proc-ab-tunables-on.log`: identical SHA-256 `f96fc3e17afe60869fe6b5010fdf1a1ffca6b17fab9b0b4f86893d631e730479`.
+- `v3-unmasked-proc-synthetic-build.log`: SHA-256 `420eae96074eccdb8f2fdf5445b7a73b08c97f76b5d2d3118e28063621a6b6f7`.
+- `proc-ab-both-off-restored.log`: SHA-256 `f3283051199b699aea248b84a51e44274d5bd753681c748b12393780ea63a8e7`.
+
 ## Collector limitation found during diagnosis
 
 The version-1 read-only collector observed matching installed artifact hashes

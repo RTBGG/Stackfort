@@ -19,7 +19,7 @@ func TestAgentConfigurationWritesPreserveRemainingSystemSandbox(t *testing.T) {
 		for _, remaining := range []string{
 			"ProtectSystem=yes", "ProtectHome=no", "InaccessiblePaths=/home /root", "PrivateTmp=yes", "PrivateDevices=no",
 			"NoNewPrivileges=no", "ProtectControlGroups=no", "ProtectKernelModules=yes",
-			"ProtectKernelTunables=yes", "ProtectKernelLogs=yes", "ProtectClock=yes",
+			"ProtectKernelTunables=no", "ProtectKernelLogs=no", "ProtectClock=yes",
 			"RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK",
 		} {
 			if !strings.Contains(unit, "\n"+remaining+"\n") {
@@ -27,8 +27,10 @@ func TestAgentConfigurationWritesPreserveRemainingSystemSandbox(t *testing.T) {
 			}
 		}
 		for name, otherUnit := range units {
-			if name != "stackfort-agent.service" && strings.Contains(otherUnit, "\nProtectControlGroups=no\n") {
-				t.Fatalf("privileged broker cgroup exception leaked into %s", name)
+			for _, property := range []string{"ProtectControlGroups", "ProtectKernelLogs", "ProtectKernelTunables"} {
+				if name != "stackfort-agent.service" && strings.Contains(otherUnit, "\n"+property+"=no\n") {
+					t.Fatalf("privileged broker %s exception leaked into %s", property, name)
+				}
 			}
 		}
 		controlUnit := serviceUnits(distribution)["stackfort-api.service"]
@@ -54,7 +56,7 @@ func TestServiceAdmissionRejectsAgentWritablePathDrift(t *testing.T) {
 			t.Fatalf("admission accepted stale or expanded writable paths %q", paths)
 		}
 	}
-	for _, property := range []string{"User", "ProtectSystem", "PrivateDevices", "NoNewPrivileges", "ProtectControlGroups"} {
+	for _, property := range []string{"User", "ProtectSystem", "PrivateDevices", "NoNewPrivileges", "ProtectControlGroups", "ProtectKernelLogs", "ProtectKernelTunables"} {
 		observed := maps.Clone(good)
 		delete(observed, property)
 		if verifyServiceSandbox(unit, observed) == nil {
@@ -64,6 +66,7 @@ func TestServiceAdmissionRejectsAgentWritablePathDrift(t *testing.T) {
 	for property, changed := range map[string]string{
 		"ProtectSystem": "no", "ProtectHome": "yes", "InaccessiblePaths": "/home",
 		"NoNewPrivileges": "yes", "PrivateDevices": "yes", "ProtectControlGroups": "yes",
+		"ProtectKernelLogs": "yes", "ProtectKernelTunables": "yes",
 		"RestrictAddressFamilies": "AF_UNIX AF_INET AF_INET6", "ProtectKernelModules": "no",
 	} {
 		observed := maps.Clone(good)

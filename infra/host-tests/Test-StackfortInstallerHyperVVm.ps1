@@ -399,6 +399,8 @@ sudo systemctl show --property=ProtectSystem --value stackfort-agent.service | g
 sudo systemctl show --property=ReadWritePaths --value stackfort-agent.service | grep -qx /etc
 sudo systemctl show --property=ProtectHome --value stackfort-agent.service | grep -qx no
 sudo systemctl show --property=ProtectControlGroups --value stackfort-agent.service | grep -qx no
+sudo systemctl show --property=ProtectKernelLogs --value stackfort-agent.service | grep -qx no
+sudo systemctl show --property=ProtectKernelTunables --value stackfort-agent.service | grep -qx no
 sudo systemctl show --property=InaccessiblePaths --value stackfort-agent.service | tr ' ' '\n' | LC_ALL=C sort | paste -sd ' ' - | grep -qx '/home /root'
 sudo systemctl show --property=RestrictAddressFamilies --value stackfort-agent.service | tr ' ' '\n' | LC_ALL=C sort | paste -sd ' ' - | grep -qx 'AF_INET AF_INET6 AF_NETLINK AF_UNIX'
 sudo systemctl show --property=NoNewPrivileges --value stackfort-api.service | grep -qx yes

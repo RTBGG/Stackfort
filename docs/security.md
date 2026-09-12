@@ -118,7 +118,7 @@ cross-tenant identifier substitution have automated negative coverage. See
 The installed agent is a **privileged root provisioning broker**, not a sandbox
 for tenant application code. Its service retains read-only `/usr` and `/boot`
 (`ProtectSystem=yes`), private temporary files, inaccessible `/home` and `/root`,
-and kernel/clock protections. It deliberately
+and module/clock protections. It deliberately
 needs writable `/etc`: shadow-utils create locks and temporary files and
 atomically replace identity databases, while managed NGINX/PHP/systemd/container
 and SELinux configuration also lives there. Per-file writable bind mounts do not
@@ -154,6 +154,26 @@ Only the privileged broker's mount-view setting changes. Other service sandboxes
 remain unchanged, and admission rejects the old incompatible setting as drift.
 Actual installed-agent build and deployment tests must verify both success and
 the resulting account cgroup membership/limits before release qualification.
+
+The direct-child broker also requires `ProtectKernelLogs=no` and
+`ProtectKernelTunables=no`. Each setting independently caused an actual
+rootless Containerfile `RUN` to fail mounting `proc`; removing both allowed the
+same bounded non-root build to complete. The
+[Linux 6.12 mount visibility check](https://github.com/torvalds/linux/blob/v6.12/fs/namespace.c)
+rejects newly mounted user-namespace procfs when locked child mounts hide parts
+of the existing proc tree. These systemd settings introduce such mounts. This
+is an explicit loss of two defense-in-depth restrictions for the **root broker**,
+not a claim that they remain effective under another name. Module/clock
+protections and unrelated service sandboxes remain in place. Host kernel DAC,
+tenant UID/subordinate-ID boundaries, account limits and the container runtime's
+own restrictions still require live verification; the broker exception does not
+authorize tenant kernel writes or disable image scanning.
+
+A future separate, closed systemd user-service executor could retain the
+broker's proc masks. Merely adding `systemd-run --scope` would still inherit the
+problematic namespace; a service implementation also needs operation-bound
+units, bounded I/O, cancellation/agent-loss cleanup and transaction-lifetime
+coordination. That is not implemented or claimed by this compatibility fix.
 
 D-001 implements the first local privilege boundary: the filesystem Unix socket
 is owned for the control API service group, while Linux `SO_PEERCRED` requires
