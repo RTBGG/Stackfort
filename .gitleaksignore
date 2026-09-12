@@ -17,3 +17,7 @@ fb4dc378b50c434b83084a3fc6834a27d5612a5d:internal/operations/oci_resources_test.
 60d06c8f54c341fb93f2d07f35d7f6183f79fd74:internal/agentprotocol/acme_http01_test.go:generic-api-key:16
 60d06c8f54c341fb93f2d07f35d7f6183f79fd74:internal/hostacme/presenter_test.go:generic-api-key:19
 60d06c8f54c341fb93f2d07f35d7f6183f79fd74:scripts/test-agent-smoke.sh:generic-api-key:75
+
+# False positive: public systemd NoNewPrivileges/PrivateDevices test literals,
+# not credentials. This fingerprint covers only the original committed line.
+207d6816f182254f11a847578d9c4f3b557c8beb:internal/installapply/service_sandbox_test.go:generic-api-key:30

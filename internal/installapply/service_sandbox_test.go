@@ -25,10 +25,10 @@ func TestAgentConfigurationWritesPreserveRemainingSystemSandbox(t *testing.T) {
 				t.Fatalf("%s agent lost unrelated protection %s", distribution, remaining)
 			}
 		}
-		api := serviceUnits(distribution)["stackfort-api.service"]
-		if strings.Contains(api, "ReadWritePaths=/etc") || !strings.Contains(api, "ProtectSystem=strict\n") ||
-			!strings.Contains(api, "NoNewPrivileges=yes\n") || !strings.Contains(api, "PrivateDevices=yes\n") ||
-			!strings.Contains(api, "ProtectHome=yes\n") {
+		controlUnit := serviceUnits(distribution)["stackfort-api.service"]
+		if strings.Contains(controlUnit, "ReadWritePaths=/etc") || !strings.Contains(controlUnit, "ProtectSystem=strict\n") ||
+			!strings.Contains(controlUnit, "NoNewPrivileges=yes\n") || !strings.Contains(controlUnit, "PrivateDevices=yes\n") ||
+			!strings.Contains(controlUnit, "ProtectHome=yes\n") {
 			t.Fatal("privileged broker exception leaked into the control API")
 		}
 	}
