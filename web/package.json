@@ -20,7 +20,7 @@
     "vue-i18n": "11.4.10"
   },
   "devDependencies": {
-    "@types/node": "26.4.0",
+    "@types/node": "26.5.1",
     "@vitejs/plugin-vue": "6.0.8",
     "@vue/compiler-dom": "3.5.42",
     "@vue/compiler-sfc": "3.5.42",
@@ -28,7 +28,7 @@
     "axe-core": "4.13.0",
     "jsdom": "30.0.1",
     "typescript": "6.0.3",
-    "vite": "8.2.2",
+    "vite": "8.3.0",
     "vitest": "4.1.11",
     "vue-tsc": "3.3.11"
   }
