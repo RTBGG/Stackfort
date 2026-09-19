@@ -7,8 +7,10 @@
 > Use only fresh disposable test servers without important data.
 
 RTBGG explicitly approved this limited removal scope on 2026-09-12. It is a
-product-policy decision, not a claim that a particular release has passed its
-removal test. No final candidate-specific removal qualification is recorded yet.
+product-policy decision, not by itself a claim that a particular release has
+passed its removal test. The
+[exact beta.10 same-target removal qualification](../infra/host-tests/results/2026-09-19-beta10-os-removal.md)
+passed on2026-09-19; publication approval is separate.
 Community-only support does not guarantee recovery or provider reinstallation.
 
 ## Operator boundary

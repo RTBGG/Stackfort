@@ -4,6 +4,22 @@ Audit date: 2026-09-19. Status: **not ready for public native installation**.
 The public GitHub Releases API returned HTTP 200 with an empty inventory.
 Unpublished workflow candidates are not public releases.
 
+The [exact beta.10 candidate](../infra/host-tests/results/2026-09-19-beta10-candidate-qualification.md)
+has now passed fresh Debian13 native onboarding with genuine tag provenance,
+original setup/login, installed hosting/API checks, same-release rerun, normal
+reboot/session persistence, host security, CPU/RAM/PID/byte/inode enforcement,
+installed-broker rootless build/Trivy/deploy, real process-loss quarantine with
+external IPv4/link-local-IPv6 TCP/UDP controls, and
+[same-target full OS reprovision removal](../infra/host-tests/results/2026-09-19-beta10-os-removal.md).
+These used the exact retained archive, not repaired installed binaries.
+Candidate-specific RTBGG publication approval and the live release gates remain
+pending. The assets are still unpublished; a real public-GitHub download/install
+check must follow publication. No independent review or production suitability
+is implied. The report explicitly identifies narrower coverage, including no
+global IPv6, I/O-rate enforcement or public-control-API OCI workflow claim.
+
+## Earlier candidate findings
+
 The [exact beta.4 onboarding attempt](../infra/host-tests/results/2026-09-12-beta4-onboarding-php-capability-failure.md)
 completed automatic quota preparation, installation and original setup redemption,
 but failed the product smoke because the installed PHP package was not detected.
@@ -39,8 +55,8 @@ staging inode did not inherit the document root's default ACL when renamed, so
 NGINX could not read the uploaded file. Its installed state and tag remain
 unchanged. The correction covers upload/copy/archive staging and preservation of
 live directory policies during backup restore, with real Linux ACL regressions.
-A new candidate still needs full fresh-host qualification; installation-stage
-success alone does not establish working hosting functionality.
+Beta.10 subsequently passed the full fresh-host sequence recorded above;
+installation-stage success alone was not accepted as working hosting functionality.
 
 The [2026-09-19 installed-broker diagnostic](../infra/host-tests/results/2026-09-19-oci-layout-scan-diagnostic.md)
 also corrected the OCI TAR/directory mismatch at the Trivy boundary. A real
@@ -53,7 +69,7 @@ The subsequent [resource/isolation diagnostic](../infra/host-tests/results/2026-
 passed actual CPU throttling, PID exhaustion, account OOM enforcement, byte/inode
 quota exhaustion and fixed unprivileged cgroup/kernel-interface open denials.
 It used the installed broker but remains modified-host evidence; the same
-checks must be repeated against the final candidate on the fresh installation.
+checks were subsequently repeated against the exact beta.10 fresh installation.
 The implementation commit's GitHub CI and Security workflows also passed.
 
 ## Required execution order
