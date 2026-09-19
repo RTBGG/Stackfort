@@ -31,6 +31,20 @@ and upstream Vinyl version into Stackfort's release manifest. The privileged
 installer verifies that record and the installed package before starting the
 service.
 
+The native packages declare GCC and the C library development headers as
+**runtime** dependencies (`gcc`/`libc6-dev` on Debian/Ubuntu,
+`gcc`/`glibc-devel` on Rocky). Vinyl compiles VCL on the installed host even
+when its own executable was prebuilt. Package revision 2 corrects these missing
+dependencies. This does not enable customer-supplied VCL or require compiling
+the Vinyl application during installation.
+
+Every manual release build also installs its exact Vinyl packages in separate
+fresh distribution containers. These jobs reject a preinstalled compiler and
+compile the installed managed VCL using only declared package dependencies.
+The aggregate release build depends on all three runtime checks; successful
+compilation on the development/build host alone is insufficient. This check
+does not replace full native onboarding or real cache/WAF functional tests.
+
 On Rocky Linux 10, preparation enables CRB, installs `epel-release` from Rocky
 Extras, and uses DNF to resolve Vinyl's jemalloc dependency while installing
 the local RPM. The RPM removes redundant standard-library RUNPATH metadata and

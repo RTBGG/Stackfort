@@ -88,7 +88,8 @@ install -D -m 0644 "$license_file" "$stage/usr/share/licenses/vinyl-cache/LICENS
 find "$stage" -exec touch -h -d "@$source_date_epoch" {} +
 mkdir -p "$output_directory"
 
-package_version="$vinyl_version-1sf1"
+# VCL is compiled on the installed host too, not only on this build host.
+package_version="$vinyl_version-2sf1"
 case "$package_format" in
   deb)
     mkdir -p "$stage/DEBIAN"
@@ -102,7 +103,7 @@ Installed-Size: $installed_size
 Section: web
 Priority: optional
 Homepage: https://vinyl-cache.org/
-Depends: libc6, libedit2, libjemalloc2, libpcre2-8-0, openssl, systemd
+Depends: libc6, libedit2, libjemalloc2, libpcre2-8-0, openssl, systemd, gcc, libc6-dev
 Conflicts: varnish
 Provides: varnish
 Description: Stackfort-qualified Vinyl Cache 9 edge
@@ -149,13 +150,13 @@ EOF
     cat >"$top/SPECS/vinyl-cache.spec" <<EOF
 Name: vinyl-cache
 Version: $vinyl_version
-Release: 1.sf1%{?dist}
+Release: 2.sf1%{?dist}
 Summary: Stackfort-qualified Vinyl Cache 9 edge
 License: BSD-2-Clause
 URL: https://vinyl-cache.org/
 Source0: payload.tar.gz
 BuildArch: x86_64
-Requires: openssl systemd
+Requires: openssl systemd gcc glibc-devel
 Conflicts: varnish
 Provides: varnish
 
@@ -218,7 +219,7 @@ EOF
     built="$(find "$top/RPMS" -type f -name '*.rpm' -print -quit)"
     [[ -n "$built" ]] || fail 'rpmbuild did not produce a package'
     package_version="$(rpm -qp --qf '%{VERSION}-%{RELEASE}' "$built")"
-    package_filename="vinyl-cache-${vinyl_version}-1.sf1.rocky${version_prefix}.x86_64.rpm"
+    package_filename="vinyl-cache-${vinyl_version}-2.sf1.rocky${version_prefix}.x86_64.rpm"
     cp "$built" "$output_directory/$package_filename"
     ;;
 esac

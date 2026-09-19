@@ -137,10 +137,42 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  vinyl-runtime:
+    name: Vinyl minimal runtime — ${{ matrix.id }}
+    if: github.event_name == 'workflow_dispatch'
+    needs: vinyl-packages
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    container: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: debian-13
+            image: debian:13
+          - id: ubuntu-26.04
+            image: ubuntu:26.04
+          - id: rocky-10
+            image: rockylinux/rockylinux:10
+    steps:
+      - name: Check out runtime qualification only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Download this run's exact native Vinyl package
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: stackfort-vinyl-${{ matrix.id }}
+          path: vinyl-runtime-input
+      - name: Compile installed managed VCL on a compiler-free baseline
+        env:
+          STACKFORT_DISPOSABLE_PACKAGE_TEST: '1'
+        run: bash packaging/vinyl/test-runtime-package.sh vinyl-runtime-input
+
   build:
     name: Build, inventory, and attest
     if: github.event_name == 'workflow_dispatch'
-    needs: [release_policy, waf-packages, vinyl-packages]
+    needs: [release_policy, waf-packages, vinyl-packages, vinyl-runtime]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:

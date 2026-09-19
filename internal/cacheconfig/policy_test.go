@@ -4,6 +4,7 @@ package cacheconfig
 
 import (
 	"os"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -57,6 +58,33 @@ func TestClosedPresetAndPurgePathValidation(t *testing.T) {
 	for _, path := range []string{"/.*", "/x?secret=y", "/../other", "//evil", "/x' || true"} {
 		if _, err := NormalizePurgePath(path); err == nil {
 			t.Fatalf("accepted unsafe purge path %q", path)
+		}
+	}
+}
+
+func TestVinylPackagesRequireRuntimeCompilerAndHeaders(t *testing.T) {
+	content, err := os.ReadFile("../../packaging/vinyl/build-native-package.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for prefix, required := range map[string][]string{
+		"Depends: ":  {"gcc", "libc6-dev"},
+		"Requires: ": {"gcc", "glibc-devel"},
+	} {
+		var matches []string
+		for _, line := range strings.Split(string(content), "\n") {
+			if strings.HasPrefix(line, prefix) {
+				matches = append(matches, strings.TrimPrefix(line, prefix))
+			}
+		}
+		if len(matches) != 1 {
+			t.Fatalf("expected one %s runtime dependency declaration", prefix)
+		}
+		dependencies := strings.Fields(strings.ReplaceAll(matches[0], ",", " "))
+		for _, dependency := range required {
+			if !slices.Contains(dependencies, dependency) {
+				t.Errorf("%s omitted %s required for runtime VCL compilation", prefix, dependency)
+			}
 		}
 	}
 }

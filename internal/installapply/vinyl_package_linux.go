@@ -49,8 +49,10 @@ func (runner *LinuxRunner) applyVinylPackage(ctx context.Context, source Source)
 		// through EPEL, whose signed repository definition is provided by Rocky
 		// Extras. Resolve the signed runtime dependency before RPM activates the
 		// exact local artifact; --oldpackage must remain available for rollback.
+		// RPM itself cannot resolve dependencies, including the compiler and C
+		// headers required each time Vinyl compiles a VCL on the installed host.
 		if installErr = runner.run(ctx, nil, "/usr/bin/dnf", "install", "-y", "epel-release"); installErr == nil {
-			installErr = runner.run(ctx, nil, "/usr/bin/dnf", "install", "-y", "jemalloc")
+			installErr = runner.run(ctx, nil, "/usr/bin/dnf", "install", "-y", "jemalloc", "gcc", "glibc-devel")
 		}
 		if installErr == nil {
 			installErr = runner.run(ctx, nil, "/usr/bin/rpm", "--upgrade", "--oldpackage", "--replacepkgs", packagePath)

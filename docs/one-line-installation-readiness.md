@@ -20,8 +20,13 @@ passed its retained build and tag attestation, but fresh onboarding stopped
 before reboot at prerequisite planning. The minimal vendor image exposed a
 missing `libjansson4` dependency allowance and an invalid recovery-record update
 after a rejected package plan. Both have focused regression fixes; beta.6 is
-not publishable and its tag remains unchanged. Beta.7 requires a new immutable
-build and complete fresh-host qualification.
+not publishable and its tag remains unchanged. The subsequent
+[beta.7 attempt](../infra/host-tests/results/2026-09-19-beta7-candidate-qualification.md)
+completed prerequisite installation and automatic storage preparation, but
+failed during Vinyl VCL compilation because its package omitted the runtime
+C compiler and headers. Beta.7 also remains unpublished with an unchanged tag.
+The next candidate must include corrected package dependencies and pass new
+compiler-free runtime-container checks before full fresh-host qualification.
 
 The [2026-09-19 installed-broker diagnostic](../infra/host-tests/results/2026-09-19-oci-layout-scan-diagnostic.md)
 also corrected the OCI TAR/directory mismatch at the Trivy boundary. A real
@@ -109,7 +114,7 @@ fail-closed boot, firewall or exact-candidate functional tests.
 
 ### Bootstrap selection and availability
 
-The bare bootstrap now explicitly selects `0.1.0-beta.7` for a fresh invocation,
+The bare bootstrap now explicitly selects `0.1.0-beta.8` for a fresh invocation,
 not GitHub's latest-stable channel. Explicit versions and existing journal pins
 remain supported; a beta is never relabeled stable. The public handler is
 registered, but final tagged-candidate qualification and public release assets
