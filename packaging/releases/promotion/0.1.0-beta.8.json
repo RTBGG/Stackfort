@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "kind": "candidate-promotion",
+  "candidate": {
+    "version": "0.1.0-beta.8",
+    "commit": "e217f9fbe6f62491f2142391af8799c5231255a1",
+    "archive": "stackfort-0.1.0-beta.8-linux-amd64.tar.gz",
+    "archiveSHA256": "b5a7f7a39c3bc6f132d9aafc46d1a024a781aad4e8aa8955b4089aa3326a7da0",
+    "build": {
+      "runId": 35441790427,
+      "attempt": 1,
+      "artifactId": 10583803548,
+      "artifactSHA256": "fdf0bc28a3058dbe930d84082c784c0a6d116d35db45829088401c41aa36d903"
+    }
+  }
+}

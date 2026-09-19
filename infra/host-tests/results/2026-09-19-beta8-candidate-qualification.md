@@ -1,6 +1,7 @@
 # Beta.8 candidate qualification — 2026-09-19
 
-Status: **pre-selection checks; not publishable**.
+Status: **corrected retained candidate selected; native qualification pending;
+not publishable**.
 
 The [beta.7 installation failure](2026-09-19-beta7-candidate-qualification.md)
 identified missing Vinyl runtime compiler/header dependencies. The next source
@@ -57,3 +58,53 @@ A new original build from the corrected source must pass CI and Security before
 selection. Neither superseded run will be rerun, substituted into a selection,
 or treated as a qualified candidate. No beta.8 installation or publication
 result is claimed here.
+
+## Corrected retained candidate
+
+Frozen source: `e217f9fbe6f62491f2142391af8799c5231255a1`.
+[Original build 35441790427](https://github.com/RTBGG/Stackfort/actions/runs/35441790427),
+[CI 35441754938](https://github.com/RTBGG/Stackfort/actions/runs/35441754938) and
+[Security 35441754895](https://github.com/RTBGG/Stackfort/actions/runs/35441754895)
+all passed on attempt 1 before the selection commit. The build includes all six
+native-package jobs and all three compiler-free Vinyl runtime checks. Slow Rocky
+repository downloads delayed its jobs but did not require a retry or bypass.
+
+- Aggregate artifact: `10583803548`, 313,145,063 bytes.
+- ZIP SHA-256: `fdf0bc28a3058dbe930d84082c784c0a6d116d35db45829088401c41aa36d903`.
+- TAR SHA-256: `b5a7f7a39c3bc6f132d9aafc46d1a024a781aad4e8aa8955b4089aa3326a7da0`.
+- Installer SHA-256: `48003e5bc856608ea7bdfe010440d9987f71c4af18130b33515add611e60d14d`.
+- Control-plane executable SHA-256: `bff777e41819c2e08fa675db721f973798353a154b40d40963a735af4f55bc89`.
+- Agent SHA-256: `905a8c50e1c51231d91b47206757bb7006662175abf955e56169703dc4f93dd5`.
+- Bootstrap SHA-256: `6bd01feab35e2306dd404467c4264cbe590ced22060ebc487b45761bd6deecae`.
+
+Mechanical selection validation and strict extraction passed against the
+complete seven-artifact API inventory. All ten payload files, checksums, carrier
+sidecars, SPDX metadata and source/version bindings were verified. The archived
+and standalone installer are identical. A separate read-only inspection checked
+the Debian Vinyl revision `9.0.1-2sf1` and the WAF package/module/library/inventory
+digests against the authenticated TAR and its component manifest.
+
+The selection is not publication approval. No beta.8 tag-qualified installation,
+setup redemption, live product test or release is claimed by these build checks.
+
+## Prepared fresh target
+
+The beta.7 failed state is retained with checkpoint
+`bd6eb82c-e64d-4809-bc2b-1460cbfbe4a1`. The exact disposable VM was shut down
+gracefully, its complete old disk chain recorded, and both system/seed attachments
+replaced with independently prepared vendor-image disks. No disk or checkpoint
+was deleted, restored or copied from the installed host. The rescue clone stays
+off. This fresh baseline preparation is not post-install removal qualification.
+
+The vendor Debian image remains SHA-256
+`85a969b7e99d7c817414136033df18c58d5c45ac8d27bb36e8ccb67173d2d4e3`,
+authenticated using official HTTPS and published SHA512SUMS. The VM-bound public
+KVP report authenticated the new SSH key before replacing its strict pin.
+Cloud-init completed without errors. Secure Boot is on; the 50 GiB root is plain
+GPT/ext4 with 256-byte inodes, approximately 47 GiB free and 3.24 million free
+inodes, without project-quota features or Stackfort state/configuration.
+
+Initial boot: `b1c8349b-386a-4ef3-aaac-76c12130d4ef`.
+Fresh checkpoint: `63424f12-be04-483c-a58e-01003e09c886`
+(`native-beta8-vendor-fresh-20260919`). It remains unchanged while the exact
+candidate is built and validated.
