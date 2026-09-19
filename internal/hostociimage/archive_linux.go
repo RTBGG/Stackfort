@@ -35,7 +35,7 @@ const (
 
 // sealImageArchive never treats chown as revocation of existing writable file
 // descriptors. Copy into a fresh root-owned inode, validate that stable copy,
-// then atomically publish it at the fixed scanner input name. Tenant-held FDs
+// then materialize its verified outer OCI layout for Trivy. Tenant-held FDs
 // still refer to the old, unlinked export, not the bytes the scanner receives.
 func sealImageArchive(ctx context.Context, archive string, tenantUID, tenantGID, ownerUID, ownerGID uint32, imageDigest string) error {
 	if !ociimage.ValidDigest(imageDigest) {
@@ -64,13 +64,30 @@ func sealImageArchive(ctx context.Context, archive string, tenantUID, tenantGID,
 	if err != nil || n != info.Size() || n > ociimage.MaximumImageArchiveBytes || stable.Sync() != nil {
 		return ociimage.ErrScanFailed
 	}
-	if err := verifyImageArchive(ctx, stable, imageDigest); err != nil {
+	var layout verifiedArchiveLayout
+	if err := verifyImageArchiveLayout(ctx, stable, imageDigest, &layout); err != nil {
 		return ociimage.ErrScanFailed
 	}
 	if info, err := stable.Stat(); err != nil || !ownedArchive(info, ownerUID, ownerGID) || info.Size() != n {
 		return ociimage.ErrScanFailed
 	}
-	if stable.Close() != nil || os.Rename(stableName, archive) != nil {
+	if os.Rename(stableName, archive) != nil {
+		return ociimage.ErrScanFailed
+	}
+	// Trivy accepts an OCI directory, not Podman's OCI tar transport. Read only
+	// offsets from this same verified root-owned descriptor; never extract layer
+	// tar entries or reopen tenant-controlled source paths.
+	layoutPath := filepath.Join(filepath.Dir(archive), "image.oci")
+	if err := materializeArchiveLayout(ctx, stable, layoutPath, layout, ownerUID, ownerGID); err != nil {
+		return ociimage.ErrScanFailed
+	}
+	complete := false
+	defer func() {
+		if !complete {
+			_ = os.RemoveAll(layoutPath)
+		}
+	}()
+	if stable.Close() != nil {
 		return ociimage.ErrScanFailed
 	}
 	directory, err := os.Open(filepath.Dir(archive))
@@ -79,6 +96,93 @@ func sealImageArchive(ctx context.Context, archive string, tenantUID, tenantGID,
 	}
 	defer directory.Close()
 	if directory.Sync() != nil {
+		return ociimage.ErrScanFailed
+	}
+	complete = true
+	return nil
+}
+
+type verifiedArchiveLayout struct {
+	index, layout []byte
+	blobs         map[string]archiveBlob
+}
+
+// Only called with a fully verified plan and the same immutable archive FD.
+// The transaction parent is root-owned and not tenant-writable. A conflicting
+// layout (including a symlink) is never adopted, replaced or cleaned up.
+func materializeArchiveLayout(ctx context.Context, archive *os.File, target string, layout verifiedArchiveLayout, uid, gid uint32) error {
+	if ctx.Err() != nil || os.Mkdir(target, 0o700) != nil {
+		return ociimage.ErrScanFailed
+	}
+	complete := false
+	defer func() {
+		if !complete {
+			_ = os.RemoveAll(target)
+		}
+	}()
+	directories := make([]*os.File, 0, 3)
+	defer func() {
+		for _, directory := range directories {
+			_ = directory.Close()
+		}
+	}()
+	for _, name := range []string{"", "blobs", "blobs/sha256"} {
+		directoryPath := filepath.Join(target, name)
+		if name != "" && os.Mkdir(directoryPath, 0o700) != nil {
+			return ociimage.ErrScanFailed
+		}
+		// #nosec G304 -- fixed directories below the exclusively created private root-owned layout, never archive-derived paths.
+		directory, err := os.OpenFile(directoryPath, os.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW, 0)
+		if err != nil {
+			return ociimage.ErrScanFailed
+		}
+		directories = append(directories, directory)
+		if directory.Chown(int(uid), int(gid)) != nil || directory.Chmod(0o700) != nil {
+			return ociimage.ErrScanFailed
+		}
+	}
+	for digest, blob := range layout.blobs {
+		if !ociimage.ValidDigest(digest) || blob.offset < 0 || blob.size < 0 || blob.size > ociimage.MaximumImageArchiveBytes {
+			return ociimage.ErrScanFailed
+		}
+		if err := writeArchiveLayoutFile(ctx, filepath.Join(target, "blobs", "sha256", digest[7:]),
+			io.NewSectionReader(archive, blob.offset, blob.size), blob.size, uid, gid); err != nil {
+			return err
+		}
+	}
+	for _, metadata := range []struct {
+		name    string
+		content []byte
+	}{{"oci-layout", layout.layout}, {"index.json", layout.index}} {
+		if err := writeArchiveLayoutFile(ctx, filepath.Join(target, metadata.name),
+			bytes.NewReader(metadata.content), int64(len(metadata.content)), uid, gid); err != nil {
+			return err
+		}
+	}
+	for index := len(directories) - 1; index >= 0; index-- {
+		if directories[index].Sync() != nil {
+			return ociimage.ErrScanFailed
+		}
+	}
+	if ctx.Err() != nil {
+		return ociimage.ErrScanFailed
+	}
+	complete = true
+	return nil
+}
+
+func writeArchiveLayoutFile(ctx context.Context, name string, input io.Reader, size int64, uid, gid uint32) error {
+	// #nosec G304 -- fixed metadata basenames or validated SHA256 names in newly created private root-owned directories; exclusive no-follow creation.
+	file, err := os.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL|syscall.O_NOFOLLOW, 0o600)
+	if err != nil {
+		return ociimage.ErrScanFailed
+	}
+	defer file.Close()
+	if file.Chown(int(uid), int(gid)) != nil || file.Chmod(0o600) != nil {
+		return ociimage.ErrScanFailed
+	}
+	n, err := io.Copy(file, io.LimitReader(archiveContextReader{ctx, input}, size+1))
+	if err != nil || n != size || file.Sync() != nil || file.Close() != nil {
 		return ociimage.ErrScanFailed
 	}
 	return nil
@@ -127,6 +231,11 @@ type archiveDescriptor struct {
 // the config ImageID and ordered uncompressed layer hashes bind scanner bytes
 // to the inspected image, rather than trusting attacker-editable index labels.
 func verifyImageArchive(ctx context.Context, file *os.File, imageDigest string) error {
+	var layout verifiedArchiveLayout
+	return verifyImageArchiveLayout(ctx, file, imageDigest, &layout)
+}
+
+func verifyImageArchiveLayout(ctx context.Context, file *os.File, imageDigest string, result *verifiedArchiveLayout) error {
 	if _, err := file.Seek(0, io.SeekStart); err != nil {
 		return err
 	}
@@ -283,6 +392,7 @@ func verifyImageArchive(ctx context.Context, file *os.File, imageDigest string) 
 			return ociimage.ErrScanFailed
 		}
 	}
+	*result = verifiedArchiveLayout{index: index, layout: layout, blobs: blobs}
 	return nil
 }
 

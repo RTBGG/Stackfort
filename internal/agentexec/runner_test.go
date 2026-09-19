@@ -644,8 +644,13 @@ func TestOCIProfilesDeriveAccountExecutionAndFixedLimits(t *testing.T) {
 	}
 	scan := runner.profiles[ProfileTrivyScan]
 	scanArguments, scanErr := scan.resolve([]string{operationID})
+	scanTransaction, _ := ociimage.TransactionDirectory(operationID)
 	if scanErr != nil || scan.executable != ociimage.ScannerExecutable || scan.accountProcess ||
-		scan.stdoutLimit != ociimage.MaximumScanReportBytes || slices.Contains(scanArguments, "--output") {
+		scan.stdoutLimit != ociimage.MaximumScanReportBytes || slices.Contains(scanArguments, "--output") ||
+		!reflect.DeepEqual(scanArguments, []string{
+			"--cache-dir", ociimage.ScannerCacheRoot, "image", "--input", scanTransaction + "/image.oci",
+			"--scanners", "vuln", "--severity", "HIGH,CRITICAL", "--format", "json", "--timeout", "10m0s",
+		}) {
 		t.Fatalf("scanner profile = %#v", scan)
 	}
 	deploymentSpec, err := ocideployment.Normalize(ocideployment.Spec{Identity: spec.Identity,

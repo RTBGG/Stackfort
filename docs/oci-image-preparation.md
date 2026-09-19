@@ -78,7 +78,15 @@ root-owned mode-`0755` `/usr/local/libexec/stackfort-trivy` path. Readiness also
 requires a regular file with one link and rejects different ownership or mode;
 scanner presence/version and readiness are typed host capabilities.
 
-The scanner runs as root against the saved OCI archive, never an engine socket
+The tenant's saved OCI archive is copied into a fresh privileged inode and fully
+verified against the inspected config ImageID and ordered layer diffIDs. From
+that same descriptor, Stackfort materializes only the outer OCI files into a
+new root-owned `image.oci` directory (`0700` directories, `0600` files). Existing
+paths are never adopted. Layer tar contents are not extracted onto the host;
+archive paths, ownership, modes and links are not carried over. Trivy 0.74.0
+accepts this OCI directory, not Podman's `oci-archive` tar transport.
+
+The scanner runs as root against this private layout, never an engine socket
 and never the application process. It enables only the vulnerability scanner,
 requests only HIGH and CRITICAL results, writes JSON through a 16-MiB bounded
 capture, uses a root-only cache, and has a ten-minute scanner deadline. A
@@ -93,14 +101,20 @@ deletes a container that already uses an identical image.
 Each attempt owns one UUIDv7-derived root transaction directory. Success writes
 one root-owned `0600` manifest below the fixed artifact root with `O_EXCL`.
 Retries return the stored result only when the complete request digest and
-policy result validate. Transaction snapshots and scan archives are removed on
+policy result validate. Transaction snapshots, scan archives and layouts are removed on
 every return path; no broad or caller-derived recursive target is used.
+While sealing, the tenant export, privileged archive copy and OCI layout may
+coexist (up to three times the 2-GiB archive bound, plus build inputs and scanner
+cache). This is temporary host-side usage, not a reserved-capacity guarantee;
+copy/materialization failures reject the image and clean up the transaction.
 
 See [ADR 0055](adr/0055-digest-pinned-bounded-oci-image-preparation.md), the
 [application foundation](oci-application-foundation.md), and the
 [rootless account runtime](rootless-oci-runtime.md).
 
 Upstream references:
+
+- [Trivy 0.74.0 archive input handling](https://github.com/aquasecurity/trivy/blob/v0.74.0/pkg/fanal/image/archive.go)
 
 - <https://docs.podman.io/en/stable/markdown/podman-pull.1.html>
 - <https://docs.podman.io/en/stable/markdown/podman-build.1.html>

@@ -26,8 +26,9 @@ mutable or unsafe workload intent cross the privileged host boundary.
    no-cache, CPU, memory, process, file-descriptor, output, and time bounds.
    Account project quota bounds engine storage; `RLIMIT_FSIZE` bounds the scan
    archive.
-5. Bundle one checksum-pinned Trivy version. Scan an OCI archive without an
-   engine socket, fail closed on scan errors, and reject every HIGH or CRITICAL
+5. Bundle one checksum-pinned Trivy version. Verify the exported OCI archive and
+   materialize its outer OCI layout privately for the scanner, without extracting
+   layer contents or using an engine socket. Fail closed on scan errors and reject every HIGH or CRITICAL
    finding before persistence.
 6. Store a root-owned, create-only replay manifest on the host and append-only
    evidence in SQLite. A retry converges only when the request and result match

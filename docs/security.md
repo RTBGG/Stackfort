@@ -211,7 +211,9 @@ stable `agent.peer.rejected` security event before HTTP parsing. See
 L-003 extends the same boundary with `oci.image.prepare`. The control plane
 reconstructs a revisioned source from tenant-owned state; the agent exposes no
 runtime arguments. Digest-only pulls and bounded rootless builds produce an OCI
-archive that fixed, checksum-pinned Trivy scans without an engine socket.
+archive that is copied to a fresh privileged inode, verified, then materialized
+as a private outer OCI layout for fixed, checksum-pinned Trivy. Layer tar
+contents are never extracted onto the host, and no engine socket is exposed.
 Scanner errors and HIGH/CRITICAL findings fail closed, while append-only host
 and database evidence bind the accepted image digest to its source revision.
 See [Bounded OCI image preparation](oci-image-preparation.md).

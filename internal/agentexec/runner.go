@@ -497,7 +497,7 @@ func NewRunner() *Runner {
 					return nil, ErrInvalidInvocation
 				}
 				return []string{
-					"--cache-dir", ociimage.ScannerCacheRoot, "image", "--input", path.Join(transaction, "image.tar"),
+					"--cache-dir", ociimage.ScannerCacheRoot, "image", "--input", path.Join(transaction, "image.oci"),
 					"--scanners", "vuln", "--severity", "HIGH,CRITICAL", "--format", "json",
 					"--timeout", "10m0s",
 				}, nil

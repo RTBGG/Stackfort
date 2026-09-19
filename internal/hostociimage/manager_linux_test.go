@@ -247,6 +247,13 @@ func (runner *imageCommandRunner) Run(
 		operationID := invocation.Values[len(invocation.Values)-1]
 		return agentexec.Result{}, os.WriteFile(filepath.Join(runner.transactions, operationID, "image.tar"), runner.archive, 0o600)
 	case agentexec.ProfileTrivyScan:
+		input := filepath.Join(runner.transactions, invocation.Values[0], "image.oci")
+		if info, err := os.Lstat(input); err != nil || !info.IsDir() || info.Mode().Perm() != 0o700 {
+			return agentexec.Result{}, errors.New("verified private OCI layout missing at scan invocation")
+		}
+		if _, err := os.Stat(filepath.Join(input, "index.json")); err != nil {
+			return agentexec.Result{}, errors.New("verified OCI index missing at scan invocation")
+		}
 		return agentexec.Result{Stdout: runner.report}, runner.scanErr
 	default:
 		return agentexec.Result{}, nil
