@@ -153,10 +153,62 @@ expect_failure 'automatic native preparation is limited' run_fixture STACKFORT_B
 expect_no_match '^(install|onboard)$' "$result"
 printf 'ID=debian\nVERSION_ID="13"\n' >"$workspace/os-release"
 
-make_fixture '0.1.0-beta.8'
+# Exercise the real download branch using a private PATH shim, not a new
+# production URL override. No network call or installed service is involved.
+mkdir "$workspace/mock-bin"
+cat >"$workspace/mock-bin/curl" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+destination=''
+url=''
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --output) destination="$2"; shift 2 ;;
+    --write-out) [[ "$2" == '%{http_code}' ]]; shift 2 ;;
+    --proto|--tlsv1.2|--proto-redir)
+      if [[ "$1" == --tlsv1.2 ]]; then shift; else [[ "$2" == '=https' ]]; shift 2; fi ;;
+    --fail|--silent|--show-error|--location) shift ;;
+    https://github.com/RTBGG/stackfort/releases/download/*) url="$1"; shift ;;
+    *) exit 97 ;;
+  esac
+done
+[[ -n "$destination" && "$url" == "https://github.com/RTBGG/stackfort/releases/download/v1.2.3-test.1/"* ]]
+asset="${url##*/}"
+printf '%s\n' "$asset" >>"$STACKFORT_MOCK_CURL_CALLS"
+if [[ "$asset" == "$STACKFORT_MOCK_CURL_FAIL_ASSET" ]]; then
+  printf '%s' "$STACKFORT_MOCK_CURL_HTTP"
+  exit "$STACKFORT_MOCK_CURL_EXIT"
+fi
+cp -- "$STACKFORT_MOCK_CURL_FIXTURE/$asset" "$destination"
+printf '200'
+EOF
+chmod 0755 "$workspace/mock-bin/curl"
+run_download_mock() {
+  : >"$result"
+  : >"$workspace/curl-calls"
+  env PATH="$workspace/mock-bin:$PATH" STACKFORT_VERSION="$version" \
+    STACKFORT_BOOTSTRAP_TEST_FIXTURE= STACKFORT_BOOTSTRAP_TESTING= \
+    STACKFORT_BOOTSTRAP_TEST_RESULT="$result" STACKFORT_MOCK_CURL_FIXTURE="$fixture" \
+    STACKFORT_MOCK_CURL_CALLS="$workspace/curl-calls" STACKFORT_MOCK_CURL_FAIL_ASSET="$1" \
+    STACKFORT_MOCK_CURL_HTTP="$2" STACKFORT_MOCK_CURL_EXIT="$3" bash "$bootstrap"
+}
+for missing_asset in SHA256SUMS "$archive" build-attestation.jsonl; do
+  expect_failure "release asset '$missing_asset' for v$version is not publicly available (HTTP 404)" \
+    run_download_mock "$missing_asset" 404 22
+  grep -Fq 'No installation was started.' "$workspace/failure.out"
+  [[ ! -s "$result" && "$(tail -n 1 "$workspace/curl-calls")" == "$missing_asset" ]]
+done
+expect_failure 'curl exit 22, HTTP 500' run_download_mock SHA256SUMS 500 22
+[[ ! -s "$result" && "$(wc -l <"$workspace/curl-calls")" -eq 1 ]]
+expect_failure 'curl exit 6, HTTP 000' run_download_mock SHA256SUMS 000 6
+[[ ! -s "$result" && "$(wc -l <"$workspace/curl-calls")" -eq 1 ]]
+run_download_mock none 200 0 >"$workspace/download-success.out"
+[[ "$(wc -l <"$workspace/curl-calls")" -eq 3 && "$(head -n 1 "$result")" == preflight ]]
+
+make_fixture '0.1.0-beta.9'
 env STACKFORT_VERSION= STACKFORT_BOOTSTRAP_TESTING=1 STACKFORT_BOOTSTRAP_TEST_FIXTURE="$fixture" \
   STACKFORT_BOOTSTRAP_TEST_RESULT="$result" bash "$bootstrap" >"$workspace/default.out"
-grep -Fq 'explicitly pinned experimental release 0.1.0-beta.8' "$workspace/default.out"
+grep -Fq 'explicitly pinned experimental release 0.1.0-beta.9' "$workspace/default.out"
 make_fixture "$version"
 for invalid in '01.2.3' '1.02.3' '1.2.03' '1.2.3-01' '1.2.3-a..b' '1.2.3+' '1.2.3+..' 'latest' 'vv1.2.3' '1.2.3/evil'; do
   expect_failure 'selected release version is invalid' \
@@ -241,7 +293,7 @@ tar --sort=name --owner=0 --group=0 --numeric-owner -C "$workspace/bad" -czf "$f
 expect_failure 'release archive contains a link or special file' run_fixture
 
 grep -Fq "readonly repository='RTBGG/stackfort'" "$bootstrap"
-grep -Fq "readonly default_version='0.1.0-beta.8'" "$bootstrap"
+grep -Fq "readonly default_version='0.1.0-beta.9'" "$bootstrap"
 grep -Fq "readonly release_base=\"https://github.com/\$repository/releases/download/\$tag\"" "$bootstrap"
 grep -Fq -- "--proto '=https' --tlsv1.2" "$bootstrap"
 if grep -Fq "\"https://github.com/\$repository/releases/latest\"" "$bootstrap"; then
@@ -255,3 +307,4 @@ printf 'STACKFORT_QUALIFICATION bootstrap-native-routing=passed\n'
 printf 'STACKFORT_QUALIFICATION bootstrap-pinned-rerun=passed\n'
 printf 'STACKFORT_QUALIFICATION bootstrap-native-evidence-failclosed=passed\n'
 printf 'STACKFORT_QUALIFICATION bootstrap-archive-boundary=passed\n'
+printf 'STACKFORT_QUALIFICATION bootstrap-download-errors=passed\n'

@@ -7,7 +7,7 @@ export LC_ALL=C
 readonly repository='RTBGG/stackfort'
 # This is an explicitly selected experimental release, not GitHub's stable
 # /releases/latest channel (which does not select prereleases).
-readonly default_version='0.1.0-beta.8'
+readonly default_version='0.1.0-beta.9'
 readonly state_directory='/var/lib/stackfort-installer'
 readonly journal='/var/lib/stackfort-installer/install-state.json'
 readonly storage_journal='/var/lib/stackfort-installer/storage-state.json'
@@ -149,8 +149,15 @@ fetch_release_asset() {
   local name="$1"
   local destination="$working_directory/$name"
   if [[ -z "$test_fixture" ]]; then
-    curl "${curl_options[@]}" --output "$destination" "$release_base/$name"
-    return
+    local http_status curl_status=0
+    http_status="$(curl "${curl_options[@]}" --write-out '%{http_code}' --output "$destination" "$release_base/$name")" || curl_status=$?
+    if [[ "$curl_status" -eq 0 ]]; then
+      return
+    fi
+    if [[ "$http_status" == '404' ]]; then
+      fail "release asset '$name' for $tag is not publicly available (HTTP 404). The release or asset may not have been published. No installation was started. See https://github.com/$repository/releases."
+    fi
+    fail "could not download release asset '$name' for $tag (curl exit $curl_status, HTTP ${http_status:-unknown}). No installation was started."
   fi
 
   local source="$test_fixture/$name"
