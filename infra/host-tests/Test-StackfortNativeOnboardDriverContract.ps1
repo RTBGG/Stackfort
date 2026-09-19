@@ -152,13 +152,37 @@ function Wait-OnboardCompleted([string] $PreviousBoot, [string] $ConversionBoot,
     if ($PreviousBoot -cne $taskFinalBoot -or $ConversionBoot -cne $taskCompletion.ConversionBootID -or $Minutes -ne 8) { throw 'Callback readmission binding mismatch.' }
     $script:contractCallOrder.Add('readmission'); return $contractReboot
 }
-function Test-StackfortInstalledApiPersistence($Client, $BaseUri, $Evidence) {
+function Set-OnboardVerifiedTransport($Client, [string] $Address) {
+    if (-not [object]::ReferenceEquals($Client, $contractClient) -or $Address -cne $contractReboot.Address) { throw 'Verified transport handoff mismatch.' }
+    $script:contractCallOrder.Add('transport')
+}
+function Test-StackfortInstalledApiPersistence($Client, $BaseUri, $Evidence, [string] $PublicAddress = '') {
     if (-not [object]::ReferenceEquals($Client, $contractClient) -or $BaseUri -ne $contractBaseUri -or $Evidence.fixturePrefix -cne 'synthetic-fixture') { throw 'Persistence session/evidence handoff mismatch.' }
+    $expectedPublic = if ($script:contractCallOrder.Contains('transport')) { $contractReboot.Address } else { '' }
+    if ($PublicAddress -cne $expectedPublic) { throw 'Public request did not follow the verified transport address.' }
     $script:contractCallOrder.Add('persistence'); return [pscustomobject]@{ checks = @('synthetic-persistence') }
 }
 try {
+    # A real Hyper-V DHCP address change must retain the same cookie/TLS authority.
+    $contractReboot.Address = '192.0.2.11'
     . ([scriptblock]::Create($contractCallback.Extent.Text))
     $taskSmoke.Invoke($contractClient, $contractBaseUri, 'synthetic-csrf')
-    if (($script:contractCallOrder -join ',') -cne 'smoke,rerun,same-boot,persistence,reboot,readmission,persistence' -or $script:taskOnboardPersistence.FinalBootID -cne $contractReboot.BootID) { throw 'Callback rerun/reboot/persistence ordering mismatch.' }
+    if (($script:contractCallOrder -join ',') -cne 'smoke,rerun,same-boot,persistence,reboot,readmission,transport,persistence' -or $script:taskOnboardPersistence.FinalBootID -cne $contractReboot.BootID) { throw 'Callback rerun/reboot/persistence ordering mismatch.' }
+    foreach ($address in @('192.0.2.11', '192.0.2.11:8443', 'localhost', '0.0.0.0', '127.1', '::1')) {
+        $rejected = $false
+        try { [StackfortNativeOnboardProbeV1]::RebindVerifiedTransport($contractClient, $address) } catch { $rejected = $true }
+        if (-not $rejected) { throw 'Unregistered client or noncanonical transport was accepted.' }
+    }
+    # A DHCP change is allowed, but renewal/replacement of the original setup
+    # receipt still stops before transport rebind or authenticated persistence.
+    foreach ($field in @('CapabilityID', 'CapabilityExpiresAt')) {
+        $original = $contractReboot.$field
+        $contractReboot.$field = 'changed'
+        $script:contractCallOrder.Clear()
+        $rejected = $false
+        try { $taskSmoke.Invoke($contractClient, $contractBaseUri, 'synthetic-csrf') } catch { $rejected = $true }
+        $contractReboot.$field = $original
+        if (-not $rejected -or $script:contractCallOrder.Contains('transport')) { throw 'Changed setup receipt reached transport rebinding.' }
+    }
 } finally { $contractClient.Dispose() }
 Write-Host 'LOCAL CONTRACT PASS: exact public/fixture transport builders, parser/CSharp, process bounds, transient polling, first/consecutive boot receipts, digest rejection, same-session rerun/reboot callback. No VM or network actions performed.'

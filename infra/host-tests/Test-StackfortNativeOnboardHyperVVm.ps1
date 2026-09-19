@@ -34,6 +34,8 @@ using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Security;
+using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security;
 using System.Security.Cryptography;
@@ -58,6 +60,20 @@ public sealed class StackfortOnboardRedemption {
     public bool Redeemed, ReuseRejected, LoginVerified;
 }
 public static class StackfortNativeOnboardProbeV1 {
+    sealed class TransportTarget { public IPAddress Address; }
+    static readonly ConditionalWeakTable<HttpClient, TransportTarget> transports = new();
+    static IPAddress TransportAddress(string address) {
+        if (!IPAddress.TryParse(address, out var parsed) || parsed.AddressFamily != AddressFamily.InterNetwork ||
+            parsed.ToString() != address || parsed.Equals(IPAddress.Any) || parsed.Equals(IPAddress.Broadcast))
+            throw new InvalidOperationException("Expected one canonical verified IPv4 transport address.");
+        return parsed;
+    }
+    public static void RebindVerifiedTransport(HttpClient client, string address) {
+        var parsed = TransportAddress(address);
+        if (!transports.TryGetValue(client, out var target))
+            throw new InvalidOperationException("Only the active in-memory pinned qualification session may be rebound.");
+        Volatile.Write(ref target.Address, parsed);
+    }
     static Process Start(string executable, string[] arguments) {
         var info = new ProcessStartInfo(executable) { UseShellExecute = false, CreateNoWindow = true,
             RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true };
@@ -188,9 +204,23 @@ public static class StackfortNativeOnboardProbeV1 {
         if (smoke == null) throw new InvalidOperationException("The in-memory installed API smoke callback is required.");
         if (publicCertificate.Contains("PRIVATE KEY")) throw new InvalidOperationException("Public certificate export unexpectedly contained private material.");
         using (var certificate = X509Certificate2.CreateFromPem(publicCertificate))
-        using (var handler = new HttpClientHandler { AllowAutoRedirect = false, UseProxy = false, UseCookies = true, CookieContainer = new CookieContainer() }) {
+        using (var handler = new SocketsHttpHandler { AllowAutoRedirect = false, UseProxy = false, UseCookies = true,
+            CookieContainer = new CookieContainer(), PooledConnectionLifetime = TimeSpan.Zero }) {
+            var target = new TransportTarget { Address = TransportAddress(address) };
+            // DHCP may change the verified VM's IP on reboot. Keep the original
+            // TLS authority, hostname validation and host-only session cookies;
+            // route only new TCP connections to the SSH-reverified VM address.
+            handler.ConnectCallback = async (context, cancellation) => {
+                if (context.DnsEndPoint.Host != address || context.DnsEndPoint.Port != 8443)
+                    throw new InvalidOperationException("Qualification transport authority changed.");
+                var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                try {
+                    await socket.ConnectAsync(new IPEndPoint(Volatile.Read(ref target.Address), 8443), cancellation);
+                    return new NetworkStream(socket, ownsSocket: true);
+                } catch { socket.Dispose(); throw; }
+            };
             byte[] pin = SHA256.HashData(certificate.RawData);
-            handler.ServerCertificateCustomValidationCallback = (request, peer, chain, errors) => peer != null &&
+            handler.SslOptions.RemoteCertificateValidationCallback = (sender, remote, chain, errors) => remote is X509Certificate2 peer &&
                 (errors & (SslPolicyErrors.RemoteCertificateNotAvailable | SslPolicyErrors.RemoteCertificateNameMismatch)) == 0 &&
                 DateTime.UtcNow >= peer.NotBefore.ToUniversalTime() && DateTime.UtcNow <= peer.NotAfter.ToUniversalTime() &&
                 CryptographicOperations.FixedTimeEquals(pin, SHA256.HashData(peer.RawData));
@@ -235,7 +265,9 @@ public static class StackfortNativeOnboardProbeV1 {
                     // The synchronous callback receives the live in-memory client
                     // only while this scope owns it; no session object is returned.
                     phase = "installed-product-callback";
-                    smoke(client, client.BaseAddress, csrf.Value);
+                    transports.Add(client, target);
+                    try { smoke(client, client.BaseAddress, csrf.Value); }
+                    finally { transports.Remove(client); }
                     return new StackfortOnboardRedemption { AdministratorID = identity, CertificateSHA256 = Convert.ToHexString(pin).ToLowerInvariant(), Redeemed = true, ReuseRejected = true, LoginVerified = true };
                 } catch { throw new InvalidOperationException("Pinned HTTPS qualification failed at phase '" + phase + "'; credentials and responses were deliberately not logged."); }
                 finally { Marshal.ZeroFreeGlobalAllocUnicode(pointer); Array.Clear(passwordBytes, 0, passwordBytes.Length); code = password = bootstrapBody = loginBody = null; }
@@ -325,6 +357,9 @@ function Get-OnboardAddress {
 }
 function Invoke-OnboardSSH([string] $Address, [string] $Command, [int] $Seconds = 30) {
     return [StackfortNativeOnboardProbeV1]::Run($taskSSHPath, @($taskSSH) + @("stackfort-test@$Address", $Command), $Seconds)
+}
+function Set-OnboardVerifiedTransport([System.Net.Http.HttpClient] $Client, [string] $Address) {
+    [StackfortNativeOnboardProbeV1]::RebindVerifiedTransport($Client, $Address)
 }
 function Wait-OnboardCompleted([string] $PreviousBoot, [string] $ConversionBoot = '', [int] $Minutes = 25, [switch] $RequireActiveSetup) {
     $deadline = [DateTime]::UtcNow.AddMinutes($Minutes)
@@ -433,10 +468,14 @@ try {
         $reboot = Invoke-OnboardSSH $taskAddress 'sudo -n systemctl reboot' 30
         if ($reboot.ExitCode -notin @(0, 255)) { throw 'Normal reboot request failed; preserve guest state.' }
         $readmitted = Wait-OnboardCompleted -PreviousBoot $taskFinalBoot -ConversionBoot $taskCompletion.ConversionBootID -Minutes 8
-        if ($readmitted.Address -ne $BaseUri.Host -or $readmitted.CapabilityID -ne $taskCompletion.CapabilityID -or $readmitted.CapabilityExpiresAt -ne $taskCompletion.CapabilityExpiresAt) { throw 'Normal reboot changed lab address or renewed setup registration.' }
+        if ($readmitted.CapabilityID -ne $taskCompletion.CapabilityID -or $readmitted.CapabilityExpiresAt -ne $taskCompletion.CapabilityExpiresAt) { throw 'Normal reboot renewed setup registration.' }
+        # Wait-OnboardCompleted authenticates this address through the fixed SSH
+        # host-key alias and checks the same DMI/storage/setup operation bindings.
+        # Do not recreate credentials/cookies or relax certificate/name checks.
+        Set-OnboardVerifiedTransport -Client $Client -Address $readmitted.Address
         $script:taskOnboardPhase = 'post-reboot-persistence'
         Write-Host 'STACKFORT_QUALIFICATION_PHASE post-reboot-persistence'
-        $afterReboot = Test-StackfortInstalledApiPersistence -Client $Client -BaseUri $BaseUri -Evidence $script:taskOnboardApiSmoke
+        $afterReboot = Test-StackfortInstalledApiPersistence -Client $Client -BaseUri $BaseUri -Evidence $script:taskOnboardApiSmoke -PublicAddress $readmitted.Address
         $script:taskOnboardPersistence = [pscustomobject]@{ SameReleaseRerun = $afterRerun; NormalReboot = $afterReboot; FinalBootID = $readmitted.BootID }
     }
     $taskRedemption = [StackfortNativeOnboardProbeV1]::Redeem($taskAddress, $taskCertificate.Output, $taskCapture.SetupCode, $taskSmoke)

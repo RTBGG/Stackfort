@@ -301,7 +301,8 @@ function Test-StackfortInstalledApiPersistence {
     param(
         [Parameter(Mandatory)][System.Net.Http.HttpClient] $Client,
         [Parameter(Mandatory)][Uri] $BaseUri,
-        [Parameter(Mandatory)] $Evidence
+        [Parameter(Mandatory)] $Evidence,
+        [string] $PublicAddress = ''
     )
     Set-StrictMode -Version Latest
     $ErrorActionPreference = 'Stop'
@@ -334,7 +335,17 @@ function Test-StackfortInstalledApiPersistence {
     $publicHandler.UseProxy = $false
     $publicClient = [System.Net.Http.HttpClient]::new($publicHandler)
     $publicClient.Timeout = [TimeSpan]::FromSeconds(30)
-    $publicOrigin = [UriBuilder]::new('http', $BaseUri.Host, 80).Uri
+    $publicTarget = $BaseUri.Host
+    if ($PublicAddress -ne '') {
+        $parsedAddress = $null
+        if (-not [Net.IPAddress]::TryParse($PublicAddress, [ref] $parsedAddress) -or
+            $parsedAddress.AddressFamily -ne [Net.Sockets.AddressFamily]::InterNetwork -or
+            $parsedAddress.ToString() -cne $PublicAddress -or $PublicAddress -in @('0.0.0.0', '255.255.255.255')) {
+            throw 'Public persistence transport requires a canonical verified IPv4 address.'
+        }
+        $publicTarget = $PublicAddress
+    }
+    $publicOrigin = [UriBuilder]::new('http', $publicTarget, 80).Uri
     function Get-SfPersistenceSHA([byte[]] $Bytes) {
         return [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($Bytes)).ToLowerInvariant()
     }

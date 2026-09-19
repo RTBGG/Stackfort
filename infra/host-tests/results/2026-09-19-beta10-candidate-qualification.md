@@ -1,7 +1,8 @@
 # Beta.10 candidate qualification — 2026-09-19
 
-Status: **original build and integrity checks passed; no fresh-host installation qualification
-claimed. Not qualified for publication.**
+Status: **first fresh native installation, product smoke and same-release rerun
+passed; final reboot/session test stopped at a lab DHCP-address guard.
+Not yet fully qualified for publication.**
 
 This candidate retains the native installation and NGINX activation fixes, and
 corrects the staged-file ACL defect found by the
@@ -84,3 +85,71 @@ Installer/API/agent hashes independently read from the archive are:
 The canonical promotion record is a mechanical selection, not publication
 approval. Real tag-origin verification and full installed-host qualification
 remain required. The original build must not be rerun or substituted.
+
+The annotated `v0.1.0-beta.10` tag peels to that unchanged candidate source.
+Tag run [35452066167](https://github.com/RTBGG/Stackfort/actions/runs/35452066167),
+attempt 1, downloaded the selected original without rebuilding, attested it
+and retained artifact `10586079932` before stopping at missing readiness evidence.
+The publication step was skipped. Tag ZIP: 313,177,928 bytes, SHA-256
+`4e0a0d47f89e82bec1baedd79c726805b5e45d99fe5a406ae52ad830e8c1e803`.
+All ten original files are byte-identical. The added attestation SHA-256 is
+`0443dbab381d0fff736239be2e88a2408ec1cb8b0188bdeb8ddb97c748e0eddc`;
+`SHA256SUMS` SHA-256 is
+`2f46582e7f806aff11f0d1706df4f35e9fe98c42af9528160fdfa46e470c5b2e`.
+The local extractor checks equality/integrity, not cryptographic origin; the
+ordinary archived installer must independently verify the genuine tag origin.
+
+The unchanged onboarding driver and API smoke hashes are respectively
+`7cdfb3ebc072358f5625aa515c82b03ae3fa9e0f8560d67ee970d0b948f6bcd8` and
+`6900ba286445b92e47da419563b4616760bae686ddbc4e7d75ed2d860af9a727`.
+The exact-VM wrapper SHA-256 is
+`2d97b557a12a37aa9fd81b747df62c56cf7add4e3e3d127d53558470c3940a36`;
+bootstrap SHA-256:
+`21977a1a0cb79b0768a23da3e669697f8451a51179643e49b17e270dfbffbe65`.
+Onboarding has started with retained-fixture transport and ordinary strict
+tag-release verification. No completion or public GitHub download success is
+claimed merely from starting this driver.
+
+## First fresh installation: DHCP test-harness interruption
+
+The original archived installer passed genuine tag-origin validation, prerequisites,
+automatic offline storage preparation and the acknowledged conversion reboot.
+All nine native stages completed with admission `admitted`. Original setup
+redemption, replay rejection and administrator login/session passed. The installed
+API product smoke completed, including uploaded static/PHP delivery, database
+wizard, authenticated document-root backup/download/restore, FastCGI
+enable/disable/MISS/HIT/cookie-bypass/purge, and WAF off/detection/blocking before
+warm-cache delivery. The same-release installer rerun and original-fixture
+persistence checks then passed.
+
+The driver requested a normal reboot, but Hyper-V DHCP changed the lab IPv4
+address from `172.29.249.231` to `172.29.241.100`. The old driver explicitly
+rejects a different address before its post-reboot authenticated persistence
+check. It exited 1 at `normal-reboot`, disposed the in-memory credentials, and
+emitted no completed qualification receipt. No setup-code/session recovery,
+password reset or direct credential/database repair was attempted.
+
+Read-only checks found all native stages complete, admission `admitted`, and
+NGINX/API/agent/native-install active after reboot. All three installed binary
+hashes still match the exact archive. Conversion boot:
+`b29305f0-6302-4cd3-a84b-36b6e25abdeb`; normal reboot:
+`4e32ce5f-5a25-41f4-96a5-fa4bf98a8baa`. Checkpoint
+`b881ad51-7e27-4ddb-8b57-ebeaccbd4f41`
+(`native-beta10-dhcp-reboot-20260919`) preserves this state. A concurrent off-host
+TCP snapshot overlapped completion/reboot and produced no completed report; it
+is not installation-gate or network qualification.
+
+The external test driver now retains its original TLS authority, certificate
+fingerprint/name/validity checks and original host-only session cookies while
+routing fresh TCP connections to the same SSH-authenticated VM's newly observed
+address. Public HTTP fixture checks separately use that verified address.
+No cookie export, credential recreation, DNS change or certificate-validation
+bypass is introduced. Local contracts cover the changed address and continued
+rejection of changed setup identity/expiry and unregistered transport rebinding.
+This uses the supported
+[SocketsHttpHandler connection callback](https://learn.microsoft.com/en-us/dotnet/api/system.net.http.socketshttphandler.connectcallback).
+
+This is a qualification-harness change, not a change to the selected production
+archive. The exact beta.10 candidate/tag remains unchanged. A second independent
+fresh baseline and full original setup/login/product/rerun/reboot sequence are
+required; the first attempt is not relabeled as a complete pass.
