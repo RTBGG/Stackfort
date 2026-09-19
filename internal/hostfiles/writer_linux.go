@@ -288,9 +288,6 @@ func completeUpload(ctx context.Context, request agentprotocol.FileWriteRequest)
 	if request.ExpectedSHA256 != "" && actualSHA256 != request.ExpectedSHA256 {
 		return agentprotocol.FileWriteResult{}, ErrConflict
 	}
-	if err := unix.Fchmod(descriptor, 0o640); err != nil || file.Sync() != nil {
-		return agentprotocol.FileWriteResult{}, ErrUnavailable
-	}
 	target, targetDevice, err := openAccountDirectoryForMutation(request.Identity, request.Directory)
 	if err != nil {
 		return agentprotocol.FileWriteResult{}, err
@@ -298,6 +295,9 @@ func completeUpload(ctx context.Context, request agentprotocol.FileWriteRequest)
 	defer unix.Close(target)
 	if targetDevice != device {
 		return agentprotocol.FileWriteResult{}, ErrConflict
+	}
+	if err := inheritStagedAccess(descriptor, target, 0o640, false); err != nil {
+		return agentprotocol.FileWriteResult{}, err
 	}
 	if err := unix.Renameat2(staging, uploadPartName(request.UploadID), target, request.Name, unix.RENAME_NOREPLACE); err != nil {
 		if errors.Is(err, unix.EEXIST) {

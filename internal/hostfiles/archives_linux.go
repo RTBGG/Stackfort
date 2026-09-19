@@ -134,6 +134,9 @@ func createManagedArchive(ctx context.Context, request agentprotocol.FileWriteRe
 	defer unix.Close(operations)
 	defer unix.Close(staging)
 	defer func() { cleanup() }()
+	if err := seedStagingDefaultACL(staging, target); err != nil {
+		return agentprotocol.FileWriteResult{}, err
+	}
 	descriptor, err := unix.Openat(staging, fileOperationPayloadName,
 		unix.O_WRONLY|unix.O_CREAT|unix.O_EXCL|unix.O_CLOEXEC|unix.O_NOFOLLOW|unix.O_NONBLOCK, 0o600)
 	if err != nil {
@@ -214,6 +217,9 @@ func extractManagedArchive(ctx context.Context, request agentprotocol.FileWriteR
 	defer unix.Close(operations)
 	defer unix.Close(staging)
 	defer func() { cleanup() }()
+	if err := seedStagingDefaultACL(staging, target); err != nil {
+		return agentprotocol.FileWriteResult{}, err
+	}
 	snapshot, err := snapshotArchiveSource(ctx, source, request.SourceName, staging, request.Identity, device, status)
 	if err != nil {
 		return agentprotocol.FileWriteResult{}, err
@@ -246,7 +252,7 @@ func extractManagedArchive(ctx context.Context, request agentprotocol.FileWriteR
 	if manifest.entries == 0 {
 		return agentprotocol.FileWriteResult{}, ErrConflict
 	}
-	if unix.Fsync(payload) != nil || unix.Fsync(staging) != nil {
+	if unix.Fchmod(payload, 0o750) != nil || unix.Fsync(payload) != nil || unix.Fsync(staging) != nil {
 		return agentprotocol.FileWriteResult{}, ErrUnavailable
 	}
 	if err := unix.Renameat2(staging, fileOperationPayloadName, target, request.Name, unix.RENAME_NOREPLACE); err != nil {

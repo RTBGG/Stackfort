@@ -1,7 +1,7 @@
 # Beta.9 candidate qualification — 2026-09-19
 
-Status: **exact original candidate selected and fresh host prepared;
-no installed-host qualification or publication**.
+Status: **native installation and original setup passed; installed product
+smoke failed at uploaded static-file delivery. Not qualified for publication.**
 
 The [beta.8 attempt](2026-09-19-beta8-candidate-qualification.md) completed native
 installation and original setup, then failed its first domain activation because
@@ -83,6 +83,20 @@ respectively:
 This mechanical selection does not authorize publication or bypass the real
 tag-origin verification required during installation.
 
+The annotated `v0.1.0-beta.9` tag points to that unchanged candidate source.
+Tag run [35449891634](https://github.com/RTBGG/Stackfort/actions/runs/35449891634),
+attempt 1, downloaded the original candidate without rebuilding, attested it
+and retained artifact `10586039426` before stopping at the deliberately absent
+readiness evidence (HTTP 404). The public-release step was skipped.
+The tag ZIP is 313,174,325 bytes, SHA-256
+`cbdf8320f4de7a091b980f2301a9b8fc3207698b79320b38b31c0244a9c61c56`.
+All ten original payload files are byte-identical; the additional attestation
+SHA-256 is `af21c71d4467f8c01660e68f4eccbeef20da0bc2343e4270e5e722c8897e3c34`,
+and `SHA256SUMS` SHA-256 is
+`c78abc38fd5852a6a34fbc1413d711ddd4cec3dbc53bfcb0147ccfc5dd7a23e8`.
+The local tag extractor verified integrity/equality only; the real installer
+must independently verify the cryptographic tag origin.
+
 A separate external test executable was built from all 1,065 independently
 verified raw Git blobs of that source plus seven named qualification-only Go
 overlays and the fixed embedded OCI fixture. The raw source TAR SHA-256 is
@@ -95,7 +109,60 @@ These are helper checks, not actual OCI/resource pressure or host-security
 qualification. No installed payload was replaced and no managed account was
 created by these checks.
 
-Required next: tag attestation, fresh exact-tag onboarding/product
-smoke, rerun/reboot, host/security/isolation/OCI/failure/removal qualification,
+## Actual installed result and blocker
+
+The exact retained tag installer verified its origin, completed prerequisites,
+performed the acknowledged automatic storage conversion/reboot and completed
+all nine installation stages with admission `admitted`. Operation:
+`ddbbaf39-e1a3-485a-89bd-12545586f420`; conversion boot:
+`23ea0f5f-0c59-4f02-ac91-a251d3c38039`.
+Original setup redemption/replay rejection and administrator login/session
+passed, followed by account provisioning and two active static/PHP domains.
+All three queued account/domain operations succeeded on their first attempt.
+The prior server-name hash activation failure did not recur.
+
+The API upload and digest-verified download succeeded, but the first public
+static request returned HTTP 404. Fixture account
+`01a0ba2a-5ac7-7b9c-b239-2fc986adea6e` contains the expected 41-byte
+`public_html/index.html`, SHA-256
+`c2a19de4cc56fbd370b26c1196836d964ee7f848f37be98551c6c50ca940ba16`.
+The activation response header identified the correct current NGINX revision.
+Read-only ACL inspection showed account traversal and document-root access/default
+ACLs for `www-data`, but no named-user ACL on the uploaded file. An actual
+`www-data` read-permission check failed. The upload completion renames its private
+staging inode into the public directory; rename does not inherit its default ACL.
+See the primary [Linux ACL semantics](https://man7.org/linux/man-pages/man5/acl.5.html).
+
+The failed installed fixture is preserved under checkpoint
+`80911e5f-bbab-4726-8dba-445bc8c4d9f1` (`native-beta9-web-404-20260919`).
+All three installed binary hashes still match the selected archive. No live ACL
+repair, binary replacement, setup-code recovery or onboarding retry was used.
+The driver exited 1 and disposed its in-memory credentials; it emitted no success
+receipt. SQL/database, backup, WAF/cache, rerun/reboot and subsequent enforcement
+checks were not reached. No complete beta.9 qualification is claimed.
+
+The subsequent source correction applies destination default ACLs before upload
+publication and seeds private copy/archive staging defaults without making staging
+traversable. Archive extraction also finalizes its top-level mode, which previously
+remained `0700`. Restore retains live directory ACLs/modes at matching paths and
+uses bounded no-follow traversal to inherit policy for newly restored descendants.
+No archive ACL import, world-readable fallback or account-wide worker grant is
+introduced. Normal rename/move/trash semantics remain unchanged.
+
+Five focused Linux regression tests (plus five negative subcases) passed both
+unprivileged and as root against temporary fixtures. The root run additionally
+executes real reads as UID/GID 65534: the old rename-only path denies reading;
+the corrected published file, copied tree and extracted nested file are readable;
+unfinished staging and private restore trees remain denied. These are source
+regressions, not repair or requalification of the installed beta.9 payload.
+
+The complete Linux hostfiles test executable also passed unprivileged. Its final
+SHA-256 is `e620f1be6c014f2f91010258d5122cca7b86bd076ca374868d1947cc1c568fbf`.
+Linux vet and the Windows Go suite passed. The privileged regression invocation
+is now part of CI; an exact-source CI result is still required for the new candidate.
+
+Required next: regression-tested staging/restore permission correction, a new
+immutable candidate and fresh full onboarding/product smoke; then rerun/reboot,
+host/security/isolation/OCI/failure/removal qualification,
 actual candidate-specific publication approval and the publication gates.
 Only then can the public README download path be verified on a fresh host.

@@ -1584,6 +1584,22 @@ func restoreBackupPayload(
 	if manifest.entries != control.ExpectedEntries || manifest.bytes != control.ExpectedContentBytes {
 		return backupHelperResult{}, ErrIntegrity
 	}
+	live := root
+	if control.Scope == agentprotocol.BackupScopeDocumentRoot {
+		var sourceDevice uint64
+		live, sourceDevice, err = openAccountDirectoryForMutation(control.Identity, control.SourcePath)
+		if err != nil {
+			return backupHelperResult{}, err
+		}
+		defer unix.Close(live)
+		if sourceDevice != device {
+			return backupHelperResult{}, ErrConflict
+		}
+	}
+	if err := restoreStagedDirectoryAccess(ctx, payload, live, control.Identity, device,
+		&fileOperationBudget{entryLimit: agentprotocol.MaximumFileOperationEntries + 1}, 0); err != nil {
+		return backupHelperResult{}, err
+	}
 	if unix.Fsync(payload) != nil || unix.Fsync(staging) != nil {
 		return backupHelperResult{}, ErrUnavailable
 	}

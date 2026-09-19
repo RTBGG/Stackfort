@@ -69,6 +69,10 @@ jobs:
           sudo /tmp/stackfort-payload.test -test.v -test.run '^(TestPayloadTransition|TestNativeHostingDirectoriesSurviveInstallerUmask$|TestNativeHostingDirectoryAdmissionRejectsPermissionDrift$)' -test.timeout=2m
       - name: Exercise the agent Unix socket
         run: bash scripts/test-agent-smoke.sh
+      - name: Qualify staged file and restore ACLs as real kernel identities
+        run: |
+          go test -race -c -o /tmp/stackfort-file-acl.test ./internal/hostfiles
+          sudo /tmp/stackfort-file-acl.test -test.v -test.run '^TestStaged' -test.timeout=2m
       - name: Qualify root-owned panel hostname transactions
         run: |
           go test -race -c -o /tmp/stackfort-panel.test ./internal/hostnginx

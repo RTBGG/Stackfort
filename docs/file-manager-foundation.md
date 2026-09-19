@@ -123,6 +123,12 @@ full SHA-256 digest, and compares it when the caller supplied one. It then
 and `fsync`s the destination directory. Existing entries are never replaced.
 The resulting uploaded file is mode `0640`.
 
+Before publication, the staged inode inherits the destination directory's live
+default POSIX ACL, with its effective mask limited by `0640`. Rename alone does
+not perform ACL inheritance. A destination without a default ACL receives no
+named-user grant; uploads remain private until publication. Hard-linked upload
+inodes are rejected before changing access permissions.
+
 Empty-file creation uses descriptor-relative `O_EXCL|O_NOFOLLOW` with mode
 `0640`; directory creation uses `mkdirat` with mode `0750`. Every ancestor and
 target directory is opened without following symlinks and is revalidated for
@@ -148,6 +154,13 @@ special permission bits are stripped, and every completed file/directory is
 destination with no-replace semantics. Kernel project quotas remain
 authoritative; `EDQUOT`/`ENOSPC` becomes the typed `file_quota_exceeded` result
 and no partial destination becomes visible.
+
+Copy and archive operations seed only their private operation directory's
+default ACL from the destination. Kernel inheritance then gives new descendants
+the destination's web-access policy; the operation directory itself stays
+`0700`. Extracted top-level directories are finalized as `0750`, like their
+descendants. Rename/move/trash continue preserving existing inode permissions,
+as ordinary filesystem relocation does; they do not recursively rewrite ACLs.
 
 ## Recoverable trash
 

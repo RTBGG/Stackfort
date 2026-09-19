@@ -32,8 +32,15 @@ account provisioning. Its first domain activation failed because NGINX's default
 server-name hash bucket was too small for the valid hostname and its `www` alias.
 The defect is reproduced and fixed in subsequent source with real-NGINX boundary
 tests, without modifying the installed candidate. Beta.8 remains unpublished and
-its tag unchanged. The next candidate still needs full fresh-host qualification;
-successful installation alone does not establish working hosting functionality.
+its tag unchanged. The [beta.9 attempt](../infra/host-tests/results/2026-09-19-beta9-candidate-qualification.md)
+passed native installation, original setup/login, account provisioning and both
+domain activations, then exposed a staged-upload permission defect: its private
+staging inode did not inherit the document root's default ACL when renamed, so
+NGINX could not read the uploaded file. Its installed state and tag remain
+unchanged. The correction covers upload/copy/archive staging and preservation of
+live directory policies during backup restore, with real Linux ACL regressions.
+A new candidate still needs full fresh-host qualification; installation-stage
+success alone does not establish working hosting functionality.
 
 The [2026-09-19 installed-broker diagnostic](../infra/host-tests/results/2026-09-19-oci-layout-scan-diagnostic.md)
 also corrected the OCI TAR/directory mismatch at the Trivy boundary. A real
@@ -121,7 +128,7 @@ fail-closed boot, firewall or exact-candidate functional tests.
 
 ### Bootstrap selection and availability
 
-The bare bootstrap now explicitly selects `0.1.0-beta.9` for a fresh invocation,
+The bare bootstrap now explicitly selects `0.1.0-beta.10` for a fresh invocation,
 not GitHub's latest-stable channel. Explicit versions and existing journal pins
 remain supported; a beta is never relabeled stable. The public handler is
 registered, but final tagged-candidate qualification and public release assets

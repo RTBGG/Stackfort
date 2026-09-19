@@ -51,6 +51,15 @@ replacement. An account-files restore preflights and stages the complete
 visible top-level set, preserves internal roots, and rolls back normal
 activation failures.
 
+Before activation, a bounded descriptor-relative permission pass preserves the
+live directory access/default ACLs at matching destination paths. This retains
+custom and nested document-root grants while keeping private directories private.
+New directories and normalized `0640` files inherit their destination's default
+ACL. Existing restrictive directory modes are retained. Archive-supplied ACLs,
+xattrs and identities are not imported; this is not a backup of arbitrary Unix
+permission metadata. No account-wide web-reader grant is introduced. A failed
+permission pass leaves the live tree unchanged and does not activate staging.
+
 Both directions cap content and payload at 4 GiB, entries at 10,000, nesting at
 64 levels, and execution at 30 minutes through the existing bounded agent
 transport. Links, special files, unsafe modes, invalid paths, duplicates,

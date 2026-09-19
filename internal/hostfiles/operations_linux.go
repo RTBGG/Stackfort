@@ -148,6 +148,9 @@ func copyManagedNode(ctx context.Context, request agentprotocol.FileWriteRequest
 				sourceDevice, internalFileOperationCleanupBudget(), 0)
 		}
 	}()
+	if err := seedStagingDefaultACL(staging, target); err != nil {
+		return agentprotocol.FileWriteResult{}, err
+	}
 	budget := &fileOperationBudget{}
 	if err := copyManagedEntryAt(ctx, source, request.SourceName, staging, fileOperationPayloadName,
 		request.Identity, sourceDevice, budget, 0); err != nil {
