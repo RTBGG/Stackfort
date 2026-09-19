@@ -1,7 +1,7 @@
 # Beta.8 candidate qualification — 2026-09-19
 
-Status: **corrected retained candidate selected; native qualification pending;
-not publishable**.
+Status: **native installation and original setup passed; first domain activation
+failed; not publishable**. The frozen beta.8 tag and selected bytes stay unchanged.
 
 The [beta.7 installation failure](2026-09-19-beta7-candidate-qualification.md)
 identified missing Vinyl runtime compiler/header dependencies. The next source
@@ -54,10 +54,10 @@ The labels are corrected and a documentation regression now requires current
 support/quick-start versions to agree with the canonical bootstrap default;
 synthetic stale, mixed, missing and ambiguous versions are rejected.
 
-A new original build from the corrected source must pass CI and Security before
-selection. Neither superseded run will be rerun, substituted into a selection,
-or treated as a qualified candidate. No beta.8 installation or publication
-result is claimed here.
+A new original build from the corrected source was required to pass CI and
+Security before selection, as recorded below. Neither superseded run was rerun,
+substituted into a selection, or treated as a qualified candidate. Those two
+pre-selection builds provide no beta.8 installation or publication result.
 
 ## Corrected retained candidate
 
@@ -107,4 +107,104 @@ inodes, without project-quota features or Stackfort state/configuration.
 Initial boot: `b1c8349b-386a-4ef3-aaac-76c12130d4ef`.
 Fresh checkpoint: `63424f12-be04-483c-a58e-01003e09c886`
 (`native-beta8-vendor-fresh-20260919`). It remains unchanged while the exact
-candidate is built and validated.
+candidate is built and validated; the live guest subsequently advanced as below.
+
+## Exact tag and installation
+
+Annotated tag `v0.1.0-beta.8` resolves to the frozen source, not the later
+selection-record commit. [Tag run 35442457289](https://github.com/RTBGG/Stackfort/actions/runs/35442457289)
+reused the original selected payload without rebuilding, created its tag-bound
+attestation and retained unpublished artifact `10584680248`. Its readiness gate
+then failed closed because the required readiness document was absent (HTTP 404);
+publication was skipped, not successful.
+
+The retained tag ZIP is 313,153,138 bytes, SHA-256
+`7afb564279e7f64bacc55650e0e804c953339822b2a78e15418d8df109c4de71`.
+All ten original files are byte-identical; the tag artifact adds the promotion
+record and attestation. Attestation SHA-256:
+`52362b45c7af820714c1948dbee87966a4695324c2f9e62e033e8d4dc5f435c2`;
+checksums SHA-256:
+`c903fe3293b7dba19316e1228d54884fd86e29a856fe80dcdb8bb118cb5223b6`.
+Local extraction verified integrity; the unchanged archived installer performed
+the actual cryptographic origin validation during onboarding.
+
+The retained-fixture transport exercised the real public dispatcher, exact
+interactive release/host review, disposable-server/reboot acknowledgement and
+original setup-code `SAVED` acknowledgement. The driver kept the setup code and
+credentials only in memory; no terminal transcript or raw credential response
+was logged. This transport does not qualify public GitHub downloads.
+
+Prerequisites completed. Automatic offline quota preparation reached `ready`
+after the authorized reboot, boot ID `0142ddaa-9043-49cc-9837-e133fa456efa`.
+The native installation then completed all nine stages, including the corrected
+Vinyl package and service/health checks. Admission is `admitted` and
+`stackfort-native-install.service` is `active/exited`, result `success`.
+The hosting bind mount is ext4 with `prjquota`. No manual filesystem preparation
+or replacement executable was needed. Installed installer, control-plane and
+agent executable hashes match the independent selected archive hashes above.
+
+Original setup redemption, refusal of repeated redemption, login and session
+checks passed. The installed API smoke detected managed PHP, created its package
+and hosting account, and confirmed successful account provisioning/host-ready.
+It then failed the first static-domain operation:
+`01a0b9a0-a6ae-7df4-ad94-7e8d256ed326`, account
+`01a0b9a0-a292-79b9-8ed4-4cb0b7607621`, attempt 1,
+error code `nginx.activation_rejected`. The driver exited unsuccessfully at
+`domains-and-files`; no complete onboarding-success receipt was generated.
+The original setup credentials were not recovered, renewed or replaced.
+
+The live failure is preserved in checkpoint
+`1d38a630-1a10-4a63-bdc3-1fd7c8282107`
+(`native-beta8-domain-failure-20260919`). No snapshot was restored, fixture
+retried, installed payload patched or service configuration repaired.
+
+## Long-domain hash failure and source correction
+
+NGINX 1.26.3 rejected the valid fixture hostname
+`sf-candidate-900356f0971a-static.example.test` and its managed `www` alias:
+`could not build server_names_hash`, requesting a bucket larger than 64 bytes.
+An isolated unprivileged syntax-only probe reproduced this error with the
+default bucket; 128 and 512 passed. A second, more complete diagnostic built
+from the frozen source read only the failed operation's account/desired-state
+records, rendered its exact candidate and redirected its include to a new
+test-owned directory. The unchanged baseline renderer failed with the same
+error; adding only `server_names_hash_bucket_size 512` passed with the installed
+Coraza module present. No service was started/reloaded and the installed main
+configuration digest stayed unchanged. The active baseline still passes `nginx -t`.
+
+The diagnostic executable SHA-256 is
+`4414f901f17833213c2b6ed52bfe91f0d9dc4f819f7ece14d217f1fd60274871`.
+Its temporary files and the failure checkpoint remain available. This confirms
+the configuration defect, not a successful domain activation on the candidate.
+
+The subsequent source sets the shared main/candidate HTTP-context bucket to 512,
+covering long DNS names and hash metadata rather than shortening the smoke
+fixtures. NGINX documents [long-name bucket sizing](https://nginx.org/en/docs/http/server_names.html#optimization)
+and [hash allocation](https://nginx.org/en/docs/hash.html); this correctness fix
+does not claim a measured performance improvement or unlimited-domain capacity.
+
+New regression coverage includes both root configurations, all three rendered
+distribution variants, short names, the exact failed hostname, IDNA names and
+a 249-byte base with a valid 253-byte `www` alias. The real-NGINX syntax test
+also requires two virtual servers on one port and verifies that deliberately
+undersized 64/256-byte buckets fail for the expected reason. It creates only
+temporary test files and never starts/reloads NGINX. CI explicitly opts in
+after installing NGINX; absence of the binary fails rather than silently skips.
+
+The Linux regression executable, SHA-256
+`83d1fdf74cf4563dc9c0df61c8eb244d4e3b06694033c2c792ca53ac37572a68`,
+passed all 24 positive syntax subtests, both negative controls and the complete
+baseline unit suite as an unprivileged user on the Debian guest. Distribution
+variants here mean rendered settings tested by Debian's binary, not three
+independent operating-system installation qualifications. Local Go tests,
+`go vet` and documentation contracts also passed. Remote CI and a newly built
+candidate remain separate requirements.
+
+## Still required
+
+The next candidate must include this fix and repeat fresh exact-tag onboarding,
+complete domain/file/database/backup/cache/WAF product smoke, same-release rerun,
+ordinary reboot/persistence, external listener/isolation/resource and OCI checks,
+process-loss quarantine and same-target full-OS removal. These later phases did
+not execute in this attempt. No final-candidate approval, public release or
+successful public README one-line download is claimed.

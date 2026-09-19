@@ -25,8 +25,15 @@ not publishable and its tag remains unchanged. The subsequent
 completed prerequisite installation and automatic storage preparation, but
 failed during Vinyl VCL compilation because its package omitted the runtime
 C compiler and headers. Beta.7 also remains unpublished with an unchanged tag.
-The next candidate must include corrected package dependencies and pass new
-compiler-free runtime-container checks before full fresh-host qualification.
+The [beta.8 attempt](../infra/host-tests/results/2026-09-19-beta8-candidate-qualification.md)
+passed those new compiler-free checks and completed fresh automatic storage
+preparation, all installation stages, original setup redemption/login and API
+account provisioning. Its first domain activation failed because NGINX's default
+server-name hash bucket was too small for the valid hostname and its `www` alias.
+The defect is reproduced and fixed in subsequent source with real-NGINX boundary
+tests, without modifying the installed candidate. Beta.8 remains unpublished and
+its tag unchanged. The next candidate still needs full fresh-host qualification;
+successful installation alone does not establish working hosting functionality.
 
 The [2026-09-19 installed-broker diagnostic](../infra/host-tests/results/2026-09-19-oci-layout-scan-diagnostic.md)
 also corrected the OCI TAR/directory mismatch at the Trivy boundary. A real

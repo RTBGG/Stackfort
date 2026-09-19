@@ -39,6 +39,28 @@ func TestUnsupportedDistributionFailsClosed(t *testing.T) {
 	}
 }
 
+func TestLongServerNameBucketSharedByBaselineAndCandidate(t *testing.T) {
+	t.Parallel()
+	for _, distribution := range []string{"debian", "ubuntu", "rocky"} {
+		spec, err := ForDistribution(distribution)
+		if err != nil {
+			t.Fatal(err)
+		}
+		candidate, err := CandidateMain(spec, "019c1234-5678-7abc-8def-0123456789ab")
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, content := range []string{Main(spec), candidate} {
+			const directive = "    server_names_hash_bucket_size 512;"
+			if strings.Count(content, directive) != 1 ||
+				strings.Index(content, directive) < strings.Index(content, "http {") ||
+				strings.Index(content, directive) > strings.Index(content, "include /etc/nginx/mime.types;") {
+				t.Fatalf("%s baseline/candidate lost its HTTP-context long-name bucket", distribution)
+			}
+		}
+	}
+}
+
 func TestBaselineRejectsUnknownHostsAndTrustsOnlyLoopback(t *testing.T) {
 	t.Parallel()
 	for content, required := range map[string][]string{

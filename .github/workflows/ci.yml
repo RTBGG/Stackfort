@@ -58,6 +58,11 @@ jobs:
         run: go vet ./...
       - name: Run race-enabled tests
         run: go test -race ./...
+      - name: Qualify NGINX long-domain syntax
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends nginx
+          STACKFORT_NGINX_SYNTAX_TEST=1 go test -race ./internal/nginxbaseline -run '^TestNGINXLongServerNamesSyntax$' -v -count=1 -timeout=2m
       - name: Qualify root-owned payload and native directory transitions
         run: |
           go test -race -c -o /tmp/stackfort-payload.test ./internal/installapply

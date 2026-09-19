@@ -93,6 +93,9 @@ events {
 }
 
 http {
+    # Fit long DNS names (including managed www aliases) plus NGINX hash
+    # metadata. Default CPU-cache-line buckets can reject valid hostnames.
+    server_names_hash_bucket_size 512;
     include /etc/nginx/mime.types;
     default_type application/octet-stream;
 
