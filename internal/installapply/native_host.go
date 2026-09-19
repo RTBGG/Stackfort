@@ -45,7 +45,7 @@ type NativeHostSnapshot struct {
 
 var nativeBasePackages = []string{"apt", "dpkg", "ca-certificates", "debian-archive-keyring", "e2fsprogs", "util-linux", "mount", "systemd", "grub-common", "grub2-common", "initramfs-tools-core"}
 var nativeAdditionalPackages = []string{"nftables", "quota"}
-var nativeDependencyPackages = []string{"libnftables1", "libnftnl11", "libmnl0", "libxtables12", "libedit2", "libnl-3-200", "libnl-genl-3-200", "libtirpc3t64", "libtirpc-common", "libwrap0"}
+var nativeDependencyPackages = []string{"libnftables1", "libjansson4", "libnftnl11", "libmnl0", "libxtables12", "libedit2", "libnl-3-200", "libnl-genl-3-200", "libtirpc3t64", "libtirpc-common", "libwrap0"}
 var nativePackageName = regexp.MustCompile(`^[a-z0-9][a-z0-9+.-]+(?::(?:amd64|all))?$`)
 var nativePackageVersion = regexp.MustCompile(`^[0-9][A-Za-z0-9.+:~\-]{0,127}$`)
 
@@ -234,6 +234,20 @@ func sameNativeHost(before, after NativeHostSnapshot) bool {
 
 func nativeAllowedAddition(name string) bool {
 	return slices.Contains(nativeAdditionalPackages, name) || slices.Contains(nativeDependencyPackages, name)
+}
+
+// Do not replace the durable checking record's empty plan with a parser's nil
+// error result: recovery-required must remain valid after a rejected plan.
+func (record *nativePrerequisiteRecord) planAPT(text string, missing []string) error {
+	if record.Phase != "checking" || record.Planned == nil || len(record.Planned) != 0 {
+		return errors.New("APT planning requires an empty checking record")
+	}
+	plan, err := nativeAPTPlan(text, missing)
+	if err != nil {
+		return err
+	}
+	record.Planned = plan
+	return nil
 }
 
 func nativeAPTPlan(text string, missing []string) (map[string]string, error) {

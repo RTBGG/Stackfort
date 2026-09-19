@@ -3,6 +3,9 @@
 package installapply
 
 import (
+	"fmt"
+	"maps"
+	"os"
 	"strings"
 	"testing"
 
@@ -71,6 +74,88 @@ func TestNativePrerequisiteAPTPlanAndActualGuard(t *testing.T) {
 	for _, bad := range []string{strings.Replace(transaction, "VERSION 2", "VERSION 1", 1), strings.ReplaceAll(transaction, " - < ", " 4.08 < "), strings.ReplaceAll(transaction, " - < ", " 4.09-1+b1 = "), strings.ReplaceAll(transaction, "4.09-1+b1", "4.10"), strings.ReplaceAll(transaction, "quota", "nftables"), strings.Replace(transaction, "/var/cache/apt/archives/quota_4.09-1+b1_amd64.deb", "**REMOVE**", 1), "VERSION 2\n\nquota - < 4.09-1+b1 **CONFIGURE**\n", transaction + "quota - < 4.09-1+b1 /var/cache/apt/archives/quota.deb\n"} {
 		if checkNativeAPTTransaction(bad, plan) == nil {
 			t.Fatal("unsafe transaction accepted", bad)
+		}
+	}
+}
+
+// Captured by read-only APT simulation on the untouched vendor-cloud baseline.
+// libjansson4 is a required libnftables1 dependency, not a recommendation:
+// https://packages.debian.org/trixie/libnftables1
+func TestNativePrerequisiteFreshDebianPlan(t *testing.T) {
+	data, err := os.ReadFile("testdata/native-prerequisites/debian13-minimal-apt-plan.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, err := nativeAPTPlan(string(data), []string{"nftables", "quota"})
+	want := map[string]string{"libnl-3-200": "3.7.0-2", "libnl-genl-3-200": "3.7.0-2", "quota": "4.09-1+b1", "libjansson4": "2.14-2+b3", "libnftables1": "1.1.3-1", "nftables": "1.1.3-1"}
+	if err != nil || !maps.Equal(plan, want) {
+		t.Fatalf("fresh Debian dependency plan rejected: %v; got %v", err, plan)
+	}
+	transaction := "VERSION 2\nAPT::Architecture=amd64\n\n"
+	before := map[string]string{"apt": "3.0.3", "libc6:amd64": "2.41-12+deb13u2"}
+	after := maps.Clone(before)
+	for name, version := range plan {
+		transaction += fmt.Sprintf("%s - < %s /var/cache/apt/archives/%s_%s_amd64.deb\n%s - < %s **CONFIGURE**\n", name, version, name, version, name, version)
+		after[name] = version
+	}
+	if err := checkNativeAPTTransaction(transaction, plan); err != nil {
+		t.Fatal(err)
+	}
+	if err := checkNativePackageDelta(before, after, plan); err != nil {
+		t.Fatal(err)
+	}
+	for _, bad := range []string{
+		strings.Replace(string(data), "Inst libjansson4 (", "Inst libjansson4 [2.13] (", 1),
+		strings.ReplaceAll(string(data), "libjansson4", "unreviewed-library"),
+		string(data) + "Remv apt [3.0.3]\n",
+	} {
+		if _, err := nativeAPTPlan(bad, []string{"nftables", "quota"}); err == nil {
+			t.Fatal("dependency fix admitted upgrade, unreviewed addition or removal")
+		}
+	}
+	after["apt"] = "3.0.4"
+	if checkNativePackageDelta(before, after, plan) == nil {
+		t.Fatal("dependency fix admitted an unrelated package upgrade")
+	}
+}
+
+func TestNativePrerequisiteRejectedPlanPreservesRecoveryRecord(t *testing.T) {
+	for _, simulation := range []string{
+		"Inst quota (4.09-1+b1 Debian:13 [amd64])\nInst unreviewed-library (1.0 Debian:13 [amd64])\n",
+		"Inst quota [4.08] (4.09-1+b1 Debian:13 [amd64])\n",
+		"Remv apt [3.0.3]\n",
+		"",
+	} {
+		record := testPrerequisiteRecord()
+		before := string(nativeBootJSON(record))
+		if err := record.planAPT(simulation, []string{"quota"}); err == nil {
+			t.Fatal("invalid plan accepted")
+		}
+		if string(nativeBootJSON(record)) != before {
+			t.Fatal("rejected plan changed the checking record")
+		}
+		record.Phase = "recovery-required"
+		if err := record.validate(); err != nil {
+			t.Fatal("plan failure cannot be recorded durably", err)
+		}
+	}
+	record := testPrerequisiteRecord()
+	if err := record.planAPT("Inst quota (4.09-1+b1 Debian:13 [amd64])\n", []string{"quota"}); err != nil {
+		t.Fatal(err)
+	}
+	if record.Planned["quota"] != "4.09-1+b1" || record.validate() != nil {
+		t.Fatal("valid plan not retained")
+	}
+	before := string(nativeBootJSON(record))
+	if record.planAPT("Inst quota (4.10 Debian:13 [amd64])\n", []string{"quota"}) == nil || string(nativeBootJSON(record)) != before {
+		t.Fatal("existing plan was replaced")
+	}
+	for _, phase := range []string{"applying", "complete", "recovery-required"} {
+		record := testPrerequisiteRecord()
+		record.Phase = phase
+		before := string(nativeBootJSON(record))
+		if record.planAPT("Inst quota (4.09-1+b1 Debian:13 [amd64])\n", []string{"quota"}) == nil || string(nativeBootJSON(record)) != before {
+			t.Fatal("non-checking record replanned", phase)
 		}
 	}
 }

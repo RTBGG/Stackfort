@@ -67,8 +67,12 @@ func TestDisposableNativeHostBoundaries(t *testing.T) {
 	if err != nil || nativeSocketConflicts(string(data), false) == nil {
 		t.Fatal("actual UDP listener not detected", err)
 	}
-	for _, final := range []string{"complete", "recovery-required"} {
-		t.Run(final, func(t *testing.T) {
+	for _, outcome := range []string{"complete", "recovery-required", "planning-rejected"} {
+		t.Run(outcome, func(t *testing.T) {
+			final := outcome
+			if outcome == "planning-rejected" {
+				final = "recovery-required"
+			}
 			fixture := t.TempDir()
 			if err := unix.Mount(fixture, "/var/lib", "", unix.MS_BIND, ""); err != nil {
 				t.Fatal(err)
@@ -90,15 +94,21 @@ func TestDisposableNativeHostBoundaries(t *testing.T) {
 			if !errors.Is(storageprep.CheckInactive(), storageprep.ErrNotQualified) {
 				t.Fatal("early prerequisite state failed to block public installer")
 			}
-			record.Phase = "applying"
-			record.Planned = map[string]string{"quota": "4.09-1+b1"}
-			if err := stage.saveNativePrerequisites(record); err != nil {
-				t.Fatal(err)
-			}
-			changed := record
-			changed.Planned = map[string]string{"quota": "4.10"}
-			if stage.saveNativePrerequisites(changed) == nil {
-				t.Fatal("changed transaction accepted")
+			if outcome == "planning-rejected" {
+				if record.planAPT("Inst unreviewed-library (1.0 Debian:13 [amd64])\n", []string{"quota"}) == nil {
+					t.Fatal("unreviewed prerequisite accepted")
+				}
+			} else {
+				record.Phase = "applying"
+				record.Planned = map[string]string{"quota": "4.09-1+b1"}
+				if err := stage.saveNativePrerequisites(record); err != nil {
+					t.Fatal(err)
+				}
+				changed := record
+				changed.Planned = map[string]string{"quota": "4.10"}
+				if stage.saveNativePrerequisites(changed) == nil {
+					t.Fatal("changed transaction accepted")
+				}
 			}
 			record.Phase = final
 			if final == "complete" {

@@ -15,7 +15,13 @@ diagnostics also exposed umask-sensitive hosting/transaction traversal and an
 inherited read-only cgroup view preventing a real Containerfile `RUN`. These
 findings are corrected in source with regression tests; the modified diagnostic
 installation is not release qualification. Beta.5 remains unpublished and its
-tag unchanged. Beta.6 needs a new immutable build and complete fresh-host test.
+tag unchanged. The [exact beta.6 candidate](../infra/host-tests/results/2026-09-19-beta6-candidate-qualification.md)
+passed its retained build and tag attestation, but fresh onboarding stopped
+before reboot at prerequisite planning. The minimal vendor image exposed a
+missing `libjansson4` dependency allowance and an invalid recovery-record update
+after a rejected package plan. Both have focused regression fixes; beta.6 is
+not publishable and its tag remains unchanged. Beta.7 requires a new immutable
+build and complete fresh-host qualification.
 
 The [2026-09-19 installed-broker diagnostic](../infra/host-tests/results/2026-09-19-oci-layout-scan-diagnostic.md)
 also corrected the OCI TAR/directory mismatch at the Trivy boundary. A real
@@ -103,7 +109,7 @@ fail-closed boot, firewall or exact-candidate functional tests.
 
 ### Bootstrap selection and availability
 
-The bare bootstrap now explicitly selects `0.1.0-beta.6` for a fresh invocation,
+The bare bootstrap now explicitly selects `0.1.0-beta.7` for a fresh invocation,
 not GitHub's latest-stable channel. Explicit versions and existing journal pins
 remain supported; a beta is never relabeled stable. The public handler is
 registered, but final tagged-candidate qualification and public release assets

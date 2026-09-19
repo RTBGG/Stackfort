@@ -144,8 +144,7 @@ func (stage *SourceStage) ensureNativePrerequisites(ctx context.Context, binding
 		if err != nil {
 			return "", err
 		}
-		record.Planned, err = nativeAPTPlan(simulation, report.MissingPackages)
-		if err != nil {
+		if err = record.planAPT(simulation, report.MissingPackages); err != nil {
 			return "", err
 		}
 		// Recheck all host conflicts and the package inventory after refreshing
