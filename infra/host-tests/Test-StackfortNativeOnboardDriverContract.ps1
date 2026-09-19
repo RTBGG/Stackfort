@@ -28,6 +28,19 @@ $contractRetained = Get-OnboardBootstrapCommand -Transport retained-fixture -Pin
 if ($contractRetained -cne "$contractEnvironment STACKFORT_BOOTSTRAP_TESTING=1 STACKFORT_BOOTSTRAP_TEST_FIXTURE=$contractFixture /bin/bash $contractFixture/install.sh") {
     throw 'Existing retained fixture transport changed.'
 }
+# A candidate version is mandatory; changing it must not alter the immutable
+# source URL, fixture boundary or any other command bytes.
+foreach ($nextVersion in @('0.1.0-beta.7', '0.1.0-beta.10')) {
+    if ((Get-OnboardBootstrapCommand -Transport public-github -PinnedVersion $nextVersion -PinnedCommit $contractCommit) -cne $contractPublic.Replace('0.1.0-beta.6', $nextVersion) -or
+        (Get-OnboardBootstrapCommand -Transport retained-fixture -PinnedVersion $nextVersion -PinnedCommit $contractCommit -FixtureDirectory $contractFixture) -cne $contractRetained.Replace('0.1.0-beta.6', $nextVersion)) {
+        throw 'Explicit next-candidate version changed the pinned transport boundary.'
+    }
+}
+foreach ($badVersion in @('0.1.0', '0.1.0-beta.0', '0.1.0-beta.07', '0.1.0-rc.1', '0.2.0-beta.1')) {
+    $rejected = $false
+    try { [void] (Get-OnboardBootstrapCommand -Transport public-github -PinnedVersion $badVersion -PinnedCommit $contractCommit) } catch { $rejected = $true }
+    if (-not $rejected) { throw 'Unsupported or noncanonical candidate version accepted.' }
+}
 foreach ($invalid in @(
     @{ Transport = 'public-github'; PinnedVersion = '0.1.0-beta.6'; PinnedCommit = 'main' },
     @{ Transport = 'public-github'; PinnedVersion = 'latest'; PinnedCommit = $contractCommit },
@@ -42,6 +55,8 @@ foreach ($invalid in @(
 }
 $contractTransport = @($contractAst.ParamBlock.Parameters | Where-Object { $_.Name.VariablePath.UserPath -ceq 'Transport' })
 if ($contractTransport.Count -ne 1 -or $contractTransport[0].DefaultValue.Value -cne 'retained-fixture') { throw 'The driver transport must remain explicitly selectable with its existing default.' }
+$contractVersion = @($contractAst.ParamBlock.Parameters | Where-Object { $_.Name.VariablePath.UserPath -ceq 'Version' })
+if ($contractVersion.Count -ne 1 -or $null -ne $contractVersion[0].DefaultValue -or -not $contractVersion[0].Extent.Text.Contains('[Parameter(Mandatory)]')) { throw 'Candidate version must be explicit, not a stale default.' }
 $contractResult = $contractAst.FindAll({ param($node)
     $node -is [System.Management.Automation.Language.AssignmentStatementAst] -and $node.Left.Extent.Text -ceq '$taskResult'
 }, $true) | Select-Object -First 1
