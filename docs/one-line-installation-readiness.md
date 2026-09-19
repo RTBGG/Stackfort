@@ -24,6 +24,13 @@ deployment and test-owned cleanup now pass on the modified diagnostic host.
 This closes that concrete scanner defect, not the exact-candidate installation,
 resource/isolation, reboot, failure-recovery or OS-removal qualification gates.
 
+The subsequent [resource/isolation diagnostic](../infra/host-tests/results/2026-09-19-resource-isolation-diagnostic.md)
+passed actual CPU throttling, PID exhaustion, account OOM enforcement, byte/inode
+quota exhaustion and fixed unprivileged cgroup/kernel-interface open denials.
+It used the installed broker but remains modified-host evidence; the same
+checks must be repeated against the final candidate on the fresh installation.
+The implementation commit's GitHub CI and Security workflows also passed.
+
 ## Required execution order
 
 1. Retain and extend native boot-safety qualification: isolated initramfs construction,
