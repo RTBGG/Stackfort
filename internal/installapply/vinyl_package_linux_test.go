@@ -45,7 +45,7 @@ func TestVinylRockyInstallEnablesEPELAndUsesExactRPMTransaction(t *testing.T) {
 		t.Fatalf("changed=%t error=%v", changed, err)
 	}
 	if len(mutations) != 3 || mutations[0] != "/usr/bin/dnf install -y epel-release" ||
-		mutations[1] != "/usr/bin/dnf install -y jemalloc" ||
+		mutations[1] != "/usr/bin/dnf install -y jemalloc gcc glibc-devel" ||
 		mutations[2] != "/usr/bin/rpm --upgrade --oldpackage --replacepkgs "+filepath.Join(source.Root, filepath.FromSlash(artifact.Path)) {
 		t.Fatalf("mutations = %#v", mutations)
 	}

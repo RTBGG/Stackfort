@@ -19,7 +19,7 @@ retained, with failure checkpoint `5f7c0511-5a4a-45b3-a49e-f10fbba6aa4f`
 - TAR: `stackfort-0.1.0-beta.7-linux-amd64.tar.gz`, 117,607,242 bytes.
 - TAR SHA-256: `874cd2ed1ff1843da92e69bc1d88c0e37a596fc9ef4791c61164c4e66f3828d1`.
 - Installer SHA-256: `0af658e55fea8fe762bf014a6cb99702cd4a25ff3f73b83b1b9c7658b169e8d6`.
-- API SHA-256: `4cd243c9011adc6fde8122cc73dc4b81ce7c32a4186deb3595fad1deba82f5ba`.
+- Control-plane executable SHA-256: `4cd243c9011adc6fde8122cc73dc4b81ce7c32a4186deb3595fad1deba82f5ba`.
 - Agent SHA-256: `046eaf1f73bd4cf49f4b9e0f30a2e55d46d5069d9f54d4106b7c0af65cba5b02`.
 - Bootstrap SHA-256: `61338f5ec07930bad50a30679d978f1d2ff88de39c7075a30b595e1621b4b5bb`.
 
