@@ -1,6 +1,6 @@
 # Public one-line installation readiness
 
-Audit date: 2026-09-12. Status: **not ready for public native installation**.
+Audit date: 2026-09-19. Status: **not ready for public native installation**.
 The public GitHub Releases API returned HTTP 200 with an empty inventory.
 Unpublished workflow candidates are not public releases.
 
@@ -16,6 +16,13 @@ inherited read-only cgroup view preventing a real Containerfile `RUN`. These
 findings are corrected in source with regression tests; the modified diagnostic
 installation is not release qualification. Beta.5 remains unpublished and its
 tag unchanged. Beta.6 needs a new immutable build and complete fresh-host test.
+
+The [2026-09-19 installed-broker diagnostic](../infra/host-tests/results/2026-09-19-oci-layout-scan-diagnostic.md)
+also corrected the OCI TAR/directory mismatch at the Trivy boundary. A real
+rootless build, unchanged Trivy scan, source-bound replay/conflict, non-root
+deployment and test-owned cleanup now pass on the modified diagnostic host.
+This closes that concrete scanner defect, not the exact-candidate installation,
+resource/isolation, reboot, failure-recovery or OS-removal qualification gates.
 
 ## Required execution order
 
