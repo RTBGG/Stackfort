@@ -1,8 +1,38 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { anchors, checkDocuments, links } from './check-docs.mjs';
+
+function currentCandidateVersionsAgree(bootstrap, documents) {
+  const defaults = [...bootstrap.matchAll(/^readonly default_version='(0\.1\.0-beta\.[1-9][0-9]*)'$/gm)];
+  assert.equal(defaults.length, 1, 'one canonical experimental bootstrap default');
+  const version = defaults[0][1];
+  for (const [file, text] of documents) {
+    const references = [...text.matchAll(/0\.1\.0-beta\.[0-9]+/g)].map((match) => match[0]);
+    assert.ok(references.length > 0, `${file}: current candidate must be named`);
+    assert.ok(references.every((value) => value === version), `${file}: candidate references differ from ${version}`);
+  }
+}
+
+test('current support policy and quick-start versions match the bootstrap', () => {
+  const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), 'utf8').replaceAll('\r', '');
+  // Only current support/quick-start documents, not historical evidence or
+  // upgrade examples, are required to name one candidate throughout.
+  const files = ['README.md', 'SECURITY.md', 'cmd/stackfort-installer/README.md', 'docs/installer-installation.md'];
+  currentCandidateVersionsAgree(read('packaging/installer/install.sh'), new Map(files.map((file) => [file, read(file)])));
+});
+
+test('candidate documentation guard rejects stale, mixed, missing and ambiguous versions', () => {
+  const bootstrap = "readonly default_version='0.1.0-beta.8'\n";
+  currentCandidateVersionsAgree(bootstrap, new Map([['synthetic.md', '0.1.0-beta.8']]));
+  for (const text of ['0.1.0-beta.6', '0.1.0-beta.8 and 0.1.0-beta.7', 'no version', '0.1.0-beta.08']) {
+    assert.throws(() => currentCandidateVersionsAgree(bootstrap, new Map([['synthetic.md', text]])));
+  }
+  assert.throws(() => currentCandidateVersionsAgree(bootstrap + bootstrap, new Map()));
+  assert.throws(() => currentCandidateVersionsAgree("readonly default_version='latest'\n", new Map()));
+});
 
 test('extracts inline, image, reference and HTML links with source lines', () => {
   assert.deepEqual(links('[Guide](docs/guide.md)\n![Image](a.png)\n[ref]: <docs/a b.md> "Title"\n<a href="docs/x.md">x</a>'), [

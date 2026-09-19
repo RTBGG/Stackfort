@@ -30,7 +30,30 @@ obtained from a credential store. The historical exception is limited to that
 exact commit/file/rule/line fingerprint. The current label avoids the ambiguous
 wording; no rule or report directory is excluded from scanning.
 
+## Second pre-selection source: checks passed, documentation stale
+
+Source `8035d8044029355dc3a8b6f1799c021f11b0f815` passed
+[CI](https://github.com/RTBGG/Stackfort/actions/runs/35441008430),
+[Security](https://github.com/RTBGG/Stackfort/actions/runs/35441008422) and
+[original build 35441057414](https://github.com/RTBGG/Stackfort/actions/runs/35441057414),
+all on attempt 1. The full seven-artifact inventory and aggregate artifact
+`10583299321` (313,140,612 bytes) passed download/integrity inspection.
+ZIP SHA-256: `7bc78871d86e7a3f537a1a3b0d897fe006f6a05d3aeae6beff73322a99be2886`;
+TAR SHA-256: `8174012320606e9319699113236d1c702ff4de83680087f0a4cf761e8d974988`.
+The strict extractor verified all ten files, checksums, source/version, SBOM
+and archived/standalone installer equality. The corrected Vinyl revision and
+independent WAF-member digests were also inspected.
+
+Before committing a selection or creating a tag, review found stale beta.6
+version labels in `SECURITY.md` and the installer command README. This would
+contradict exact-candidate support disclosure. The uncommitted proposed
+selection was retained with this run's ignored diagnostic files, not committed
+as a promotion. No tag or native installation was started from this source.
+The labels are corrected and a documentation regression now requires current
+support/quick-start versions to agree with the canonical bootstrap default;
+synthetic stale, mixed, missing and ambiguous versions are rejected.
+
 A new original build from the corrected source must pass CI and Security before
-selection. The rejected run will not be rerun, substituted into a selection, or
-treated as a qualified candidate. No beta.8 installation or publication result
-is claimed here.
+selection. Neither superseded run will be rerun, substituted into a selection,
+or treated as a qualified candidate. No beta.8 installation or publication
+result is claimed here.

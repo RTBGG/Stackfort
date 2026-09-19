@@ -2,7 +2,7 @@
 
 `stackfort-installer` provides preflight inspection, interactive native onboarding,
 prepared-storage installation, panel hostname/certificate management, and native
-operator commands. Public `onboard` dispatch is implemented; the exact beta.4
+operator commands. Public `onboard` dispatch is implemented; the current beta
 tagged archive, public downloads and clean-host flow are **not yet qualified or
 published**. Source implementation is not a release-readiness claim.
 
@@ -17,7 +17,7 @@ stackfort-installer native recovery-plan --format=json
 ```
 
 The [one-line bootstrap](../../docs/installer-installation.md#github-bootstrap)
-currently selects the explicitly pinned `0.1.0-beta.6` and supplies the native
+currently selects the explicitly pinned `0.1.0-beta.8` and supplies the native
 selection arguments when appropriate:
 
 ```sh
@@ -25,7 +25,7 @@ stackfort-installer onboard \
   --source-dir=/absolute/extracted/release \
   --archive=/absolute/release.tar.gz \
   --attestations=/absolute/build-attestation.jsonl \
-  --version=0.1.0-beta.6
+  --version=0.1.0-beta.8
 ```
 
 Only the exact build version/commit with authentic tag-release provenance is
