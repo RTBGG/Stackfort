@@ -1,5 +1,13 @@
 # Public release readiness contract v1
 
+Beta.11 has a narrowly authorized **fresh-install-only** path in
+[`publish-beta11-fresh-only.yml`](../../.github/workflows/publish-beta11-fresh-only.yml).
+It verifies the retained packages and tag attestation and runs the frozen
+candidate's unchanged technical readiness validator. Only the explicitly
+[authorized absence of upgrade support](../../docs/release-evidence/2026-09-24-beta11-fresh-install-scope.md)
+differs. It does not change the tag workflow, retire Beta.10 globally, or emit a
+passing upgrade matrix. Its default is verification without publishing.
+
 The tag-publishing workflow is **blocked by default**. This directory contains
 policy, not blanket release authorization. Readiness evidence is added only
 after the checks and real human decisions below have been completed.

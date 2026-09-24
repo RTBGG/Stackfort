@@ -1,8 +1,13 @@
 # Beta.11 candidate qualification — 2026-09-24
 
-Status: **fresh MBR/BIOS and GPT/UEFI onboarding, installed API smoke, rerun and
-normal reboot passed. Upgrade qualification failed at the published Beta.10
-inventory. Not published or approved for use.**
+Status: **fresh-install technical qualification passed; publication is
+conditionally authorized for fresh test servers only, without upgrade support.
+Public release/download verification is pending.** Historical observations below
+retain their original meaning, including the failed Beta.10 upgrade attempt.
+
+The subsequent [candidate-specific scope decision](../../../docs/release-evidence/2026-09-24-beta11-fresh-install-scope.md)
+supersedes the earlier requirement to resolve migration before publishing this
+one fresh-install-only candidate. No other technical gate was waived.
 
 This candidate adds canonical primary MBR/BIOS partition support to the native
 Debian 13 installer. It does not convert MBR to GPT or replace the bootloader.
@@ -195,4 +200,88 @@ This correction is **not** in the retained Beta.11 artifact and does not repair
 the already-published Beta.10 updater. No old production-source driver was patched
 and called an upgrade pass. A verified migration path for that predecessor,
 a new candidate source/artifact, and fresh technical/publication qualification
-are required. The existing tag and public one-line selection remain unchanged.
+are required for an upgrade-capable candidate. The existing tag and public
+one-line selection remain unchanged.
+
+## Remaining fresh-install qualification completed
+
+Both successful installations were restarted and rechecked through pinned SSH:
+MBR boot `6fac576a-13fa-4d7c-b31a-decb43c7e551`, GPT boot
+`ae346f47-7ebd-49a0-aedd-19a0808091a7`. Exact DMI, operation, archive and binary
+identity passed. No installed binary or native record was repaired or replaced.
+Each read-only collector reported **65 pass, zero fail, ten not-exercised**.
+The latter remain separate tests/limitations, not automatic passes. Live smoke
+account limits matched its package: CPU `50000 100000`, RAM 268435456 bytes and
+128 tasks. Account-level I/O limits were not requested or qualified. Eight
+executable/WAF hashes matched independent exact-archive/native-package inspection.
+
+Installed-broker probes demonstrated 25% CPU throttling; owner/subordinate
+cgroup write-open denial; own-home access with peer-home denial; a 32-task ceiling;
+64-MiB OOM enforcement against a 128-MiB allocation; 2-MiB byte/128-inode quotas
+returning EDQUOT; and unchanged peer ceilings. These bounded checks are not proof
+against every possible container escape or attempted cgroup migration write.
+
+The first MBR resource run failed in the external Go PID-pressure helper. The
+runtime itself could hit task-limit EAGAIN (`fatal error: newosproc`) before the
+test received the process-creation error. A bounded diagnostic reproduced this
+specific outcome with kernel PID-limit events; the original log/fixtures remain.
+Only the helper was corrected: its alternate PID outcome requires a post-identity
+start marker, exit 2, exact runtime thread/EAGAIN markers, separate kernel event
+increment and inactive transient unit. Negative contracts reject other modes,
+exits, errno and missing markers. No limit was raised or product repaired.
+The entire MBR resource probe passed on fresh UIDs 249952/249953 in 7.14 s; GPT's
+original helper passed in 8.65 s. All 1,084 production blobs stayed exact in the
+new helper ELF, SHA-256
+`4d4ee19bad4ed18161bce2916c850fab25fa33103f11599edbde29ef2b10ea77`.
+Seven matching pure helper contracts passed unprivileged.
+
+Both profiles passed the original installed-broker rootless OCI driver: actual
+scratch-image RUN/build/export, unbypassed Trivy 0.74.0 scanning, immutable replay,
+changed-source rejection, USER1000 deployment, loopback delivery, account-cgroup
+containment and scoped cleanup. GPT took 75.72 s; MBR 17.57 s. These are test
+durations, not performance benchmarks or public API routing qualification.
+
+## Real process loss and independent network containment
+
+Both pinned-bootstrap reruns created their real supervised completed-recheck
+unit. The unchanged guarded observer used a pidfd to pause, revalidate and kill
+only its exact MainPID in the checking attempt. Real supervision quarantined
+all loaded consumers. Independent host probes confirmed TCP/UDP80/443/8443 closed
+over IPv4 and IPv6 link-local while SSH and UDP49173 controls stayed reachable.
+Prior healthy controls verified all public ports; private services were not
+reachable. Global routed IPv6 and power loss were not tested.
+
+Storage stayed ready; package/source/setup records were byte-identical; admission
+remained checking at attempt 5. Interrupted callers and later ordinary reruns
+failed without success/setup material. Recovery-plan returned admission-review,
+exit 2, with public resume disabled. No recovery approval or successful recovery
+is claimed. The invocation-filtered journal was empty; separate fixed-unit
+supervisor journals confirm actual SIGKILL/signal failure and no native success.
+
+Before-fault checkpoints: MBR `554307fb-f400-4bbd-996c-cc9ecae3b3e4`, GPT
+`c0ca3bac-fdb2-48d7-9527-b509de2761b3`. After graceful shutdown, quarantined
+checkpoints: MBR `e0396847-c363-4060-8e23-89711a5e22c6`, GPT
+`ac1ff1aa-ac1d-455e-b0b6-c058b5f0e3eb`. No broad kill or manual gate repair was
+used. [Same-target full OS removal](2026-09-24-beta11-os-removal.md) then passed
+on GPT at `2026-09-24T12:17:17Z` using independent vendor disks.
+
+## Additional retained receipt hashes
+
+Files are under `work/candidates/35993227841-attempt1/`. Raw private state/journals
+remain only in preserved guest evidence. SHA-256:
+
+| Receipt | Digest |
+| --- | --- |
+| `host-security-mbr.json` | `6b3673595cb54d02c385d563e475f931a4dbacde4d328e69ef9cd6b16b667ecd` |
+| `host-security-gpt.json` | `a32a578c3e68abc86e661a9196fa318cd33d4a6929459c720d588e9bf17c053d` |
+| `resources-mbr.log` (first helper failure) | `1182f23f473fb06989e08069ddd2524c1749cd6baf98361bc340eaeffbc5c0eb` |
+| `resources-mbr-v2.log` | `d4fffc4ca41292e464e33ead4a01e6cc767ef70297fb3a50dbbffc8e65da8694` |
+| `resources-gpt.log` | `1ba1ba06edc594831f509f8b7d36f69c8f387991cbcfe3b280966eed9b7e0029` |
+| `oci-mbr.log` | `8350ce75f6fbffeb407de011ad5061ec1840ea6d47ea32a03209fb79c2700e27` |
+| `oci-gpt.log` | `a30546d526042afdb2b400798065c8ba5f51cb0bd351c78094fba7aa52d77af3` |
+| `fault-observer-mbr.jsonl` | `479a003b7d9c8b10bc460d6076198d131aedcc23f0ab867fe04da796b351cd98` |
+| `fault-observer-gpt.jsonl` | `81c3fc3328ced692bd46dd21c0035e0dbbb9c0ae3bbe5c3e1ead3b0ef8aa9fae` |
+
+The tag and package bytes remain unchanged. Publication must enforce the original
+candidate readiness validator/policy, current exact-source CI/security metadata,
+retained build identity and genuine cryptographically verified tag attestation.
