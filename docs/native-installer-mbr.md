@@ -1,6 +1,7 @@
 # Native installer: primary MBR support
 
-Status: **implemented in the development source; not in public Beta.10**.
+Status: **implemented and full fresh onboarding tested in unpublished Beta.11;
+not in public Beta.10**.
 The existing public bootstrap still selects immutable Beta.10, whose native
 conversion profile requires GPT. Do not patch that release's binaries or change
 partition tables to bypass its check. A new exact-candidate installation and
@@ -57,6 +58,14 @@ The next candidate must carry the new installer and matching current platform
 packages, pass the complete fresh MBR and existing GPT installation flows,
 normal reboot, panel/ingress and applicable release/upgrade/removal gates, and
 receive publication approval. Internal storage tests do not satisfy those gates.
+
+The [exact Beta.11 attempt](../infra/host-tests/results/2026-09-24-beta11-candidate-qualification.md)
+subsequently passed both full fresh installation flows, original setup/login,
+installed hosting/API smoke, idempotent rerun and normal reboot using genuine
+tag provenance and current packages. It remains unpublished: the predecessor
+upgrade tests exposed GitHub-normalized carrier filenames that Beta.10's updater
+does not accept. The subsequent source correction requires a new candidate and
+does not retroactively qualify either an upgrade or a public MBR release.
 
 ## Laboratory reproduction
 

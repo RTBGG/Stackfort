@@ -91,6 +91,65 @@ func TestStagerRejectsMissingRequiredInventory(t *testing.T) {
 	}
 }
 
+func TestStagerAcceptsImmutableBetaWithGitHubCarrierNames(t *testing.T) {
+	const version = "0.1.0-beta.10"
+	archive := testReleaseArchive(t, version, false)
+	checksums := []byte(testDigest(archive) + "  stackfort-" + version + "-linux-amd64.tar.gz\n")
+	server := releaseServer(t, version, archive, checksums, true, false)
+	defer server.Close()
+	verifier := &fakeAttestationVerifier{}
+	prepared, err := testStager(t, server, verifier).Prepare(t.Context(), version)
+	if err != nil || prepared.Source.Version != version || verifier.calls != 1 || verifier.tag != "v"+version {
+		t.Fatalf("prepared=%#v verifier=%#v error=%v", prepared, verifier, err)
+	}
+}
+
+func TestPublicBetaInventoryUsesObservedGitHubNames(t *testing.T) {
+	// Explicit inventory, independent of requiredReleaseAssetNames, reproduces
+	// the immutable Beta.10 metadata returned by GitHub on 2026-09-24.
+	const version = "0.1.0-beta.10"
+	const tag = "v" + version
+	names := []string{
+		"SHA256SUMS", "stackfort-0.1.0-beta.10-linux-amd64.tar.gz",
+		"stackfort-installer-0.1.0-beta.10-linux-amd64", "stackfort-0.1.0-beta.10.spdx.json",
+		"stackfort-release_0.1.0.beta.10-1_amd64.deb", "stackfort-release_0.1.0.beta.10-1_amd64.deb.release.json",
+		"stackfort-release-0.1.0.beta.10-1.sf1.x86_64.rpm", "stackfort-release-0.1.0.beta.10-1.sf1.x86_64.rpm.release.json",
+	}
+	assets := make([]githubReleaseAsset, 0, len(names))
+	for _, name := range names {
+		assets = append(assets, githubReleaseAsset{Name: name, State: "uploaded", Size: 1,
+			Digest: "sha256:" + strings.Repeat("a", 64), URL: releaseDownloadBase + "/" + tag + "/" + name})
+	}
+	if validated, err := validateReleaseAssets(releaseDownloadBase, tag, version, assets); err != nil || len(validated) != len(names) {
+		t.Fatalf("GitHub-normalized public inventory rejected: %v", err)
+	}
+	for _, scenario := range []string{"missing", "duplicate", "original-tilde", "wrong-version", "wrong-url", "missing-digest", "unuploaded"} {
+		t.Run(scenario, func(t *testing.T) {
+			changed := append([]githubReleaseAsset(nil), assets...)
+			switch scenario {
+			case "missing":
+				changed = changed[:len(changed)-1]
+			case "duplicate":
+				changed = append(changed, changed[4])
+			case "original-tilde":
+				changed[4].Name = strings.Replace(changed[4].Name, ".beta.", "~beta.", 1)
+				changed[4].URL = releaseDownloadBase + "/" + tag + "/" + changed[4].Name
+			case "wrong-version":
+				changed[4].Name = strings.Replace(changed[4].Name, ".beta.10", ".beta.11", 1)
+			case "wrong-url":
+				changed[4].URL = "https://example.com/" + changed[4].Name
+			case "missing-digest":
+				changed[4].Digest = ""
+			case "unuploaded":
+				changed[4].State = "new"
+			}
+			if _, err := validateReleaseAssets(releaseDownloadBase, tag, version, changed); err == nil {
+				t.Fatal("invalid immutable inventory accepted")
+			}
+		})
+	}
+}
+
 func TestArchiveExtractionRejectsTraversalAndLinks(t *testing.T) {
 	for name, archive := range map[string][]byte{
 		"traversal": testArchive(t, []tar.Header{{Name: "stackfort-1.1.0-linux-amd64/../escape", Mode: 0o644, Size: 1, Typeflag: tar.TypeReg}}, [][]byte{{'x'}}),
@@ -176,7 +235,7 @@ func releaseServer(
 			published := time.Date(2026, 9, 2, 10, 0, 0, 0, time.UTC)
 			writer.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(writer).Encode(githubReleaseResponse{
-				TagName: tag, Immutable: immutable, PublishedAt: &published, Assets: assets,
+				TagName: tag, Prerelease: strings.Contains(version, "-beta."), Immutable: immutable, PublishedAt: &published, Assets: assets,
 			})
 			return
 		}

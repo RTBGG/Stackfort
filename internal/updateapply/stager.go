@@ -467,7 +467,11 @@ func validateReleaseAssets(
 func requiredReleaseAssetNames(version string) map[string]struct{} {
 	packageVersion := version
 	if separator := strings.IndexByte(version, '-'); separator >= 0 {
-		packageVersion = version[:separator] + "~" + version[separator+1:]
+		// Native package versions and retained build filenames use '~'. GitHub
+		// normalizes that character to '.' in public release asset names. This
+		// describes only the transport inventory, not the version inside the
+		// package or the checksum/attestation identity of the release archive.
+		packageVersion = version[:separator] + "." + version[separator+1:]
 	}
 	deb := "stackfort-release_" + packageVersion + "-1_amd64.deb"
 	rpm := "stackfort-release-" + packageVersion + "-1.sf1.x86_64.rpm"

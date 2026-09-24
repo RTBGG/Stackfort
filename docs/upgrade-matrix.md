@@ -27,6 +27,13 @@ as supported, with the verified public archive SHA-256
 `8e7ce111d6cefda172e74bd7a71380c181e66a726d8f157f6bd1af8944e93263`
 and therefore requires nine scenario/OS cells before publication. Those cells
 are not qualified merely by adding this entry; no successful upgrade is claimed.
+The [first Beta.10-to-Beta.11 attempt](../infra/host-tests/results/2026-09-24-beta11-candidate-qualification.md#upgrade-attempt-published-predecessor-naming-mismatch)
+installed the predecessor on all three prepared-quota fixtures but failed its
+public provenance inventory before any scenario: GitHub changed `~beta.10` to
+`.beta.10` in carrier asset filenames. A later stager source correction does not
+repair the shipped predecessor or satisfy its upgrade matrix. Retain that failed
+evidence and qualify a real verified transition; do not patch the prior production
+driver, relabel a rehearsal, or silently retire Beta.10 to obtain a pass.
 Local `0.1.0-beta.1` / `0.1.0-beta.2` rehearsal builds are not
 public releases and do not establish a support commitment.
 

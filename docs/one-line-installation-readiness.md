@@ -22,6 +22,15 @@ global IPv6, I/O-rate enforcement or public-control-API OCI workflow claim.
 
 ## Earlier candidate findings
 
+The [2026-09-24 Beta.11 qualification](../infra/host-tests/results/2026-09-24-beta11-candidate-qualification.md)
+passed complete fresh Debian MBR/BIOS and GPT/UEFI onboarding, original setup/login,
+installed API smoke, rerun and normal reboot. This is an unpublished retained
+candidate, not a change to the public Beta.10 bootstrap. All three predecessor
+upgrade attempts stopped at Beta.10's incorrect expectations for GitHub-normalized
+DEB/RPM filenames, before any upgrade scenario. The stager correction is in later
+source only; a verified legacy transition and new candidate qualification remain
+required. No predecessor was retired and no failed gate was waived.
+
 The [exact beta.4 onboarding attempt](../infra/host-tests/results/2026-09-12-beta4-onboarding-php-capability-failure.md)
 completed automatic quota preparation, installation and original setup redemption,
 but failed the product smoke because the installed PHP package was not detected.
