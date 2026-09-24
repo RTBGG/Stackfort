@@ -16,6 +16,11 @@ Dedicated disposable VM `1f5e665a-fddd-4cd2-bc55-44255b01963d`, DMI
 MBR checkpoint `c9c3f45c-a014-42db-83fa-8111a559c394` was restored for this
 regression. No checkpoint was deleted; this is deliberately NOT a removal test.
 
+The preservation checkpoint is `0f106387-68f6-4e4d-8bc3-58cce6cbc223`.
+After the reproduction, the fresh optical fixture was also retained as
+`beta12-optical-fresh-before-install-20260924`
+(`1f20fd10-024c-49eb-b6bd-ce94eb32ff35`) for the separate exact-candidate test.
+
 Boot: `ee962d39-ed81-4bd3-9610-eea9ed6aa95a`. Exact VM/DMI, strict SSH key,
 fresh storage/state and the original single-line fstab were verified first.
 The old published installer SHA-256 was independently pinned:
@@ -58,6 +63,13 @@ in for it.
 
 Full local `go test ./...`, `go vet ./...`, Linux cross-compilation and the
 focused real-Linux tests passed.
+
+The exact source commit is `f4d1a7947af4ffbdc2cbf28d2f618c10833cefec`.
+The [GitHub Go job](https://github.com/RTBGG/Stackfort/actions/runs/36004640915/job/107649540802)
+also passed the full race-enabled suite and explicitly executed the root/private
+mount-namespace optical test. Its log reports `TestDisposableNativeOptionalOptical`
+as passed, rather than skipped. The [security workflow](https://github.com/RTBGG/Stackfort/actions/runs/36004640826)
+passed at the same source. These automated results are not an independent audit.
 
 Ignored evidence directory: `infra/host-tests/work/beta12-optical-20260924/`.
 
