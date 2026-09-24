@@ -97,6 +97,25 @@ and normal reboot. SSH reverified the same VM when DHCP changed; the driver
 preserved the original TLS authority/cookie scope. Full result passed at
 `2026-09-24T12:43:26Z`.
 
+## Published default and literal README command
+
+After public download and fresh-install verification, commit `84a3389` changed
+only the bootstrap's fresh default from Beta.10 to Beta.11 and updated its tests
+and user documentation. Existing journals still pin their original release.
+The new bootstrap SHA-256 is
+`d5bea20804856b6e5e92006dbaa81ca41042a2029fa1e3a13a9ff40b309677ef`.
+Both Windows and the Debian guest independently downloaded `main` and matched
+those exact bytes. All eight isolated Linux bootstrap regression markers passed,
+including the default beta pin, journal routing, archive boundaries and errors.
+
+The literal README HTTPS pipe, without a version override or fixture setting,
+then passed on the completed Beta.11 installation at `2026-09-24T12:47:38Z`.
+It downloaded the public Beta.11 archive, passed live native admission and
+returned exit0 without a new setup code, changed boot or changed bound
+storage/install/runtime/setup records. This final command was a completed-host
+rerun; the earlier fresh run explicitly selected the same release through its
+frozen bootstrap.
+
 ## Retained receipts and limits
 
 Ignored receipts: `infra/host-tests/work/publication-beta11-20260924/`.
@@ -107,6 +126,7 @@ Ignored receipts: `infra/host-tests/work/publication-beta11-20260924/`.
 | `original-byte-comparison.json` | `bd1f1e49e81c73e6f998ee34385eac97e3dba05544e85d82688a213852ebc11d` |
 | `fresh-preflight.json` | `5d03caf69eca4700c4ba148f47dc71c0d75f10bc64603762d71bb46d48e3ab9f` |
 | `public-onboarding-result.json` | `46be190d305299af85b7a83e0f657207c9d22a2737fc8633caa21a2a8c72c782` |
+| `main-readme-rerun.json` | `e61321986393ecdc1efdce22da0404a5f1add4951a40fcd8e27763482dfde290` |
 
 This public transport test uses GPT/UEFI; the separate prepublication exact-byte
 MBR/BIOS qualification remains authoritative for that profile. It does not
