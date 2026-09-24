@@ -13,7 +13,7 @@ func RenderRecoveryGRUBEntry(plan Plan) (string, error) {
 	}
 	recovery := id + "-recovery"
 	condition := "[ \"$stackfort_native_armed\" = \"" + plan.OperationID + "\" -a \"$stackfort_native_consumed\" = \"\" ]"
-	setup := "  insmod part_gpt\n  insmod ext2\n  search --no-floppy --fs-uuid --set=root " + plan.RootUUID + "\n"
+	setup := "  insmod " + grubPartitionModule(plan) + "\n  insmod ext2\n  search --no-floppy --fs-uuid --set=root " + plan.RootUUID + "\n"
 	linux := "  linux /boot/vmlinuz-" + plan.Kernel + " root=PARTUUID=" + plan.PartitionUUID + " ro console=tty0 console=ttyS0,115200 consoleblank=0"
 	image := "  initrd /boot/" + id + ".img\n"
 	return "# Stackfort fail-closed temporary boot default\nset default='" + recovery + "'\nif " + condition + "; then\n  set default='" + id + "'\nfi\n" +

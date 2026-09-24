@@ -66,8 +66,11 @@ func canonicalUUID(value string) bool {
 }
 
 func (plan Plan) Validate() error {
+	if _, err := PartitionTable(plan.PartitionUUID); err != nil {
+		return err
+	}
 	if !canonicalUUID(plan.OperationID) || !canonicalUUID(plan.MachineID) ||
-		!canonicalUUID(plan.RootUUID) || !canonicalUUID(plan.PartitionUUID) ||
+		!canonicalUUID(plan.RootUUID) ||
 		!canonicalUUID(plan.PreviousBootID) || !versionPattern.MatchString(plan.Version) ||
 		len(plan.Version) > 128 || !digestPattern.MatchString(plan.SourceDigest) ||
 		!digestPattern.MatchString(plan.ManifestDigest) || !kernelPattern.MatchString(plan.Kernel) ||

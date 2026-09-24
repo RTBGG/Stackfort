@@ -69,6 +69,18 @@ published predecessors that require upgrade qualification; retirement requires
 an explicit reason. It does not by itself create a production support promise.
 See the [release checklist](docs/release-checklist.md).
 
+## Unpublished candidate
+
+`0.1.0-beta.11` is being prepared and is **not published or approved for use**.
+It targets the same experimental, community-only terms, adding primary active
+MBR/ext4 roots with BIOS/GRUB to the existing Debian 13 amd64 GPT profile.
+No independent review has been performed. Fresh disposable test servers only;
+no important data or production use; removal requires complete OS reinstallation.
+Full exact-candidate MBR/GPT installation, upgrade, security and removal evidence
+and separate publication approval remain required. The public installer continues
+to select the published release above. See the
+[MBR qualification boundary](docs/native-installer-mbr.md).
+
 ## Handling and disclosure
 
 Reports are handled on a best-effort basis; there is no guaranteed response

@@ -8,6 +8,8 @@ import (
 	"errors"
 	"slices"
 	"strings"
+
+	"github.com/RTBGG/stackfort/internal/storageprep"
 )
 
 // Still qualification-only: no public activation or arbitrary device selection.
@@ -72,7 +74,8 @@ func nativeBootDecode(data []byte, target any) error {
 
 // Keep unrelated lines byte-for-byte; reject ambiguous/foreign root entries.
 func nativeBootFstab(source, rootUUID, partUUID string) (string, error) {
-	if !validSourceOperation(rootUUID) || !validSourceOperation(partUUID) || len(source) > 16<<10 || strings.ContainsAny(source, "\x00\r") {
+	_, partitionErr := storageprep.PartitionTable(partUUID)
+	if !validSourceOperation(rootUUID) || partitionErr != nil || len(source) > 16<<10 || strings.ContainsAny(source, "\x00\r") {
 		return "", errors.New("invalid fstab input")
 	}
 	lines, count := strings.Split(source, "\n"), 0

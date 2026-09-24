@@ -1,7 +1,8 @@
 # Stackfort documentation
 
-Stackfort is pre-beta. Use disposable hosts only; there is no supported public
-release or production support window yet. Start with the guide for your task:
+Stackfort has an experimental public Beta.10 for qualified disposable Debian
+test hosts only, with community support and no production support window.
+Start with the guide for your task:
 
 | I want to… | Read |
 | --- | --- |
@@ -34,7 +35,10 @@ repeating the everyday operating instructions:
 - Data: [files and local backups](local-file-backup-foundation.md),
   [MariaDB](account-database-lifecycle.md),
   [phpMyAdmin](phpmyadmin-signon.md), [panel persistence](persistence.md).
-- Single-disk onboarding (not enabled): [native quota experiment](native-quota-prototype.md),
+- Single-disk onboarding: [public scope](one-line-installation-readiness.md#scope),
+  [primary MBR development follow-up](native-installer-mbr.md),
+  and the implementation's historical qualification references:
+  [native quota experiment](native-quota-prototype.md),
   [installation-state protocol](native-quota-installation-state.md),
   [journal-bound boot experiment](native-quota-boot-handoff.md),
   [durable release staging](native-quota-release-staging.md),

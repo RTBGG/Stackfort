@@ -120,7 +120,7 @@ func GRUBEntryID(plan Plan) (string, error) {
 	return "stackfort-native-quota-" + plan.OperationID, nil
 }
 
-// RenderGRUBEntry is deliberately limited to the Debian plain-GPT/ext4 lab.
+// RenderGRUBEntry is limited to Debian plain GPT or primary-MBR ext4 roots.
 // No existing/default entry is replaced. A consumed entry boots the original
 // initrd without the preparation token, even if selected again manually.
 func RenderGRUBEntry(plan Plan) (string, error) {
@@ -130,7 +130,7 @@ func RenderGRUBEntry(plan Plan) (string, error) {
 	}
 	linux := "  linux /boot/vmlinuz-" + plan.Kernel + " root=PARTUUID=" + plan.PartitionUUID + " ro console=tty0 console=ttyS0,115200 consoleblank=0"
 	return "menuentry 'Stackfort native quota preparation (lab)' --id '" + id + "' {\n" +
-		"  insmod part_gpt\n  insmod ext2\n  search --no-floppy --fs-uuid --set=root " + plan.RootUUID + "\n" +
+		"  insmod " + grubPartitionModule(plan) + "\n  insmod ext2\n  search --no-floppy --fs-uuid --set=root " + plan.RootUUID + "\n" +
 		"  if [ \"$stackfort_native_armed\" = \"" + plan.OperationID + "\" ]; then\n" +
 		"    set stackfort_native_armed=\n    set stackfort_native_consumed=" + plan.OperationID + "\n" +
 		"    save_env stackfort_native_armed stackfort_native_consumed\n" +

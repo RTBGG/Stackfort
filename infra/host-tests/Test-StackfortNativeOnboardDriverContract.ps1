@@ -30,7 +30,7 @@ if ($contractRetained -cne "$contractEnvironment STACKFORT_BOOTSTRAP_TESTING=1 S
 }
 # A candidate version is mandatory; changing it must not alter the immutable
 # source URL, fixture boundary or any other command bytes.
-foreach ($nextVersion in @('0.1.0-beta.7', '0.1.0-beta.10')) {
+foreach ($nextVersion in @('0.1.0-beta.7', '0.1.0-beta.10', '0.1.0-beta.11')) {
     if ((Get-OnboardBootstrapCommand -Transport public-github -PinnedVersion $nextVersion -PinnedCommit $contractCommit) -cne $contractPublic.Replace('0.1.0-beta.6', $nextVersion) -or
         (Get-OnboardBootstrapCommand -Transport retained-fixture -PinnedVersion $nextVersion -PinnedCommit $contractCommit -FixtureDirectory $contractFixture) -cne $contractRetained.Replace('0.1.0-beta.6', $nextVersion)) {
         throw 'Explicit next-candidate version changed the pinned transport boundary.'
@@ -66,6 +66,20 @@ $contractDefinition = $contractAst.FindAll({ param($node)
     $node -is [System.Management.Automation.Language.StringConstantExpressionAst] -and $node.Value.StartsWith('using System;')
 }, $true) | Select-Object -First 1
 if (-not ('StackfortNativeOnboardProbeV1' -as [type])) { Add-Type -TypeDefinition $contractDefinition.Value }
+foreach ($partition in @('a7d6a899-01', '00000001-04', '11111111-1111-4111-8111-111111111111')) {
+    if (-not [StackfortNativeOnboardProbeV1]::IsPartitionUUID($partition)) { throw 'Canonical partition rejected.' }
+}
+foreach ($partition in @('', '00000000-01', 'a7d6a899-05', 'a7d6a899-1', 'A7D6A899-01', "a7d6a899-01`n", 'a7d6a899-01/PARTNROFF=1', [Guid]::Empty.ToString('D'))) {
+    if ([StackfortNativeOnboardProbeV1]::IsPartitionUUID($partition)) { throw 'Unsafe partition accepted.' }
+}
+$contractFixtureBuilder = $contractAst.FindAll({ param($node)
+    $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Get-OnboardFixture'
+}, $true) | Select-Object -First 1
+. ([scriptblock]::Create($contractFixtureBuilder.Extent.Text))
+if ((Get-OnboardFixture mbr).ID -ne '1f5e665a-fddd-4cd2-bc55-44255b01963d' -or (Get-OnboardFixture gpt-candidate).ID -ne '55729cf8-11e3-4744-be5b-ddde3824c0e4') { throw 'Fixture identity drift.' }
+$rejected = $false
+try { [void] (Get-OnboardFixture 'arbitrary-server') } catch { $rejected = $true }
+if (-not $rejected) { throw 'Arbitrary fixture accepted.' }
 $contractPwsh = (Get-Process -Id $PID).Path
 $contractRun = [StackfortNativeOnboardProbeV1]::Run($contractPwsh, @('-NoProfile', '-Command', '[Console]::Out.Write("bounded-ok")'), 15)
 if ($contractRun.ExitCode -ne 0 -or $contractRun.Output -cne 'bounded-ok') { throw 'Bounded process result mismatch.' }

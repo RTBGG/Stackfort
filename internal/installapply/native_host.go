@@ -203,7 +203,8 @@ func (record nativePrerequisiteRecord) validate() error {
 	if !pinDigestPattern.MatchString(record.Before.PackagesSHA256) || !validSourceOperation(record.Before.Host.BootID) || len(record.Before.BootArtifacts) != 4 {
 		return errors.New("invalid prerequisite host binding")
 	}
-	if !validSourceOperation(record.Before.Host.RootUUID) || !validSourceOperation(record.Before.Host.PartitionUUID) || !validSourceOperation(record.Before.Host.MachineID) || !slices.Contains([]string{"bios", "enabled", "disabled"}, record.Before.SecureBoot) || record.Planned == nil || (record.Phase == "applying" && len(record.Planned) == 0) {
+	table, partitionErr := storageprep.PartitionTable(record.Before.Host.PartitionUUID)
+	if !validSourceOperation(record.Before.Host.RootUUID) || partitionErr != nil || (table == "dos" && record.Before.SecureBoot != "bios") || !validSourceOperation(record.Before.Host.MachineID) || !slices.Contains([]string{"bios", "enabled", "disabled"}, record.Before.SecureBoot) || record.Planned == nil || (record.Phase == "applying" && len(record.Planned) == 0) {
 		return errors.New("invalid prerequisite identity or plan")
 	}
 	for _, path := range []string{"/etc/fstab", "/boot/grub/grub.cfg", "/boot/vmlinuz-" + record.Before.Host.Kernel, "/boot/initrd.img-" + record.Before.Host.Kernel} {

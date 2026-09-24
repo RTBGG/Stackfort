@@ -5,6 +5,10 @@ This is the second follow-up to [real installer boot preparation](native-install
 It supports the conservative `debian-13-plain-ext4-grub-v1` profile, not every
 provider image and not Ubuntu/Rocky boot conversion.
 
+This page records the original internal GPT qualification. The later
+[primary MBR/BIOS extension](native-installer-mbr.md) is implemented in development
+and describes the additional checks; public Beta.10 remains GPT-only.
+
 ## Read-only diagnosis
 
 The current locally built installer provides:

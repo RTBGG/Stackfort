@@ -21,6 +21,14 @@ The separate prepared-storage route requires deliberate filesystem provisioning,
 not a guessed `fstab` edit. Existing
 hosting software is not automatically adopted or migrated.
 
+If Beta.10 reports `native.boot-layout: requires plain GPT/ext4 root`, inspect
+the partition table with `lsblk -o NAME,TYPE,FSTYPE,PTTYPE,PARTUUID,MOUNTPOINTS`.
+A DOS/MBR root is outside that release's native profile even when ext4 is healthy.
+[Primary MBR/BIOS support](native-installer-mbr.md) is implemented in development
+but needs a new qualified release. Do not convert the live partition table,
+manually enable quota features, replace sealed binaries or erase installer
+journals as a workaround.
+
 If the GitHub bootstrap reports a missing release, check the
 [release list](https://github.com/RTBGG/Stackfort/releases). Beta.10 is public
 and selected by the current bootstrap; older unpublished candidates still return

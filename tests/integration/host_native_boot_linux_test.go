@@ -24,7 +24,7 @@ import (
 // The fixture only authenticates input and invokes the regular preparation API.
 // No testing executable, test backend or fault switch enters the boot path.
 func TestDisposableNativeBootPrepare(t *testing.T) {
-	requireNativeLab(t)
+	requireNativeBootLab(t)
 	if os.Getenv("STACKFORT_NATIVE_DISPOSABLE_RECOVERY_ACCEPTED") != "1" {
 		t.Fatal("preparation requires explicit disposable-fresh-server recovery-risk acceptance")
 	}
@@ -102,7 +102,7 @@ func bootManifest(t *testing.T) (installapply.NativeReleaseManifest, storageprep
 }
 
 func TestDisposableNativeBootArm(t *testing.T) {
-	requireNativeLab(t)
+	requireNativeBootLab(t)
 	_, plan := bootManifest(t)
 	t.Log(imageCommand(t, installapply.NativeRuntimePath, "native-boot", "arm", "--operation-id="+plan.OperationID))
 	state, err := storageprep.DecodeState(imageRead(t, storageprep.JournalPath))
@@ -123,7 +123,7 @@ func TestDisposableNativeBootArm(t *testing.T) {
 }
 
 func TestDisposableNativeBootValidate(t *testing.T) {
-	requireNativeLab(t)
+	requireNativeBootLab(t)
 	manifest, plan := bootManifest(t)
 	deadline := time.Now().Add(8 * time.Minute)
 	for {
@@ -263,7 +263,7 @@ func TestNativeBootPendingUnitPolicy(t *testing.T) {
 }
 
 func TestDisposableNativeBootRejected(t *testing.T) {
-	requireNativeLab(t)
+	requireNativeBootLab(t)
 	_, plan := bootManifest(t)
 	state, err := storageprep.DecodeState(imageRead(t, storageprep.JournalPath))
 	if err != nil || state.Phase != storageprep.RecoveryRequired || state.FailureCode != "boot-evidence-invalid" {

@@ -37,7 +37,10 @@ func nativeBootVerifyTools(ctx context.Context, intent NativeBootIntent) error {
 }
 
 func nativeBootCheckDevice(ctx context.Context, device string, plan storageprep.Plan, spec NativeReadySpec, converted bool) error {
-	for key, expected := range map[string]string{"UUID": plan.RootUUID, "PART_ENTRY_UUID": plan.PartitionUUID, "TYPE": "ext4", "PART_ENTRY_SCHEME": "gpt"} {
+	if err := nativeCheckPartition(ctx, device, plan.PartitionUUID); err != nil {
+		return err
+	}
+	for key, expected := range map[string]string{"UUID": plan.RootUUID} {
 		value, err := nativeReadCommand(ctx, "/usr/sbin/blkid", "-p", "-s", key, "-o", "value", device)
 		if err != nil || value != expected {
 			return errors.New("native device identity mismatch: " + key)

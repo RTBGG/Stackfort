@@ -188,6 +188,12 @@ community support, no independent security review, and removal by complete
 OS reinstallation. This does not complete remaining product/browser review,
 capacity protection, wider native OS support or production-readiness work.
 
+**2026-09-24 follow-up:** [Primary MBR/BIOS support](native-installer-mbr.md)
+is implemented in development, with real offline conversion and quota tests on
+a separate Debian VM. Full installation with the retained old lab payload stops
+at its obsolete NGINX dependency. A matching new candidate and complete release
+qualification remain pending; Beta.10 and the public bootstrap are unchanged.
+
 - [x] Versioned DEB/RPM packages where appropriate.
 - [x] Verified one-line and manual installers for clean hosts.
 - [x] Stable/beta GitHub Release channels and update checks.

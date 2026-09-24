@@ -9,7 +9,20 @@ function currentCandidateVersionsAgree(bootstrap, documents) {
   const defaults = [...bootstrap.matchAll(/^readonly default_version='(0\.1\.0-beta\.[1-9][0-9]*)'$/gm)];
   assert.equal(defaults.length, 1, 'one canonical experimental bootstrap default');
   const version = defaults[0][1];
-  for (const [file, text] of documents) {
+  for (const [file, source] of documents) {
+    // A named, explicitly unpublished security-policy section is separate from
+    // the public bootstrap selection. Never advance that selection just to build.
+    const sections = file === 'SECURITY.md' ? [...source.matchAll(/^## Unpublished candidate\n([\s\S]*?)(?=^## |$(?![\s\S]))/gm)] : [];
+    assert.ok(sections.length <= 1, 'unambiguous unpublished candidate section');
+    if (sections.length) {
+      const section = sections[0][0];
+      const versions = [...new Set([...section.matchAll(/0\.1\.0-beta\.[0-9]+/g)].map((match) => match[0]))];
+      assert.equal(versions.length, 1, 'one named unpublished candidate');
+      assert.match(versions[0], /^0\.1\.0-beta\.[1-9][0-9]*$/);
+      assert.notEqual(versions[0], version, 'published default is not unpublished');
+      assert.ok(section.includes('**not published or approved for use**'), 'explicit candidate-only disclosure');
+    }
+    const text = sections.length ? source.replace(sections[0][0], '') : source;
     const references = [...text.matchAll(/0\.1\.0-beta\.[0-9]+/g)].map((match) => match[0]);
     assert.ok(references.length > 0, `${file}: current candidate must be named`);
     assert.ok(references.every((value) => value === version), `${file}: candidate references differ from ${version}`);
@@ -32,6 +45,11 @@ test('candidate documentation guard rejects stale, mixed, missing and ambiguous 
   }
   assert.throws(() => currentCandidateVersionsAgree(bootstrap + bootstrap, new Map()));
   assert.throws(() => currentCandidateVersionsAgree("readonly default_version='latest'\n", new Map()));
+  const policy = '0.1.0-beta.8\n\n## Unpublished candidate\n0.1.0-beta.9 is **not published or approved for use**.\n\n## Other\n';
+  currentCandidateVersionsAgree(bootstrap, new Map([['SECURITY.md', policy]]));
+  for (const invalid of [policy.replace('not published or approved for use', 'ready'), policy.replace('beta.9', 'beta.8'), policy.replace('beta.9', 'beta.09'), policy + '0.1.0-beta.9']) {
+    assert.throws(() => currentCandidateVersionsAgree(bootstrap, new Map([['SECURITY.md', invalid]])));
+  }
 });
 
 test('extracts inline, image, reference and HTML links with source lines', () => {

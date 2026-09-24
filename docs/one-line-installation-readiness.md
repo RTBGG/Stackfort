@@ -130,9 +130,11 @@ waive remaining production, recovery, capacity and browser-review limitations.
 
 ## Scope
 
-The implemented native conversion profile is Debian 13 amd64, fresh disposable
+The public Beta.10 native conversion profile is Debian 13 amd64, fresh disposable
 plain GPT/ext4 root with GRUB. Ubuntu/Rocky native conversion, LVM/RAID, separate
 persistent boot/state filesystems and retained-data conversion are not qualified.
+[Primary MBR/BIOS support](native-installer-mbr.md) is a development follow-up;
+it is not included in Beta.10 or qualified by that release's historical evidence.
 Existing installation on already quota-prepared storage is a separate path; do
 not describe those tests as native fresh-root qualification.
 

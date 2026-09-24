@@ -41,6 +41,8 @@ are public and immutable. Native setup requires an interactive
 root console/SSH terminal, explicit reboot consent and saving the setup code.
 See the
 [installation guide](docs/installer-installation.md) for prerequisites and options.
+**Beta.10 requires GPT for native root conversion.** Primary MBR/BIOS support is
+[under development qualification](docs/native-installer-mbr.md), not yet released.
 Existing tests on already quota-prepared Debian, Ubuntu and Rocky storage are a
 separate installation path, not qualification of their default root filesystems.
 Disk/inode exhaustion can still make the shared-root test server unavailable;

@@ -100,6 +100,9 @@ func (b nativeReadyBackend) Observe(ctx context.Context) (storageprep.Observatio
 			return result, err
 		}
 	}
+	if err := nativeCheckPartition(ctx, device, result.PartitionUUID); err != nil {
+		return result, err
+	}
 	return result, nil
 }
 

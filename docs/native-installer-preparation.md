@@ -6,6 +6,10 @@ initial preparation, one-shot initramfs conversion, and finalization into the
 regular `stackfort-installer` executable. The qualification test only supplies
 authenticated inputs, requests the real operations, and checks their results.
 
+The [primary MBR/BIOS follow-up](native-installer-mbr.md) extends the development
+layout checks and both GRUB entries. The original GPT qualification below is
+historical; it does not establish public MBR release support.
+
 ## Boot sequence
 
 1. `SourceStage.PrepareNativeBoot` verifies retained release provenance, captures

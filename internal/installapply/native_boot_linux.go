@@ -89,11 +89,8 @@ func (stage *SourceStage) PrepareNativeBoot(ctx context.Context, binding Release
 	if values["Inode size"] != "256" || nativeBootHasQuota(values) || strings.Contains(values["Filesystem features"], "quota") || strings.Contains(values["Filesystem features"], "project") {
 		return manifest, errors.New("requires unconverted ext4 with 256-byte inodes")
 	}
-	for key, expected := range map[string]string{"TYPE": "ext4", "PART_ENTRY_SCHEME": "gpt"} {
-		value, err := nativeReadCommand(ctx, "/usr/sbin/blkid", "-p", "-s", key, "-o", "value", device)
-		if err != nil || value != expected {
-			return manifest, errors.New("requires plain GPT/ext4 root")
-		}
+	if err := nativeCheckPartition(ctx, device, observed.PartitionUUID); err != nil {
+		return manifest, err
 	}
 	var capacity unix.Statfs_t
 	if err := unix.Statfs("/", &capacity); err != nil || capacity.Bsize <= 0 || capacity.Bavail < (8<<30)/uint64(capacity.Bsize) {

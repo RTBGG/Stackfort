@@ -137,7 +137,7 @@ func inspectNativeHost(ctx context.Context, staged bool) (report NativeHostRepor
 		return report, nil
 	}
 	snapshot, layoutErr := nativeHostLayout(ctx, packages)
-	report.add("native.boot-layout", layoutErr, "Plain ext4 root and GRUB one-shot support", "Use the qualified plain-GPT/ext4 layout; LVM, RAID, separate boot/state paths and unknown boot configurations are not converted.")
+	report.add("native.boot-layout", layoutErr, "Plain ext4 root and GRUB one-shot support", "Use plain GPT/ext4 or an active primary MBR Linux partition with BIOS/GRUB; logical partitions, LVM, RAID, separate boot/state paths and unknown boot configurations are not converted.")
 	if layoutErr == nil {
 		report.Snapshot = &snapshot
 	}
@@ -288,11 +288,8 @@ func nativeHostLayout(ctx context.Context, packages map[string]string) (snapshot
 	if err != nil {
 		return snapshot, err
 	}
-	for key, expected := range map[string]string{"TYPE": "ext4", "PART_ENTRY_SCHEME": "gpt"} {
-		value, err := nativeReadCommand(ctx, "/usr/sbin/blkid", "-p", "-s", key, "-o", "value", device)
-		if err != nil || value != expected {
-			return snapshot, errors.New("requires plain GPT/ext4 root")
-		}
+	if err := nativeCheckPartition(ctx, device, observed.PartitionUUID); err != nil {
+		return snapshot, err
 	}
 	for _, path := range []string{"/boot", "/boot/grub", "/etc", "/srv", "/var", "/var/lib"} {
 		fd, err := openSourceDirectory(path, false)

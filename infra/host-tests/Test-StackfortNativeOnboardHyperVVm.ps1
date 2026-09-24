@@ -5,6 +5,7 @@
 [CmdletBinding()]
 param(
     [ValidateSet('Onboard')][string] $Stage = 'Onboard',
+    [ValidateSet('gpt', 'mbr', 'gpt-candidate')][string] $Fixture = 'gpt',
     [ValidateSet('retained-fixture', 'public-github')][string] $Transport = 'retained-fixture',
     [Parameter(Mandatory)][string] $ArchiveDirectory,
     [Parameter(Mandatory)][ValidatePattern('^0\.1\.0-beta\.[1-9][0-9]*$')][string] $Version,
@@ -60,6 +61,10 @@ public sealed class StackfortOnboardRedemption {
     public bool Redeemed, ReuseRejected, LoginVerified;
 }
 public static class StackfortNativeOnboardProbeV1 {
+    public static bool IsPartitionUUID(string value) {
+        return value != null && ((Regex.IsMatch(value, @"\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z") && value != Guid.Empty.ToString("D")) ||
+            (Regex.IsMatch(value, @"\A[0-9a-f]{8}-0[1-4]\z") && !value.StartsWith("00000000-")));
+    }
     sealed class TransportTarget { public IPAddress Address; }
     static readonly ConditionalWeakTable<HttpClient, TransportTarget> transports = new();
     static IPAddress TransportAddress(string address) {
@@ -150,7 +155,7 @@ public static class StackfortNativeOnboardProbeV1 {
                     if (stage == 0 && text.Contains("Type exactly: " + fresh + "\n> ")) {
                         if (Field(text, "Release", "[0-9A-Za-z.+-]+") != version || Field(text, "Tag commit", "[0-9a-f]{40}") != commit ||
                             Field(text, "Machine ID", "[0-9a-f-]{36}") != machine || Field(text, "Root filesystem UUID", "[0-9a-f-]{36}") != root ||
-                            Field(text, "Root partition UUID", "[0-9a-f-]{36}") != partition || Field(text, "Boot ID", "[0-9a-f-]{36}") != boot ||
+                            !IsPartitionUUID(partition) || Field(text, "Root partition UUID", "(?:[0-9a-f-]{36}|[0-9a-f]{8}-0[1-4])") != partition || Field(text, "Boot ID", "[0-9a-f-]{36}") != boot ||
                             Field(text, "Installer SHA-256", "[0-9a-f]{64}") != installerHash)
                             throw new InvalidOperationException("Authenticated terminal review differs from the explicitly pinned release or live host.");
                         capture.OperationID = Field(text, "Operation", "[0-9a-f-]{36}");
@@ -304,14 +309,26 @@ function Get-OnboardBootstrapCommand {
     return "$environment STACKFORT_BOOTSTRAP_TESTING=1 STACKFORT_BOOTSTRAP_TEST_FIXTURE=$FixtureDirectory /bin/bash $FixtureDirectory/install.sh"
 }
 
-$taskVMName = 'stackfort-native-quota-debian-13'
+function Get-OnboardFixture([string] $Name) {
+    switch -CaseSensitive ($Name) {
+        'gpt' { return @{ VM = 'stackfort-native-quota-debian-13'; ID = '4361f439-15e9-4f9e-a690-9a8e44b6cbd3'; Machine = ''; KnownHosts = 'C:\ProgramData\Stackfort\Hyper-V\known_hosts' } }
+        'mbr' { return @{ VM = 'stackfort-native-mbr-debian-13'; ID = '1f5e665a-fddd-4cd2-bc55-44255b01963d'; Machine = '91d127c9-40e6-ab48-9528-5085e8888729'; KnownHosts = 'work/mbr-lab-20260924/known_hosts' } }
+        'gpt-candidate' { return @{ VM = 'stackfort-mbr-builder-debian-13'; ID = '55729cf8-11e3-4744-be5b-ddde3824c0e4'; Machine = 'a5db08d7-6c4e-47e0-a381-9bd594b2731a'; KnownHosts = 'work/mbr-lab-20260924/known_hosts' } }
+        default { throw 'Unknown disposable onboarding fixture.' }
+    }
+}
+$taskFixtureProfile = Get-OnboardFixture $Fixture
+if (-not [IO.Path]::IsPathRooted($taskFixtureProfile.KnownHosts)) { $taskFixtureProfile.KnownHosts = Join-Path $PSScriptRoot $taskFixtureProfile.KnownHosts }
+$taskVMName = $taskFixtureProfile.VM
 $taskVM = Get-VM -Name $taskVMName
-if ($taskVM.Id -ne '4361f439-15e9-4f9e-a690-9a8e44b6cbd3' -or $taskVM.State -ne 'Running') { throw 'Requires the exact already-running disposable Debian VM.' }
+if ($taskVM.Id -ne $taskFixtureProfile.ID -or $taskVM.State -ne 'Running') { throw 'Requires the exact already-running disposable Debian VM.' }
+$taskMemory = Get-VMMemory -VM $taskVM
+if ($taskMemory.DynamicMemoryEnabled -or $taskMemory.Startup -lt 4GB) { throw 'Qualification requires fixed RAM of at least 4 GiB across reboot.' }
 if ((Get-VM -Name 'stackfort-native-restore-rescue').State -ne 'Off') { throw 'The duplicate-identity restored clone must remain off.' }
 $taskSSHPath = 'C:\Windows\System32\OpenSSH\ssh.exe'
 $taskSCPPath = 'C:\Windows\System32\OpenSSH\scp.exe'
 $taskSSH = @('-o', 'BatchMode=yes', '-o', 'IdentitiesOnly=yes', '-o', 'ConnectTimeout=5', '-o', 'StrictHostKeyChecking=yes',
-    '-o', 'UserKnownHostsFile=C:\ProgramData\Stackfort\Hyper-V\known_hosts', '-o', "HostKeyAlias=$taskVMName", '-o', 'LogLevel=ERROR',
+    '-o', "UserKnownHostsFile=$($taskFixtureProfile.KnownHosts)", '-o', "HostKeyAlias=$taskVMName", '-o', 'LogLevel=ERROR',
     '-i', 'C:\ProgramData\Stackfort\Hyper-V\keys\stackfort-host-test-ed25519')
 $taskRepository = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../..')).Path
 $taskSmokePath = Join-Path $PSScriptRoot 'Invoke-StackfortInstalledApiSmoke.ps1'
@@ -412,8 +429,10 @@ function Wait-OnboardCompleted([string] $PreviousBoot, [string] $ConversionBoot 
 $taskAddress = Get-OnboardAddress
 if (-not $taskAddress) { throw 'The verified VM has no usable IPv4 address.' }
 $taskHost = Invoke-OnboardSSH $taskAddress 'sudo -n test ! -e /var/lib/stackfort-installer && sudo -n test ! -L /var/lib/stackfort-installer && cat /proc/sys/kernel/random/boot_id && sudo -n cat /sys/class/dmi/id/product_uuid && sudo -n blkid -s UUID -o value -- "$(findmnt -nro SOURCE /)" && sudo -n blkid -s PARTUUID -o value -- "$(findmnt -nro SOURCE /)"'
-$taskIdentity = @($taskHost.Output.Trim().ToLowerInvariant() -split '\r?\n')
-if ($taskHost.ExitCode -ne 0 -or $taskIdentity.Count -ne 4 -or @($taskIdentity | Where-Object { $_ -notmatch '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' }).Count -ne 0) { throw 'Fresh-state or live host identity verification failed; no onboarding was started.' }
+$taskIdentity = @($taskHost.Output.Trim() -split '\r?\n')
+if ($taskHost.ExitCode -ne 0 -or $taskIdentity.Count -ne 4 -or @($taskIdentity[0..2] | Where-Object { $_ -cnotmatch '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' -or $_ -eq [Guid]::Empty.ToString('D') }).Count -ne 0 -or
+    -not [StackfortNativeOnboardProbeV1]::IsPartitionUUID($taskIdentity[3]) -or ($taskFixtureProfile.Machine -ne '' -and $taskIdentity[1] -cne $taskFixtureProfile.Machine) -or
+    (($Fixture -eq 'mbr') -ne ($taskIdentity[3].Length -eq 11))) { throw 'Fresh-state or live host identity verification failed; no onboarding was started.' }
 $taskInitialBoot = $taskIdentity[0]
 $taskRunID = [Guid]::NewGuid().ToString('N')
 $taskUpload = "/tmp/stackfort-onboard-upload-$taskRunID"
@@ -480,7 +499,7 @@ try {
     }
     $taskRedemption = [StackfortNativeOnboardProbeV1]::Redeem($taskAddress, $taskCertificate.Output, $taskCapture.SetupCode, $taskSmoke)
     $taskResult = [pscustomobject]@{
-        Stage = $Stage; Transport = $Transport; VM = $taskVMName; Version = $Version; Commit = $Commit; ArchiveSHA256 = $ArchiveSHA256; AttestationSHA256 = $AttestationSHA256;
+        Stage = $Stage; Transport = $Transport; Fixture = $Fixture; VM = $taskVMName; Version = $Version; Commit = $Commit; ArchiveSHA256 = $ArchiveSHA256; AttestationSHA256 = $AttestationSHA256;
         BootstrapSHA256 = $BootstrapSHA256; InstallerSHA256 = $taskInstallerSHA; OperationID = $taskCapture.OperationID; ReviewSHA256 = $taskCapture.ReviewSHA256;
         InitialBootID = $taskInitialBoot; ConversionBootID = $taskFinalBoot; FinalBootID = $script:taskOnboardPersistence.FinalBootID; CertificateSHA256 = $taskRedemption.CertificateSHA256;
         OriginalSetupRedeemed = $taskRedemption.Redeemed; SetupReplayRejected = $taskRedemption.ReuseRejected; AdministratorLoginVerified = $taskRedemption.LoginVerified;

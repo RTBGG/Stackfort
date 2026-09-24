@@ -22,11 +22,12 @@ omitting a release does not reduce the required matrix.
 
 Beta.10 was published on 2026-09-24 as the first experimental public release.
 Its frozen catalog is empty because no published predecessor existed at its
-publication gate. Before building the next candidate, add `0.1.0-beta.10`
-with archive SHA-256
+publication gate. The next candidate's catalog now includes `0.1.0-beta.10`
+as supported, with the verified public archive SHA-256
 `8e7ce111d6cefda172e74bd7a71380c181e66a726d8f157f6bd1af8944e93263`
-and qualify the required matrix; no future upgrade path is promised by this
-first release. Local `0.1.0-beta.1` / `0.1.0-beta.2` rehearsal builds are not
+and therefore requires nine scenario/OS cells before publication. Those cells
+are not qualified merely by adding this entry; no successful upgrade is claimed.
+Local `0.1.0-beta.1` / `0.1.0-beta.2` rehearsal builds are not
 public releases and do not establish a support commitment.
 
 ## Candidate procedure
