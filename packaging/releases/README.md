@@ -1,8 +1,10 @@
 # Public release readiness contract v1
 
 The tag-publishing workflow is **blocked by default**. This directory contains
-policy, not release authorization. There is intentionally no readiness evidence
-file until the checks and real human decisions below have been completed.
+policy, not blanket release authorization. Readiness evidence is added only
+after the checks and real human decisions below have been completed.
+The [Beta.10 record](evidence/0.1.0-beta.10.json) documents the first approved
+experimental candidate; it does not authorize a different release.
 Manual release workflow dispatch still builds and attests an unpublished
 candidate; it neither runs this publication gate nor claims it passed. A tag run
 promotes those **exact retained bytes without rebuilding**, creates an unpublished

@@ -20,8 +20,13 @@ supported releases so skipped-version upgrades are tested. The publication
 gate compares the catalog with **all pages** of the GitHub release inventory;
 omitting a release does not reduce the required matrix.
 
-There are currently no published Stackfort releases. The checked-in catalog is
-therefore empty. Local `0.1.0-beta.1` / `0.1.0-beta.2` rehearsal builds are not
+Beta.10 was published on 2026-09-24 as the first experimental public release.
+Its frozen catalog is empty because no published predecessor existed at its
+publication gate. Before building the next candidate, add `0.1.0-beta.10`
+with archive SHA-256
+`8e7ce111d6cefda172e74bd7a71380c181e66a726d8f157f6bd1af8944e93263`
+and qualify the required matrix; no future upgrade path is promised by this
+first release. Local `0.1.0-beta.1` / `0.1.0-beta.2` rehearsal builds are not
 public releases and do not establish a support commitment.
 
 ## Candidate procedure

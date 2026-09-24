@@ -179,6 +179,15 @@ and reboot recovery pass on Debian 13, Ubuntu 26.04, and Rocky Linux 10. See the
 
 ## Phase 6: Installer, updater, and public beta
 
+**2026-09-24 milestone:** [Beta.10](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.10)
+is published as an immutable experimental prerelease after exact-candidate
+qualification and maintainer approval. The
+[public download/install, original setup, rerun and reboot test](../infra/host-tests/results/2026-09-24-beta10-public-installation.md)
+passed on fresh Debian 13 amd64. Scope is disposable test servers only,
+community support, no independent security review, and removal by complete
+OS reinstallation. This does not complete remaining product/browser review,
+capacity protection, wider native OS support or production-readiness work.
+
 - [x] Versioned DEB/RPM packages where appropriate.
 - [x] Verified one-line and manual installers for clean hosts.
 - [x] Stable/beta GitHub Release channels and update checks.
@@ -253,8 +262,10 @@ The [release checklist](release-checklist.md) keeps final EN/DE workflow review,
 independent security review, product-spec gaps (including full uninstall), and
 the support-window decision explicit; this documentation work publishes no beta.
 
-Exit gate: the success criteria in `product-spec.md` pass, followed by a limited
-public beta with an explicit support window.
+Full phase exit gate: the success criteria in `product-spec.md` pass with
+explicit deployment/support terms. The separately approved experimental release
+above uses community-only support without a guaranteed support window; it does
+not mark all remaining product or production-readiness criteria complete.
 
 Workflow follow-up (2026-09-06): administrator Settings and account Profile now
 include EN/DE TOTP setup, replacement, confirmed removal and a recovery-only

@@ -27,14 +27,14 @@ code. Ordinary non-security bugs belong in
 
 ## Supported versions
 
-Stackfort is currently pre-beta. No public release has been published and no
-version is supported for production use. Findings against `main` are welcome;
+Stackfort is currently an experimental beta. No version is supported for
+production use. Findings against `main` are welcome;
 development artifacts and local rehearsal versions are not supported releases.
 
-The selected **`0.1.0-beta.10` candidate** is intended as the first experimental
-public version, subject to its complete technical qualification and RTBGG's
-separate publication approval. Naming it here does not mean that it is published,
-approved or independently audited. If published, its deployment/support scope is:
+**[`0.1.0-beta.10`](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.10)**
+was published on 2026-09-24 after exact-candidate technical qualification and
+[RTBGG's publication approval](docs/release-evidence/2026-09-24-beta10-publication-approval.md).
+No independent security review has been performed. Its deployment/support scope is:
 
 - Fresh disposable **Debian 13 amd64** test servers with plain GPT/ext4 root
   storage and GRUB; no production workloads or important data.
@@ -50,10 +50,10 @@ approved or independently audited. If published, its deployment/support scope is
   all server data, configuration and services. The shared-root capacity
   limitation described below remains applicable.
 
-Release notes and the digest-bound candidate support/publication records must
-confirm this exact scope before public availability. Check the
-[release list](https://github.com/RTBGG/Stackfort/releases) for actual publication;
-neither a Git tag nor a successful artifact build is a published release.
+Release notes and the digest-bound candidate support/publication records confirm
+this scope. The release receipt binds the candidate's earlier `SECURITY.md`;
+this publication-status update changes none of its support or deployment terms.
+Neither an unrelated Git tag nor a successful artifact build is a published release.
 
 Support is **community-only through GitHub**, provided voluntarily by
 [RTBGG](https://github.com/RTBGG) and any future community contributors. There is
@@ -61,7 +61,7 @@ no commercial support, service-level agreement, guaranteed response or fix, or
 promised support period/end date. Contributions and voluntary reviews are welcome;
 their availability must not be assumed.
 
-Before public beta, maintainers must identify the released versions, upgrade
+For each public beta, maintainers must identify the released versions, upgrade
 expectations and deployment limits here and in release notes under these
 community-only terms. Do not invent support end dates or maintenance guarantees. The
 [upgrade catalog](packaging/upgrades/supported-releases.json) records the exact

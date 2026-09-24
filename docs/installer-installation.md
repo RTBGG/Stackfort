@@ -8,8 +8,8 @@ default root filesystems.
 The first native fresh-default beta is limited to **Debian 13 `amd64`**, within
 the [native host profile and release gates](one-line-installation-readiness.md).
 Ubuntu/Rocky native fresh-default installation is not advertised until qualified.
-The maintainer has authorized an experimental beta without independent security
-review, not approved any particular candidate. It is for fresh disposable test
+The maintainer has approved Beta.10 as an experimental beta without independent
+security review. It is for fresh disposable test
 servers only, never production or important data. Support is community-only,
 without guaranteed responses or fixes; see the [security policy](../SECURITY.md).
 The initial 8 GiB/100,000-free-inode check is installation headroom, not an OS
@@ -22,11 +22,10 @@ configuration and services.** This experimental beta has no in-place uninstaller
 passive package removal is insufficient. Review the
 [removal scope](experimental-beta-removal.md) before installing.
 
-No public release has been published yet. The current bootstrap explicitly pins
-`0.1.0-beta.10`; that is a planned experimental candidate, not a claim that its
-assets exist or its exact tagged installation has passed qualification. The
-commands below require matching published assets from the
-[release list](https://github.com/RTBGG/Stackfort/releases).
+The current bootstrap explicitly pins
+[`0.1.0-beta.10`](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.10),
+published on 2026-09-24 with immutable assets after exact-candidate qualification
+and maintainer approval. It does not select the stable channel or a newer beta.
 Use the [operations guide](operations.md) for first setup and ongoing checks.
 
 ## Before installation
@@ -94,7 +93,7 @@ Its explicit root-owned local-fixture mode is reserved for the project's
 unreleased clean-host qualification and remains disabled unless the test flag
 is deliberately set. The older
 [clean-host installer matrix](../infra/host-tests/results/2026-09-01-clean-installer-matrix-hyper-v.md)
-covers already prepared storage, not the new beta.4 public-native flow. Seven
+covers already prepared storage, not the later public-native flow. Seven
 shell-routing qualification markers now pass; these isolated fixtures do not
 substitute for running the exact tagged archive on a clean host.
 
@@ -130,9 +129,15 @@ See [setup delivery and recovery](native-installer-bootstrap-handoff.md).
 
 ### Passive native package (prepared-storage route)
 
-Published releases will provide a `stackfort-release` DEB for Debian/Ubuntu and an RPM
+Published releases provide a `stackfort-release` DEB for Debian/Ubuntu and an RPM
 for Rocky Linux. Download the matching package together with `SHA256SUMS`, then
 verify the exact filename before installing it:
+
+For Beta.10, GitHub's public carrier asset names contain `.beta.10`, while
+the checksum inventory and package metadata retain `~beta.10`. Save those
+DEB/RPM downloads with the inventory's original `~beta.10` filename before
+checking them. The downloaded bytes are unchanged. This naming difference
+does not affect the one-line installer's `.tar.gz` archive.
 
 ```sh
 grep " ./<downloaded-package>$" SHA256SUMS | sha256sum --check --strict

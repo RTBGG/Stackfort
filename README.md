@@ -13,9 +13,9 @@ the web interface itself a privileged system process.
 
 > [!WARNING]
 > Stackfort is under active development. Phase 6 is in progress, and the
-> project is not ready for production servers or valuable data. No public
-> release is available yet; installation examples require published assets.
-> The first native beta targets disposable Debian 13 test servers only.
+> project is not ready for production servers or valuable data.
+> [Beta.10](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.10)
+> is available for fresh, disposable Debian 13 `amd64` test servers only.
 > No independent security review has been performed; support is community-only.
 > No in-place uninstaller is available. Removing the experimental beta requires
 > complete OS reinstallation, destroying all server data, configuration and services.
@@ -26,9 +26,8 @@ the web interface itself a privileged system process.
 
 ## Install
 
-Planned first native beta: **fresh, disposable Debian 13 `amd64` test servers**
-within the [qualified host profile](docs/one-line-installation-readiness.md#scope).
-Public native installation remains blocked until its release gates pass:
+Experimental beta: **fresh, disposable Debian 13 `amd64` test servers**
+within the [qualified host profile](docs/one-line-installation-readiness.md#scope):
 
 ```sh
 curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/RTBGG/stackfort/main/packaging/installer/install.sh | sudo bash
@@ -37,8 +36,8 @@ curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/RTBGG/st
 [Inspect the installer](https://raw.githubusercontent.com/RTBGG/stackfort/main/packaging/installer/install.sh)
 before running it as root. HTTPS-only transport and TLS 1.2 or newer are required
 by this command. The current script explicitly selects **`0.1.0-beta.10`**, not
-latest stable. **No public release exists yet:** its assets and exact tagged
-installation qualification are still pending. Native setup requires an interactive
+latest stable. [Release assets and checksums](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.10)
+are public and immutable. Native setup requires an interactive
 root console/SSH terminal, explicit reboot consent and saving the setup code.
 See the
 [installation guide](docs/installer-installation.md) for prerequisites and options.
@@ -63,7 +62,7 @@ The initial IP-based HTTPS endpoint on port 8443 remains available as a fallback
 | Security | Role and account isolation, MFA, audit chain, Coraza WAF, and hardened services |
 | Databases | Tenant-scoped MariaDB, guided lifecycle, credential rotation, and phpMyAdmin sign-on |
 | File management | Browse, upload, download, copy, move, trash, archives, and local file backups |
-| Installation | Quota-prepared host installer and passive DEB/RPM carriers; Debian 13 native beta qualification in progress |
+| Installation | Experimental Debian 13 native one-line installer; separate quota-prepared host and passive DEB/RPM routes |
 | Containers | Rootless Podman, scanned images, private resources, health-gated Quadlets, routing, and three-OS isolation qualification |
 
 ## Design goals

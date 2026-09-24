@@ -1,8 +1,10 @@
 # Public one-line installation readiness
 
-Audit date: 2026-09-19. Status: **not ready for public native installation**.
-The public GitHub Releases API returned HTTP 200 with an empty inventory.
-Unpublished workflow candidates are not public releases.
+Audit date: 2026-09-24. Status: **experimental public Debian 13 beta available**.
+[Beta.10](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.10)
+is a public immutable prerelease. All 14 assets were downloaded and verified;
+the [public-GitHub fresh installation, setup, rerun and reboot test](../infra/host-tests/results/2026-09-24-beta10-public-installation.md)
+passed. This is not production approval or qualification of arbitrary hosts.
 
 The [exact beta.10 candidate](../infra/host-tests/results/2026-09-19-beta10-candidate-qualification.md)
 has now passed fresh Debian13 native onboarding with genuine tag provenance,
@@ -12,10 +14,10 @@ installed-broker rootless build/Trivy/deploy, real process-loss quarantine with
 external IPv4/link-local-IPv6 TCP/UDP controls, and
 [same-target full OS reprovision removal](../infra/host-tests/results/2026-09-19-beta10-os-removal.md).
 These used the exact retained archive, not repaired installed binaries.
-Candidate-specific RTBGG publication approval and the live release gates remain
-pending. The assets are still unpublished; a real public-GitHub download/install
-check must follow publication. No independent review or production suitability
-is implied. The report explicitly identifies narrower coverage, including no
+Candidate-specific [RTBGG publication approval](release-evidence/2026-09-24-beta10-publication-approval.md)
+and the live release gates passed before publication. The public transport test
+then passed against the unchanged archive. No independent review or production
+suitability is implied. The report explicitly identifies narrower coverage, including no
 global IPv6, I/O-rate enforcement or public-control-API OCI workflow claim.
 
 ## Earlier candidate findings
@@ -72,7 +74,11 @@ It used the installed broker but remains modified-host evidence; the same
 checks were subsequently repeated against the exact beta.10 fresh installation.
 The implementation commit's GitHub CI and Security workflows also passed.
 
-## Required execution order
+## Qualification sequence and remaining boundaries
+
+The following sequence governed the release. Beta.10's completed evidence is
+linked above; this checklist does not broaden those reports' tested scope or
+waive remaining production, recovery, capacity and browser-review limitations.
 
 1. Retain and extend native boot-safety qualification: isolated initramfs construction,
    subprocess containment, operation-bound boot authorization, pre-write offline
@@ -96,15 +102,15 @@ The implementation commit's GitHub CI and Security workflows also passed.
    nftables reload. Preserve loopback-only managed OCI publication; reject
    unsupported existing firewall/container configurations explicitly.
    The isolated dedicated-table/admission start/reload/stop checks now pass;
-   the new fresh-host firewall eligibility still needs its real positive-host
-   check and the exact candidate's complete ingress/reboot qualification.
+   Beta.10 additionally passed the real positive-host, ingress/reboot and
+   process-loss checks documented in the exact-candidate report.
 4. Qualify the implemented public `onboard` dispatcher against the exact candidate.
    Bootstrap now selects that path for eligible Debian preflight blockers or
    existing native state; it authenticates native staging, binds real-terminal
    fresh-disposable/reboot consent and refuses partial-state shortcuts. Completed
    reruns use the sealed runtime with systemd-supervised live admission checks.
-   The seven isolated shell-routing markers pass; real tagged onboarding remains
-   pending. `storageprep.CheckInactive` and strict tag origin remain enforced.
+   The seven isolated shell-routing markers and real Beta.10 tagged onboarding
+   pass. `storageprep.CheckInactive` and strict tag origin remain enforced.
 5. Qualify the implemented terminal-only setup handoff end to end: `SAVED`
    acknowledgement before preparation, digest-only operation/release binding and
    one-hour activation after installed-payload/service checks. Reboots/reruns
@@ -147,8 +153,8 @@ fail-closed boot, firewall or exact-candidate functional tests.
 The bare bootstrap now explicitly selects `0.1.0-beta.10` for a fresh invocation,
 not GitHub's latest-stable channel. Explicit versions and existing journal pins
 remain supported; a beta is never relabeled stable. The public handler is
-registered, but final tagged-candidate qualification and public release assets
-are still pending. The [installation guide](installer-installation.md) documents
+registered; exact tagged-candidate qualification, public immutable release assets
+and the public transport test are complete for Beta.10. The [installation guide](installer-installation.md) documents
 the real-terminal consent/reboot/setup flow and completed-rerun restrictions.
 
 The current carrier wrapper also cannot be advertised as native conversion:

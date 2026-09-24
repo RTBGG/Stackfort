@@ -2,9 +2,11 @@
 
 `stackfort-installer` provides preflight inspection, interactive native onboarding,
 prepared-storage installation, panel hostname/certificate management, and native
-operator commands. Public `onboard` dispatch is implemented; the current beta
-tagged archive, public downloads and clean-host flow are **not yet qualified or
-published**. Source implementation is not a release-readiness claim.
+operator commands. Public `onboard` dispatch is available in the experimental
+[`0.1.0-beta.10` release](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.10)
+for fresh disposable Debian 13 amd64 hosts within the
+[qualified profile](../../docs/one-line-installation-readiness.md#scope).
+It is not for production or important data; no independent review has been performed.
 
 ```sh
 stackfort-installer preflight --format=json

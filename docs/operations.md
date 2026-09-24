@@ -1,26 +1,33 @@
 # Operations guide
 
 This guide covers an installed Stackfort test host, not the development server.
-Stackfort is pre-beta: use fresh, disposable Debian 13, Ubuntu 26.04 LTS, or
-Rocky Linux 10 hosts on `amd64`. Do not place valuable data on them. There is
-no public release or production support window yet.
+Stackfort is an experimental beta: the public native one-line route supports
+fresh, disposable Debian 13 `amd64` hosts within the
+[qualified profile](one-line-installation-readiness.md#scope).
+Ubuntu 26.04 LTS and Rocky Linux 10 prepared-storage tests are a separate route.
+Do not place valuable data on these hosts. Support is community-only; no
+production use or support window is promised.
 
 ## Prepare and install
 
 1. Retain authenticated console/SSH access independent of Stackfort. Record
    the host identity and take a clean, powered-off VM checkpoint for testing.
-2. Meet the [preflight requirements](installer-preflight.md): systemd/cgroup
+2. For the native one-line route, follow the
+   [native prerequisites and consent flow](installer-installation.md#github-bootstrap);
+   eligible fresh Debian root storage is prepared automatically after explicit
+   risk/reboot consent. For the separate prepared-storage route, meet the
+   [preflight requirements](installer-preflight.md): systemd/cgroup
    v2, at least 2 logical CPUs and nominal 4 GiB RAM, enforcing MAC policy,
    and a quota-enabled `/srv/hosting` filesystem with at least 5 GiB free.
-   Provision and verify storage deliberately; the installer does not partition
-   disks or silently enable quotas on the root filesystem.
+   Provision and verify that route's storage deliberately. Neither route silently
+   adopts existing hosting data or partitions disks.
 3. Reserve ports 80/443 for customer sites and 8443 for management. Restrict
    management access to trusted operator networks using your upstream firewall
    or VPN. Keep existing SSH access when changing network rules. Never expose
    API port 8080, database sockets, cache management, or a Podman API socket.
 4. Follow the [installation guide](installer-installation.md) for one exact
-   release and its checksum. The examples become usable when release assets
-   exist; development qualification uses the separate disposable host harness.
+   release and its checksum. Beta.10 assets are public; development qualification
+   uses the separate disposable host harness.
 5. Record the version, source commit, archive digest, installation method,
    preflight report, and final installer result. Keep private journals local.
 

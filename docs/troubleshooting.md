@@ -15,14 +15,18 @@ the native carrier. Exit `2` means a host requirement failed; use that check's
 after installation are not a reason to delete the installed service.
 
 Check the filesystem and service requirements in the
-[preflight contract](installer-preflight.md). Missing project quotas need
-deliberate filesystem provisioning, not a guessed `fstab` edit. Existing
+[preflight contract](installer-preflight.md). The native one-line route prepares
+eligible fresh Debian root storage through its explicit consent/reboot flow.
+The separate prepared-storage route requires deliberate filesystem provisioning,
+not a guessed `fstab` edit. Existing
 hosting software is not automatically adopted or migrated.
 
 If the GitHub bootstrap reports a missing release, check the
-[release list](https://github.com/RTBGG/Stackfort/releases). No public release
-exists yet. Once beta assets exist, select their exact version; `latest` does
-not select a prerelease. Do not enable local-fixture flags to bypass production
+[release list](https://github.com/RTBGG/Stackfort/releases). Beta.10 is public
+and selected by the current bootstrap; older unpublished candidates still return
+404. Use the current script on a fresh test OS; `latest` does not select a
+prerelease. Existing installation journals retain their pinned version and must
+not be edited or deleted to switch candidates. Do not enable local-fixture flags to bypass production
 release checks. If installation was interrupted, rerun the **same source** as
 described in [installer recovery](installer-installation.md#journal-and-retry-behavior).
 
