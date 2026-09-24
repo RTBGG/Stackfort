@@ -31,7 +31,26 @@ Stackfort is currently an experimental beta. No version is supported for
 production use. Findings against `main` are welcome;
 development artifacts and local rehearsal versions are not supported releases.
 
-## Beta.11: fresh installations only
+## Beta.12: fresh installations only
+
+[`0.1.0-beta.12`](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.12)
+was published on 2026-09-24 as an immutable experimental prerelease under
+[RTBGG's candidate-specific approval](docs/release-evidence/2026-09-24-beta12-publication-approval.md).
+The public bootstrap selects Beta.12 for fresh disposable Debian 13 amd64 hosts,
+using qualified ext4/GRUB GPT/UEFI or primary-MBR/BIOS storage.
+It fixes rejection of [inactive optional optical-media entries](docs/native-installer-optical-media.md).
+Exact-candidate host qualification, failure containment, same-target OS removal,
+live CI/security and provenance gates passed; public assets match the original bytes.
+
+**No upgrades from Beta.10, Beta.11 or any other installed release are supported.**
+Do not use the updater or install over an existing system. No predecessor is
+retired and no failed upgrade test is counted as passed. No independent security
+review, production use or important data. Community-only support and the
+full-OS-reinstallation removal requirement below apply unchanged.
+See [candidate evidence](infra/host-tests/results/2026-09-24-beta12-candidate-qualification.md)
+and [publication evidence](infra/host-tests/results/2026-09-24-beta12-public-installation.md).
+
+## Earlier published release (Beta.11)
 
 [`0.1.0-beta.11`](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.11)
 was published on 2026-09-24 as an immutable experimental prerelease under
@@ -39,7 +58,7 @@ was published on 2026-09-24 as an immutable experimental prerelease under
 It adds qualified primary active MBR/ext4 roots with BIOS/GRUB to Debian 13 amd64
 GPT/UEFI fresh installation. The same community-only terms and limitations below
 apply: no independent review, production use or important data; removal requires
-complete OS reinstallation. The public bootstrap now selects Beta.11 for a fresh host.
+complete OS reinstallation. The public bootstrap selected Beta.11 at publication; it now selects the current release above.
 
 **Upgrades from Beta.10 or any other existing release are unsupported and
 unqualified.** Do not use the updater or install Beta.11 over an existing system.
@@ -52,7 +71,7 @@ See the [candidate evidence](infra/host-tests/results/2026-09-24-beta11-candidat
 and [MBR boundary](docs/native-installer-mbr.md). The frozen candidate's earlier
 unpublished-status text remains historical; this later publication decision is authoritative.
 
-## Earlier published release
+## Earlier published release (Beta.10)
 
 **[`0.1.0-beta.10`](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.10)**
 was published on 2026-09-24 after exact-candidate technical qualification and
@@ -91,14 +110,6 @@ community-only terms. Do not invent support end dates or maintenance guarantees.
 published predecessors that require upgrade qualification; retirement requires
 an explicit reason. It does not by itself create a production support promise.
 See the [release checklist](docs/release-checklist.md).
-
-## Unpublished candidate
-
-`0.1.0-beta.12` is being prepared and is **not published or approved for use**.
-It corrects rejection of inactive optional optical-drive fstab entries under a
-narrow noauto policy. Preparation is not publication approval or completed
-exact-candidate installation/upgrade/security/removal qualification.
-The public bootstrap remains on the published release above.
 
 ## Handling and disclosure
 

@@ -24,16 +24,19 @@ function currentCandidateVersionsAgree(bootstrap, documents) {
     }
     let text = sections.length ? source.replace(sections[0][0], '') : source;
     // Security policy must retain a published predecessor's actual terms rather
-    // than erasing it when the bootstrap moves. Only a named historical section
-    // is exempt, and it must name exactly one older canonical published version.
-    const earlier = file === 'SECURITY.md' ? [...text.matchAll(/^## Earlier published release\n([\s\S]*?)(?=^## |$(?![\s\S]))/gm)] : [];
-    assert.ok(earlier.length <= 1, 'unambiguous earlier published release section');
-    if (earlier.length) {
-      const historical = earlier[0][0];
+    // than erasing it when the bootstrap moves. Each distinct historical section
+    // must name exactly one older canonical published version.
+    const earlier = file === 'SECURITY.md' ? [...text.matchAll(/^## Earlier published release(?: \(Beta\.([1-9][0-9]*)\))?\n([\s\S]*?)(?=^## |$(?![\s\S]))/gm)] : [];
+    const historicalVersions = new Set();
+    for (const section of earlier) {
+      const historical = section[0];
       const versions = [...new Set([...historical.matchAll(/0\.1\.0-beta\.[0-9]+/g)].map(match => match[0]))];
       assert.equal(versions.length, 1, 'one named earlier published version');
       assert.match(versions[0], /^0\.1\.0-beta\.[1-9][0-9]*$/);
       assert.ok(Number(versions[0].split('.').at(-1)) < Number(version.split('.').at(-1)), 'historical beta precedes default');
+      assert.ok(!historicalVersions.has(versions[0]), 'one historical section per version');
+      historicalVersions.add(versions[0]);
+      if (section[1]) assert.equal(section[1], versions[0].split('.').at(-1), 'heading matches historical version');
       assert.ok(historical.includes('was published on '), 'explicit historical publication statement');
       text = text.replace(historical, '');
     }
@@ -67,6 +70,15 @@ test('candidate documentation guard rejects stale, mixed, missing and ambiguous 
   const historical = '0.1.0-beta.8\n\n## Earlier published release\n0.1.0-beta.7 was published on 2026-09-24.\n\n## Other\n';
   currentCandidateVersionsAgree(bootstrap, new Map([['SECURITY.md', historical]]));
   for (const invalid of [historical.replace('was published on ', 'unpublished'), historical.replace('beta.7', 'beta.8'), historical.replace('beta.7', 'beta.9'), historical.replace('beta.7', 'beta.07'), historical + '0.1.0-beta.7', historical + historical]) {
+    assert.throws(() => currentCandidateVersionsAgree(bootstrap, new Map([['SECURITY.md', invalid]])));
+  }
+});
+
+test('multiple distinct historical releases preserve each support notice without allowing mixed versions', () => {
+  const bootstrap = "readonly default_version='0.1.0-beta.12'\n";
+  const policy = '0.1.0-beta.12\n\n## Earlier published release (Beta.11)\n0.1.0-beta.11 was published on 2026-09-24.\n\n## Earlier published release (Beta.10)\n0.1.0-beta.10 was published on 2026-09-24.\n';
+  currentCandidateVersionsAgree(bootstrap, new Map([['SECURITY.md', policy]]));
+  for (const invalid of [policy.replace('(Beta.11)', '(Beta.10)'), policy.replace('0.1.0-beta.11 was', '0.1.0-beta.12 was'), policy.replace('0.1.0-beta.10 was', '0.1.0-beta.11 was'), policy + '0.1.0-beta.9']) {
     assert.throws(() => currentCandidateVersionsAgree(bootstrap, new Map([['SECURITY.md', invalid]])));
   }
 });

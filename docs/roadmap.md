@@ -194,8 +194,16 @@ is published for fresh installations only, adding qualified
 Exact-candidate fresh MBR/GPT installation, hosting/API, resource/isolation,
 WAF/cache, OCI, rerun/reboot, failure quarantine and GPT OS-removal tests passed.
 All public assets were downloaded and checked against the original bytes.
-The public bootstrap selects Beta.11. Upgrades from Beta.10 remain unsupported;
+The public bootstrap initially selected Beta.11. Upgrades from Beta.10 remain unsupported;
 the failed predecessor tests are retained, not counted as passed.
+
+**2026-09-24 optical-media fix:** [Beta.12](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.12)
+is published unchanged after fresh MBR/GPT, installed-host, resource/isolation,
+WAF/cache, real OCI, process-loss containment and same-target OS-removal checks.
+It accepts the qualified inactive optional CD-ROM entries while preserving them.
+All 14 public assets match their hashes and original package bytes. The bootstrap
+selects Beta.12 only for fresh installations; no upgrades are offered.
+See [publication and final public installation status](../infra/host-tests/results/2026-09-24-beta12-public-installation.md).
 
 - [x] Versioned DEB/RPM packages where appropriate.
 - [x] Verified one-line and manual installers for clean hosts.

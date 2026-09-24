@@ -1,8 +1,17 @@
 # Public one-line installation readiness
 
 Audit date: 2026-09-24. Status: **experimental public Debian 13 beta available**.
+[Beta.12](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.12) is the
+current immutable fresh-install-only prerelease. All 14 public assets were
+downloaded and verified against the retained original bytes. It adds the narrow
+[inactive optical-media exception](native-installer-optical-media.md) to the
+qualified MBR/BIOS and GPT/UEFI profiles. No upgrades from any installed release.
+See [publication evidence and final transport-test status](../infra/host-tests/results/2026-09-24-beta12-public-installation.md).
+
+### Earlier public Beta.11
+
 [Beta.11](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.11)
-is the current immutable **fresh-install-only** prerelease. All 14 public assets
+is an earlier immutable **fresh-install-only** prerelease. All 14 public assets
 were downloaded and verified; all 10 original build files remain byte-identical.
 It supports the qualified primary MBR/BIOS and GPT/UEFI ext4/GRUB profiles below.
 No upgrade from Beta.10 or another installed release is supported.
@@ -153,7 +162,7 @@ waive remaining production, recovery, capacity and browser-review limitations.
 
 ## Scope
 
-The public Beta.11 native conversion profile is Debian 13 amd64, fresh disposable
+The public Beta.12 native conversion profile is Debian 13 amd64, fresh disposable
 plain GPT/UEFI or active primary MBR/BIOS ext4 root with GRUB.
 Ubuntu/Rocky native conversion, LVM/RAID, separate
 persistent boot/state filesystems and retained-data conversion are not qualified.
@@ -176,10 +185,10 @@ fail-closed boot, firewall or exact-candidate functional tests.
 
 ### Bootstrap selection and availability
 
-The bare bootstrap now explicitly selects `0.1.0-beta.11` for a fresh invocation,
+The bare bootstrap now explicitly selects `0.1.0-beta.12` for a fresh invocation,
 not GitHub's latest-stable channel. Explicit versions and existing journal pins
 remain supported; a beta is never relabeled stable. The public handler is
-registered; Beta.11's exact tagged-candidate qualification and public immutable
+registered; Beta.12's exact tagged-candidate qualification and public immutable
 release assets are complete. Upgrades are not supported.
 The [installation guide](installer-installation.md) documents
 the real-terminal consent/reboot/setup flow and completed-rerun restrictions.

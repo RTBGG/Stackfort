@@ -1,5 +1,11 @@
 # Public release readiness contract v1
 
+Beta.12 has its own independently authorized, exact-candidate
+[`publish-beta12-fresh-only.yml`](../../.github/workflows/publish-beta12-fresh-only.yml)
+path and [fresh-only scope decision](../../docs/release-evidence/2026-09-24-beta12-fresh-install-scope.md).
+It retains the frozen technical validator/policy and genuine original tag
+provenance; no older exception or test evidence automatically applies.
+
 Beta.11 has a narrowly authorized **fresh-install-only** path in
 [`publish-beta11-fresh-only.yml`](../../.github/workflows/publish-beta11-fresh-only.yml).
 It verifies the retained packages and tag attestation and runs the frozen
