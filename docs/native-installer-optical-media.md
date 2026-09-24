@@ -1,7 +1,7 @@
 # Optional optical installation-media entries
 
-Status: **implemented for the unpublished Beta.12 candidate**.
-The public Beta.11 bootstrap and immutable release are unchanged.
+Status: **published in experimental Beta.12 for fresh installations only**.
+The public bootstrap selects Beta.12; the immutable Beta.11 release is unchanged.
 
 A provider's fresh Debian MBR image can retain these ordinary fstab entries
 even when neither optical filesystem is mounted:
@@ -46,6 +46,8 @@ from changing mount state after inspection.
 ## Evidence and release boundary
 
 See the [actual MBR reproduction and Linux regression results](../infra/host-tests/results/2026-09-24-beta12-optical-regression.md).
+The [exact Beta.12 qualification](../infra/host-tests/results/2026-09-24-beta12-candidate-qualification.md)
+also verifies unchanged optical rows through installation and normal reboot.
 No operator should remove fstab entries, reset installer journals, repartition,
-or replace a released binary to bypass an eligibility failure. This change must
-be carried by a new candidate with its own release provenance and tests.
+or replace a released binary to bypass an eligibility failure. Use the published
+Beta.12 on a fresh qualified test OS; it has its own release provenance and tests.

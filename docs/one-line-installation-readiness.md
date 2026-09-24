@@ -6,7 +6,10 @@ current immutable fresh-install-only prerelease. All 14 public assets were
 downloaded and verified against the retained original bytes. It adds the narrow
 [inactive optical-media exception](native-installer-optical-media.md) to the
 qualified MBR/BIOS and GPT/UEFI profiles. No upgrades from any installed release.
-See [publication evidence and final transport-test status](../infra/host-tests/results/2026-09-24-beta12-public-installation.md).
+The literal public README command also passed on a freshly reprovisioned GPT/UEFI
+Debian 13 host without a version override, including original setup/login,
+installed hosting/API smoke, same-release rerun and normal reboot/persistence.
+See [publication and public installation evidence](../infra/host-tests/results/2026-09-24-beta12-public-installation.md).
 
 ### Earlier public Beta.11
 

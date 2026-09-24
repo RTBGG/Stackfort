@@ -202,7 +202,10 @@ is published unchanged after fresh MBR/GPT, installed-host, resource/isolation,
 WAF/cache, real OCI, process-loss containment and same-target OS-removal checks.
 It accepts the qualified inactive optional CD-ROM entries while preserving them.
 All 14 public assets match their hashes and original package bytes. The bootstrap
-selects Beta.12 only for fresh installations; no upgrades are offered.
+selects Beta.12 only for fresh installations; no upgrades are offered. The
+[literal public README-command test](../infra/host-tests/results/2026-09-24-beta12-public-installation.md)
+also passed on a fresh GPT/UEFI Debian 13 host, including setup, hosting/API
+checks, same-release rerun and normal reboot/persistence.
 See [publication and final public installation status](../infra/host-tests/results/2026-09-24-beta12-public-installation.md).
 
 - [x] Versioned DEB/RPM packages where appropriate.
