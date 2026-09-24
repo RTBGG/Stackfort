@@ -206,6 +206,7 @@ func nativeHostKernelFile(path string) ([]byte, error) {
 		"/proc/sys/kernel/random/boot_id", "/sys/class/dmi/id/product_uuid",
 		"/proc/net/tcp", "/proc/net/tcp6", "/proc/net/udp", "/proc/net/udp6",
 		"/proc/net/ip_tables_names", "/proc/net/ip6_tables_names",
+		"/proc/self/mountinfo",
 		"/sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c",
 	}, path) {
 		return nil, errors.New("unsupported native host inspection file")
@@ -348,17 +349,12 @@ func nativeHostLayout(ctx context.Context, packages map[string]string) (snapshot
 	if _, err := nativeBootFstab(string(fstab), observed.RootUUID, observed.PartitionUUID); err != nil {
 		return snapshot, err
 	}
-	for _, line := range strings.Split(string(fstab), "\n") {
-		fields := strings.Fields(line)
-		if len(fields) == 0 || strings.HasPrefix(fields[0], "#") {
-			continue
-		}
-		if len(fields) < 4 || (fields[1] != "/" && fields[1] != "/boot/efi" && fields[2] != "tmpfs" && fields[2] != "swap") {
-			return snapshot, errors.New("additional persistent filesystems require separate qualification")
-		}
-		if strings.Contains(fields[3], "quota") {
-			return snapshot, errors.New("existing quota mount policy")
-		}
+	optical, err := nativeHostFstabPolicy(string(fstab))
+	if err != nil {
+		return snapshot, err
+	}
+	if err := nativeHostOpticalInactive(optical); err != nil {
+		return snapshot, err
 	}
 	// A synthetic valid plan is used only for read-only GRUB syntax/layout checks;
 	// no operation, journal, artifact or boot entry is created here.

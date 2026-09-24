@@ -69,6 +69,10 @@ unchanged. This is not production approval or independent security review.
 
 ## Laboratory reproduction
 
+Provider images with unused optical fstab rows can still be rejected by Beta.11.
+The [narrow optional-media correction](native-installer-optical-media.md) is
+prepared for unpublished Beta.12; it does not replace the released installer.
+
 `infra/host-tests/Test-StackfortNativeMBRHyperVVm.ps1` is restricted to the named,
 identity-pinned disposable BIOS VM and its pre-established SSH host key. It
 requires fixed RAM of at least 4 GiB and never restores a checkpoint itself.

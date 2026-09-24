@@ -92,6 +92,14 @@ published predecessors that require upgrade qualification; retirement requires
 an explicit reason. It does not by itself create a production support promise.
 See the [release checklist](docs/release-checklist.md).
 
+## Unpublished candidate
+
+`0.1.0-beta.12` is being prepared and is **not published or approved for use**.
+It corrects rejection of inactive optional optical-drive fstab entries under a
+narrow noauto policy. Preparation is not publication approval or completed
+exact-candidate installation/upgrade/security/removal qualification.
+The public bootstrap remains on the published release above.
+
 ## Handling and disclosure
 
 Reports are handled on a best-effort basis; there is no guaranteed response

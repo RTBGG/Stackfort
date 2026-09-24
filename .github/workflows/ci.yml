@@ -67,6 +67,7 @@ jobs:
         run: |
           go test -race -c -o /tmp/stackfort-payload.test ./internal/installapply
           sudo /tmp/stackfort-payload.test -test.v -test.run '^(TestPayloadTransition|TestNativeHostingDirectoriesSurviveInstallerUmask$|TestNativeHostingDirectoryAdmissionRejectsPermissionDrift$)' -test.timeout=2m
+          sudo env STACKFORT_DISPOSABLE_HOST_TEST=1 /tmp/stackfort-payload.test -test.v -test.run '^TestDisposableNativeOptionalOptical$' -test.timeout=2m
       - name: Exercise the agent Unix socket
         run: bash scripts/test-agent-smoke.sh
       - name: Qualify staged file and restore ACLs as real kernel identities
