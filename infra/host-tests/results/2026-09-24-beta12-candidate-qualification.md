@@ -1,10 +1,12 @@
 # Beta.12 candidate qualification — 2026-09-24
 
-Status: **exact-candidate MBR installation with the provider's optical rows,
-setup/login, installed API smoke, same-release rerun and normal reboot passed**.
-The candidate remains unpublished; full release qualification and publication
-approval are pending. No Beta.12 release or default-bootstrap change is
-authorized by this record. Beta.11 is unchanged.
+Status: **exact-candidate host qualification passed**, completed
+`2026-09-24T15:06:39Z`, including MBR/BIOS and GPT/UEFI onboarding, resource and
+security checks, actual rootless OCI, process-loss containment and same-target
+full OS removal. RTBGG authorized experimental fresh-install-only publication;
+see the [scope decision](../../../docs/release-evidence/2026-09-24-beta12-fresh-install-scope.md).
+Publication and public-download checks are separate, not claimed by this report.
+The frozen candidate and published Beta.11 bytes remain unchanged.
 
 This candidate corrects the rejection of inactive optional CD-ROM fstab rows.
 See the [source correction and exact provider-row reproduction](2026-09-24-beta12-optical-regression.md).
@@ -101,10 +103,11 @@ The same fixture (`sf-candidate-847a94bdacbe`) and content/backup hashes remaine
 valid after rerun and reboot. These are functional checks, not performance
 benchmarks, SQL/phpMyAdmin qualification or exhaustive tenant-isolation tests.
 
-The installed MBR fixture remains available for further exact-candidate checks.
-No setup code, password, cookie or raw terminal transcript was retained. The
-existing GPT/public Beta.11 and original public Beta.10 installations were not
-replaced. This retained-artifact run is not a public GitHub download test.
+At this initial stage, the installed MBR fixture remained available for the
+checks below. No setup code, password, cookie or raw terminal transcript was
+retained. The GPT/public Beta.11 fixture was subsequently preserved before its
+separate test; the original public Beta.10 VM remains untouched. This retained
+transport is not a public GitHub download test.
 
 | Local receipt/helper | SHA-256 |
 | --- | --- |
@@ -113,11 +116,120 @@ replaced. This retained-artifact run is not a public GitHub download test.
 | Onboarding driver | `e9c256d6e77ca2c5d6e887eecee519ed9cf8f1c1fb668ac00714a41d59cac9fc` |
 | Installed API helper | `49ead41676443e181c3a2af63642e87cbe8b614bdb5464c790f9af60f228e196` |
 
-## Remaining release boundaries
+## GPT/UEFI fresh installation
 
-Fresh native installation scope remains Debian 13 amd64 only. The Beta.11-only
-fresh-install publication exception does not automatically apply to Beta.12.
-No old upgrade, security, resource-isolation, OCI, failure-recovery or destructive
-OS-reprovision removal evidence is relabeled as a Beta.12 result. Those
-exact-candidate tests, the upgrade-support decision, candidate-specific approval,
-publication and real public-download verification remain separate gates.
+The same exact retained candidate passed the unchanged onboarding driver on VM
+`55729cf8-11e3-4744-be5b-ddde3824c0e4`, DMI
+`a5db08d7-6c4e-47e0-a381-9bd594b2731a`. The earlier public Beta.11 instance was
+preserved as checkpoint `b29e55f5-12d4-42c2-a5e8-4e66f647752b` before restoring
+the genuinely fresh baseline. This is not an upgrade test.
+
+- Operation: `8a5d5d5a-bc3b-4990-8944-95448056fbcc`.
+- Initial boot: `bf75d40e-9de1-4d80-9d2c-8c49bc5d8898`.
+- Conversion boot: `ac89a0cf-e7c1-46a1-bf0a-96c0467226d6`.
+- Normal reboot: `be3be9af-73dc-4dfa-a15c-ff7033ad18fe`.
+- Setup redemption/replay rejection, admin login, all seven installed API smoke
+  groups, same-release rerun and original-session/data persistence after normal
+  reboot passed; completion `2026-09-24T14:55:04Z`.
+- Receipt `gpt-onboard.json` SHA-256:
+  `0a0804bb419ad31a27fbffc1f35b5727c51414236f8aca5f07dd11e093753030`.
+
+## Installed-host security, isolation and real OCI
+
+On **each** variant the read-only collector passed 65 checks, failed none, and
+explicitly left ten checks unexercised. The separate tests below cover relevant
+runtime/closure/removal items; an independent review, global IPv6 and exhaustive
+isolation are not claimed. The collector verifies all eight installed payload
+digests, actual service hardening/mount boundaries, AppArmor and private listeners.
+
+Qualification helpers were built from all 1,103 independently verified frozen
+Git blobs, with only seven test overlays and their test-server binary added.
+No installed product binary was replaced. Final helper ELF SHA-256:
+`50a71f108b187023fafa4bbb61796f904208ae6b36f520dbd7b0fac6621284b1`.
+Guards pin the independent candidate, payload hashes, actual DMI, boot and operation.
+
+Both resource tests used the **installed broker RPC**, two fresh accounts and
+bounded workloads. They verified 25% CPU throttling (about 1.02 CPU seconds over
+4.03–4.06 seconds), 32-task ceiling, a 64-MiB memory limit with a real OOM event,
+2-MiB/128-inode limits returning `EDQUOT`, unchanged peer limits, own-home positive
+access and peer-home denial. Owner and subordinate identities could not open
+controller/migration files for writing. No migration write, IO-throughput limit,
+container-escape test or aggregate OS reserve guarantee is claimed.
+
+Both OCI tests built/exported a real rootless scratch image with a RUN step,
+scanned it with installed Trivy 0.74.0 without bypass, verified identical replay
+and changed-source rejection, and deployed USER 1000 with expected subordinate
+host UID/GID, loopback response and cgroup membership. Scoped fixture cleanup
+passed. This is installed-agent RPC qualification, not public OCI API routing,
+database credential/phpMyAdmin coverage or a performance benchmark.
+
+Two helper-only issues are retained transparently: the first MBR OCI log used
+an old source-reference **label** despite the correct independently pinned source
+and payload; it was corrected and both probes rerun with the final helper. The
+first GPT pressure probe refused its root-only helper directory before creating
+fixtures. Making only that test directory/executable traversable (root-owned
+0755, not tenant-writable) allowed the unchanged probe to run. No product repair,
+limit relaxation or discarded failed product result was involved.
+
+| Final receipt | SHA-256 |
+| --- | --- |
+| `host-security-mbr.json` | `9f33fe09e38f92a3a3c36d742e54c4c25df605ab4f4ea70e8a781ea1a42f3003` |
+| `host-security-gpt.json` | `7d998b70f7b34cc0731a461ac8fe3f2cd84150140a9bfdaea2c71b15981fce3f` |
+| `resources-mbr-v2.log` | `1b155f437f42f76af010552a106a672127e5284124dbd55383c4356633b88592` |
+| `resources-gpt-v2-retry.log` | `d7ee8e99fe062e0dbb88b335c2ecca5b03a9c4b825616b8eb5ae2b0d227100cc` |
+| `oci-mbr-v2.log` | `06abc7490e5c8d0bf3ee7b43a3122d15c1d3e7593f55f435fb0c50de38b09b64` |
+| `oci-gpt-v2-retry.log` | `4b23b1a8e821dd6de1d0fe008a66f76bf3a324b6661f5ecf56668d30bdc0b251` |
+
+## Real completed-recheck MainPID loss
+
+The reviewed [process-loss plan](../native-completed-recheck-fault-plan.md) ran
+on **both** variants, using real pinned-bootstrap completed reruns. Five observer
+contract tests passed first. Preserved healthy checkpoints are
+`efafd9bd-1b68-46e5-a645-12e6af886ca6` (MBR) and
+`354857cd-9086-46e4-a548-65967e68fe94` (GPT).
+
+The observer selected only the exact transient unit's MainPID, verified executable,
+full argv, root identity, cgroup, invocation and durable checking attempt, then
+used a retained pidfd for STOP/revalidation/KILL. No whole-cgroup kill, product
+patch or manual quarantine was used. Both results: `injected-quarantine-verified`.
+The real supervisor stopped consumers and closed non-loopback TCP **and UDP**
+ports 80/443/8443. Storage stayed ready; package/source/setup records were unchanged;
+admission correctly remained checking at attempt + 1. Recovery-plan returned
+`admission-review`/exit 2, with public resume disabled. This is containment and
+rerun rejection, **not successful automated recovery or a power-loss test**.
+
+Independent host tests verified IPv4 and link-local IPv6 TCP/UDP behavior before
+and after loss. UDP used real, privilege-dropped, host-only echo controls on all
+three web ports plus control port 49173; control remained reachable after web
+ports stopped replying. SSH stayed reachable. No global IPv6 claim is made.
+Both interrupted callers returned failure without success/setup output; later
+ordinary reruns were rejected without record changes or reboot. Invocation-only
+journals were empty (explicitly recorded); separate fixed-unit systemd journals
+confirmed MainPID SIGKILL and signal failure, with no successful native result.
+
+| Receipt | MBR SHA-256 | GPT SHA-256 |
+| --- | --- | --- |
+| Observer JSONL | `e5ae80309f258fbae3bad526b1d18f04890c7f301a4c64c62350805adc6fce25` | `62a254d579750faecd9414ddf7c57ca294873e1411709888d3b0cf8adf8b6716` |
+| Independent positive preflight | `ea2bdeb09e81c0e1e3be395ef65dd72b958e79dec39d19535296749c290149c7` | `cb5011270b7e5a084fe6c1ffff35d8fd0f125dfdd693baaecd6ab530793f5dd3` |
+| Quarantined TCP | `fea80bef1c4540afa6b8e78add1fdfabe1ee69c343d2c6c7ab44e0fad26b3fd0` | `29d339e73b429a289bddf0b0d91da378b83c3c293faf058a2934217d0a741aec` |
+| Quarantined UDP | `9553b63611ef5ef2e687d3ea3ca17b72a5a603d5ab26888fc7a1c4c859096456` | `dd5b5ee78dcae75c853f5e7be99ed801616b3ddffb346f33c4eefa1401cf12fa` |
+| Later rerun rejection | `8d477fb2c590c66c5164ac7ca3785bdab042421884179a624d9a3b5e4d7b61e9` | `a127f86fdd3ac8d9a55b4cbde109c9b7c65634b1d5c6346ddedcd4aa6a421609` |
+| Systemd summary | `c4264715429d206fed29a65a73339fae1b56516ec8c51c08d70efa4f81a99a71` | `c507066df791fe33c3a52ac27bf8c37af9a5db1e000788f4c06e1395c05144d3` |
+
+Raw private records/journals remain on preserved guest disks. Qualification IDs:
+`c9f5ff1ea10e4e508f537c61e1c13a3a` (MBR),
+`fb0d2d5d4da7490e8437a839cd9bbd51` (GPT).
+
+## Removal and release boundaries
+
+[Same-target complete OS reprovision](2026-09-24-beta12-os-removal.md) passed after
+the active GPT tests. Snapshot restoration was not counted as removal. Public
+Beta.10, preserved Beta.11 disks and the user's VPS were untouched.
+
+Fresh native scope remains experimental Debian 13 amd64 only, with the qualified
+ext4/GRUB layouts. RTBGG explicitly approved **no upgrades** for Beta.12: no older
+upgrade evidence is relabeled, no predecessor is retired, and no passing upgrade
+matrix is fabricated. No independent review, production support or important data.
+Live CI/security, original-validator readiness, cryptographic provenance and
+immutable publication still need enforcement by the bounded publication workflow;
+the bootstrap default must not change before verified public assets exist.

@@ -104,7 +104,7 @@ jobs:
           node ../scripts/check-docs.mjs
       - name: Qualify fail-closed release readiness gate
         run: |
-          node --test ../scripts/verify-release-readiness.test.mjs ../scripts/promote-release-candidate.test.mjs ../scripts/verify-beta11-fresh-scope.test.mjs
+          node --test ../scripts/verify-release-readiness.test.mjs ../scripts/promote-release-candidate.test.mjs ../scripts/verify-beta11-fresh-scope.test.mjs ../scripts/verify-beta12-fresh-scope.test.mjs
           python3 ../scripts/extract-release-candidate.test.py
           python3 ../scripts/extract-tag-qualified-candidate.test.py
           node ../scripts/verify-release-readiness.mjs --mode policy --policy ../packaging/releases/readiness-policy.json

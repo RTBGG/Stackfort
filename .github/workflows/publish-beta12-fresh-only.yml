@@ -1,0 +1,58 @@
+name: Publish retained Beta.12 (fresh installs only)
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the exact qualified Beta.12 as an experimental fresh-install-only prerelease
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-retained-beta12
+  cancel-in-progress: false
+
+jobs:
+  qualify-and-publish:
+    if: github.repository == 'RTBGG/Stackfort' && github.ref == 'refs/heads/main'
+    name: Validate unchanged artifacts and all remaining technical gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      actions: read
+      attestations: read
+    steps:
+      - name: Check out the reviewed publication rules and evidence
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Test the bounded candidate exception and extractors
+        run: |
+          node --test scripts/verify-release-readiness.test.mjs scripts/promote-release-candidate.test.mjs scripts/verify-beta12-fresh-scope.test.mjs
+          python3 scripts/extract-release-candidate.test.py
+          python3 scripts/extract-tag-qualified-candidate.test.py
+      - name: Qualify retained bytes, enforce original technical policy and optionally publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUBLISH_BETA12: ${{ inputs.publish }}
+        run: bash scripts/publish-beta12-fresh-only.sh
+      - name: Retain qualification receipts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: beta12-fresh-publication-receipts-${{ github.run_attempt }}
+          path: |
+            dist/release-readiness.json
+            dist/upgrade-support.json
+          if-no-files-found: error
+          retention-days: 30

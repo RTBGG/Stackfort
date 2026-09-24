@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "kind": "release-readiness",
+  "policy": "stackfort-release-readiness-v1",
+  "releaseClass": "experimental-beta",
+  "candidate": {
+    "version": "0.1.0-beta.12",
+    "commit": "f4d1a7947af4ffbdc2cbf28d2f618c10833cefec",
+    "archive": "stackfort-0.1.0-beta.12-linux-amd64.tar.gz",
+    "archiveSHA256": "446cf63a51994993b1b9cb337b0067967714122d41c6ff155720571f887268a9",
+    "build": {
+      "runId": 36005061649,
+      "attempt": 1,
+      "artifactId": 10811230131,
+      "artifactSHA256": "8cf13cd7084cc1a21497a1017bbd45225cdf924347fa4ee95fc66e6906dca485"
+    }
+  },
+  "approvedBy": "RTBGG",
+  "approvedAt": "2026-09-24T15:08:40Z",
+  "installationResults": [
+    {
+      "cell": {
+        "distribution": "debian",
+        "version": "13",
+        "architecture": "amd64",
+        "entryPoint": "one-line",
+        "storageProfile": "fresh-default"
+      },
+      "result": "pass",
+      "sourceCommit": "f4d1a7947af4ffbdc2cbf28d2f618c10833cefec",
+      "archiveSHA256": "446cf63a51994993b1b9cb337b0067967714122d41c6ff155720571f887268a9",
+      "checks": [
+        "fresh-install",
+        "idempotent-rerun",
+        "normal-reboot",
+        "host-security",
+        "tenant-isolation",
+        "quota-enforcement",
+        "waf-cache",
+        "rootless-oci",
+        "failure-recovery",
+        "full-system-reprovision-removal"
+      ],
+      "completedAt": "2026-09-24T15:06:39Z",
+      "report": {
+        "path": "infra/host-tests/results/2026-09-24-beta12-candidate-qualification.md",
+        "sha256": "d7e2ded58893c3487224d23041cd817ec0442170024557f5413693e14f06d916"
+      },
+      "removal": {
+        "method": "full-system-reprovision",
+        "result": "pass",
+        "candidate": {
+          "version": "0.1.0-beta.12",
+          "commit": "f4d1a7947af4ffbdc2cbf28d2f618c10833cefec",
+          "archive": "stackfort-0.1.0-beta.12-linux-amd64.tar.gz",
+          "archiveSHA256": "446cf63a51994993b1b9cb337b0067967714122d41c6ff155720571f887268a9",
+          "build": {
+            "runId": 36005061649,
+            "attempt": 1,
+            "artifactId": 10811230131,
+            "artifactSHA256": "8cf13cd7084cc1a21497a1017bbd45225cdf924347fa4ee95fc66e6906dca485"
+          }
+        },
+        "targetBefore": "55729cf8-11e3-4744-be5b-ddde3824c0e4",
+        "targetAfter": "55729cf8-11e3-4744-be5b-ddde3824c0e4",
+        "installerMediaSHA256": "85a969b7e99d7c817414136033df18c58d5c45ac8d27bb36e8ccb67173d2d4e3",
+        "checks": [
+          "active-candidate-installed",
+          "authenticated-distribution-installer",
+          "complete-os-disk-provisioning",
+          "fresh-os-boot",
+          "stackfort-state-absent",
+          "stackfort-services-absent",
+          "hosting-data-absent"
+        ],
+        "completedAt": "2026-09-24T15:06:39Z",
+        "report": {
+          "path": "infra/host-tests/results/2026-09-24-beta12-os-removal.md",
+          "sha256": "8b3273eb92a07429455a73545ce07b25661d8502b2b7097b3f9bdf006c41eda9"
+        }
+      }
+    }
+  ],
+  "workflowRuns": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "runId": 36004640915,
+      "attempt": 1
+    },
+    {
+      "path": ".github/workflows/security.yml",
+      "runId": 36004640826,
+      "attempt": 1
+    }
+  ],
+  "independentReview": {
+    "decision": "not-performed",
+    "disclosure": "No independent security review has been performed. Experimental beta for fresh disposable test servers only; not for production or important data."
+  },
+  "supportPolicy": {
+    "decision": "approved",
+    "approvedBy": "RTBGG",
+    "versions": [
+      "0.1.0-beta.12"
+    ],
+    "terms": {
+      "model": "community-only",
+      "maintainer": "RTBGG",
+      "channels": [
+        "github-issues",
+        "github-private-security-reporting"
+      ],
+      "guaranteedResponse": false,
+      "guaranteedFixes": false,
+      "supportEnds": null
+    },
+    "deploymentLimits": "Fresh disposable Debian 13 amd64 test servers with qualified ext4/GRUB primary-MBR/BIOS or GPT/UEFI storage only; no production or important data. Fresh installations only: no upgrade from Beta.10, Beta.11 or another installed release. Community-only support without guaranteed response or fixes. No in-place uninstaller: removal requires full OS reinstallation and irreversibly removes all server data, configuration and services.",
+    "securityPolicySHA256": "02479d681d4609b22168dbada23aa5d46b1bc52307ea53448ebb24fe63b2a8a5",
+    "report": {
+      "path": "docs/release-evidence/2026-09-24-beta12-publication-approval.md",
+      "sha256": "44b88823a27816fcb70d7a446c8405e5590fa9d4342f266fdc9d62f4fb637e16"
+    },
+    "removalMethod": "full-system-reprovision"
+  },
+  "publicationDecision": {
+    "decision": "approved",
+    "approvedBy": "RTBGG",
+    "releaseClass": "experimental-beta",
+    "freshDisposableOnly": true,
+    "productionUseAllowed": false,
+    "importantDataAllowed": false,
+    "report": {
+      "path": "docs/release-evidence/2026-09-24-beta12-publication-approval.md",
+      "sha256": "44b88823a27816fcb70d7a446c8405e5590fa9d4342f266fdc9d62f4fb637e16"
+    },
+    "removalMethod": "full-system-reprovision"
+  }
+}
