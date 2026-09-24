@@ -26,13 +26,15 @@ production use or support window is promised.
    or VPN. Keep existing SSH access when changing network rules. Never expose
    API port 8080, database sockets, cache management, or a Podman API socket.
 4. Follow the [installation guide](installer-installation.md) for one exact
-   release and its checksum. Beta.10 assets are public; development qualification
+   release and its checksum. Beta.11 assets are public; development qualification
    uses the separate disposable host harness.
 5. Record the version, source commit, archive digest, installation method,
    preflight report, and final installer result. Keep private journals local.
 
-For a beta-only release, select its exact version: the convenience installer's
-default `latest` lookup selects a stable release, not a prerelease.
+The convenience installer explicitly selects Beta.11 for a fresh host, not
+GitHub's stable `latest` channel. Existing journals retain their original version.
+Beta.11 does not support upgrades from Beta.10 or another existing installation;
+use a fresh OS installation.
 
 ## First access and account setup
 

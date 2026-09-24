@@ -8,7 +8,7 @@ default root filesystems.
 The first native fresh-default beta is limited to **Debian 13 `amd64`**, within
 the [native host profile and release gates](one-line-installation-readiness.md).
 Ubuntu/Rocky native fresh-default installation is not advertised until qualified.
-The maintainer has approved Beta.10 as an experimental beta without independent
+The maintainer has approved Beta.11 as an experimental beta without independent
 security review. It is for fresh disposable test
 servers only, never production or important data. Support is community-only,
 without guaranteed responses or fixes; see the [security policy](../SECURITY.md).
@@ -23,9 +23,13 @@ passive package removal is insufficient. Review the
 [removal scope](experimental-beta-removal.md) before installing.
 
 The current bootstrap explicitly pins
-[`0.1.0-beta.10`](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.10),
+[`0.1.0-beta.11`](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.11),
 published on 2026-09-24 with immutable assets after exact-candidate qualification
 and maintainer approval. It does not select the stable channel or a newer beta.
+Beta.11 supports qualified GPT/UEFI and primary MBR/BIOS ext4 roots with GRUB.
+It is **fresh-install-only**: upgrades from Beta.10 or another installed release
+are unsupported. Do not bypass an existing journal or install over an old system;
+start with a fresh OS installation.
 Use the [operations guide](operations.md) for first setup and ongoing checks.
 
 ## Before installation
@@ -60,11 +64,11 @@ bootstrap itself, replace `main` in its URL with a reviewed full commit SHA;
 curl --proto '=https' --tlsv1.2 -fSLo stackfort-install.sh \
   https://raw.githubusercontent.com/RTBGG/stackfort/main/packaging/installer/install.sh
 less stackfort-install.sh
-sudo env STACKFORT_VERSION=0.1.0-beta.10 bash stackfort-install.sh
+sudo env STACKFORT_VERSION=0.1.0-beta.11 bash stackfort-install.sh
 ```
 
 With no journal or explicit `STACKFORT_VERSION`, the current script selects
-`0.1.0-beta.10`. It does not query GitHub's latest-stable channel or dynamically
+`0.1.0-beta.11`. It does not query GitHub's latest-stable channel or dynamically
 choose a newer beta. An explicit version may select another published release;
 an existing journal pins its original version and conflicting selections stop.
 This bootstrap selection is separate from the panel's stable/beta update-check
@@ -133,9 +137,9 @@ Published releases provide a `stackfort-release` DEB for Debian/Ubuntu and an RP
 for Rocky Linux. Download the matching package together with `SHA256SUMS`, then
 verify the exact filename before installing it:
 
-For Beta.10, GitHub's public carrier asset names contain `.beta.10`, while
-the checksum inventory and package metadata retain `~beta.10`. Save those
-DEB/RPM downloads with the inventory's original `~beta.10` filename before
+For Beta.11, GitHub's public carrier asset names contain `.beta.11`, while
+the checksum inventory and package metadata retain `~beta.11`. Save those
+DEB/RPM downloads with the inventory's original `~beta.11` filename before
 checking them. The downloaded bytes are unchanged. This naming difference
 does not affect the one-line installer's `.tar.gz` archive.
 

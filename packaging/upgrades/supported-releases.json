@@ -5,6 +5,11 @@
       "version": "0.1.0-beta.10",
       "archiveSHA256": "8e7ce111d6cefda172e74bd7a71380c181e66a726d8f157f6bd1af8944e93263",
       "status": "supported"
+    },
+    {
+      "version": "0.1.0-beta.11",
+      "archiveSHA256": "d6fec6d5a894d0c120aef5d83829b335a8875b68a181c45a7ad2bb9d139d1304",
+      "status": "supported"
     }
   ]
 }

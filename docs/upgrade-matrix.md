@@ -6,6 +6,11 @@ after a final health failure, and recovery after the updater process disappears
 following database migration. A missing, duplicate, failed, or stale result
 blocks publication.
 
+The only candidate-specific exception is the explicitly authorized
+[Beta.11 fresh-install-only release](release-evidence/2026-09-24-beta11-fresh-install-scope.md).
+It has no qualified incoming upgrades and publishes an `upgrade-support.json`
+disclosure, not a passing upgrade matrix. Other releases retain the rules below.
+
 ## Support catalog
 
 [`packaging/upgrades/supported-releases.json`](../packaging/upgrades/supported-releases.json)
@@ -34,6 +39,14 @@ public provenance inventory before any scenario: GitHub changed `~beta.10` to
 repair the shipped predecessor or satisfy its upgrade matrix. Retain that failed
 evidence and qualify a real verified transition; do not patch the prior production
 driver, relabel a rehearsal, or silently retire Beta.10 to obtain a pass.
+
+Beta.11 was subsequently published unchanged under the narrow fresh-only
+exception, after all remaining technical gates passed. The catalog now also
+records its public archive digest
+`d6fec6d5a894d0c120aef5d83829b335a8875b68a181c45a7ad2bb9d139d1304`.
+Its `supported` entry means a future candidate must qualify it as a predecessor
+unless explicitly retired; it does **not** authorize an upgrade into Beta.11 or
+promise that an upgrade out of it already exists. Neither predecessor is retired.
 Local `0.1.0-beta.1` / `0.1.0-beta.2` rehearsal builds are not
 public releases and do not establish a support commitment.
 

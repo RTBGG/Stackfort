@@ -188,11 +188,14 @@ community support, no independent security review, and removal by complete
 OS reinstallation. This does not complete remaining product/browser review,
 capacity protection, wider native OS support or production-readiness work.
 
-**2026-09-24 follow-up:** [Primary MBR/BIOS support](native-installer-mbr.md)
-is implemented in development, with real offline conversion and quota tests on
-a separate Debian VM. Full installation with the retained old lab payload stops
-at its obsolete NGINX dependency. A matching new candidate and complete release
-qualification remain pending; Beta.10 and the public bootstrap are unchanged.
+**2026-09-24 follow-up:** [Beta.11](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.11)
+is published for fresh installations only, adding qualified
+[primary MBR/BIOS support](native-installer-mbr.md).
+Exact-candidate fresh MBR/GPT installation, hosting/API, resource/isolation,
+WAF/cache, OCI, rerun/reboot, failure quarantine and GPT OS-removal tests passed.
+All public assets were downloaded and checked against the original bytes.
+The public bootstrap selects Beta.11. Upgrades from Beta.10 remain unsupported;
+the failed predecessor tests are retained, not counted as passed.
 
 - [x] Versioned DEB/RPM packages where appropriate.
 - [x] Verified one-line and manual installers for clean hosts.

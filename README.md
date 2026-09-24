@@ -14,8 +14,9 @@ the web interface itself a privileged system process.
 > [!WARNING]
 > Stackfort is under active development. Phase 6 is in progress, and the
 > project is not ready for production servers or valuable data.
-> [Beta.10](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.10)
+> [Beta.11](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.11)
 > is available for fresh, disposable Debian 13 `amd64` test servers only.
+> Upgrades from Beta.10 or any existing installation are not supported.
 > No independent security review has been performed; support is community-only.
 > No in-place uninstaller is available. Removing the experimental beta requires
 > complete OS reinstallation, destroying all server data, configuration and services.
@@ -35,14 +36,15 @@ curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/RTBGG/st
 
 [Inspect the installer](https://raw.githubusercontent.com/RTBGG/stackfort/main/packaging/installer/install.sh)
 before running it as root. HTTPS-only transport and TLS 1.2 or newer are required
-by this command. The current script explicitly selects **`0.1.0-beta.10`**, not
-latest stable. [Release assets and checksums](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.10)
+by this command. The current script explicitly selects **`0.1.0-beta.11`**, not
+latest stable. [Release assets and checksums](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.11)
 are public and immutable. Native setup requires an interactive
 root console/SSH terminal, explicit reboot consent and saving the setup code.
 See the
 [installation guide](docs/installer-installation.md) for prerequisites and options.
-**Beta.10 requires GPT for native root conversion.** Primary MBR/BIOS support is
-[under development qualification](docs/native-installer-mbr.md), not yet released.
+**Beta.11 supports qualified GPT/UEFI and primary MBR/BIOS ext4 roots with GRUB.**
+See the [MBR profile and limitations](docs/native-installer-mbr.md).
+Use a fresh OS installation; do not install it over Beta.10.
 Existing tests on already quota-prepared Debian, Ubuntu and Rocky storage are a
 separate installation path, not qualification of their default root filesystems.
 Disk/inode exhaustion can still make the shared-root test server unavailable;

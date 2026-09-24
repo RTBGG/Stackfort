@@ -3,10 +3,11 @@
 `stackfort-installer` provides preflight inspection, interactive native onboarding,
 prepared-storage installation, panel hostname/certificate management, and native
 operator commands. Public `onboard` dispatch is available in the experimental
-[`0.1.0-beta.10` release](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.10)
+[`0.1.0-beta.11` release](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.11)
 for fresh disposable Debian 13 amd64 hosts within the
 [qualified profile](../../docs/one-line-installation-readiness.md#scope).
 It is not for production or important data; no independent review has been performed.
+Fresh installations only; upgrades from Beta.10 or another installed release are unsupported.
 
 ```sh
 stackfort-installer preflight --format=json
@@ -19,7 +20,7 @@ stackfort-installer native recovery-plan --format=json
 ```
 
 The [one-line bootstrap](../../docs/installer-installation.md#github-bootstrap)
-currently selects the explicitly pinned `0.1.0-beta.10` and supplies the native
+currently selects the explicitly pinned `0.1.0-beta.11` and supplies the native
 selection arguments when appropriate:
 
 ```sh
@@ -27,7 +28,7 @@ stackfort-installer onboard \
   --source-dir=/absolute/extracted/release \
   --archive=/absolute/release.tar.gz \
   --attestations=/absolute/build-attestation.jsonl \
-  --version=0.1.0-beta.10
+  --version=0.1.0-beta.11
 ```
 
 Only the exact build version/commit with authentic tag-release provenance is

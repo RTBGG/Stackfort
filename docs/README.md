@@ -1,7 +1,8 @@
 # Stackfort documentation
 
-Stackfort has an experimental public Beta.10 for qualified disposable Debian
+Stackfort has an experimental public Beta.11 for fresh qualified disposable Debian
 test hosts only, with community support and no production support window.
+Upgrades from existing releases are not supported.
 Start with the guide for your task:
 
 | I want to… | Read |

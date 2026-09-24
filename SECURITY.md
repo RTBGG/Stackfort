@@ -31,6 +31,29 @@ Stackfort is currently an experimental beta. No version is supported for
 production use. Findings against `main` are welcome;
 development artifacts and local rehearsal versions are not supported releases.
 
+## Beta.11: fresh installations only
+
+[`0.1.0-beta.11`](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.11)
+was published on 2026-09-24 as an immutable experimental prerelease under
+[RTBGG's candidate-specific approval](docs/release-evidence/2026-09-24-beta11-publication-approval.md).
+It adds qualified primary active MBR/ext4 roots with BIOS/GRUB to Debian 13 amd64
+GPT/UEFI fresh installation. The same community-only terms and limitations below
+apply: no independent review, production use or important data; removal requires
+complete OS reinstallation. The public bootstrap now selects Beta.11 for a fresh host.
+
+**Upgrades from Beta.10 or any other existing release are unsupported and
+unqualified.** Do not use the updater or install Beta.11 over an existing system.
+Use a fresh OS installation. The explicit
+[fresh-only exception](docs/release-evidence/2026-09-24-beta11-fresh-install-scope.md)
+does not turn the failed predecessor test into a pass or globally retire Beta.10.
+All remaining exact-candidate technical gates passed, including resource/isolation,
+WAF/cache, OCI, failure quarantine and same-target OS-removal qualification.
+See the [candidate evidence](infra/host-tests/results/2026-09-24-beta11-candidate-qualification.md)
+and [MBR boundary](docs/native-installer-mbr.md). The frozen candidate's earlier
+unpublished-status text remains historical; this later publication decision is authoritative.
+
+## Earlier published release
+
 **[`0.1.0-beta.10`](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.10)**
 was published on 2026-09-24 after exact-candidate technical qualification and
 [RTBGG's publication approval](docs/release-evidence/2026-09-24-beta10-publication-approval.md).
@@ -68,18 +91,6 @@ community-only terms. Do not invent support end dates or maintenance guarantees.
 published predecessors that require upgrade qualification; retirement requires
 an explicit reason. It does not by itself create a production support promise.
 See the [release checklist](docs/release-checklist.md).
-
-## Unpublished candidate
-
-`0.1.0-beta.11` is being prepared and is **not published or approved for use**.
-It targets the same experimental, community-only terms, adding primary active
-MBR/ext4 roots with BIOS/GRUB to the existing Debian 13 amd64 GPT profile.
-No independent review has been performed. Fresh disposable test servers only;
-no important data or production use; removal requires complete OS reinstallation.
-Full exact-candidate MBR/GPT installation, upgrade, security and removal evidence
-and separate publication approval remain required. The public installer continues
-to select the published release above. See the
-[MBR qualification boundary](docs/native-installer-mbr.md).
 
 ## Handling and disclosure
 

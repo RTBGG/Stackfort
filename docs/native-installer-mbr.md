@@ -1,15 +1,16 @@
 # Native installer: primary MBR support
 
-Status: **implemented and full fresh onboarding tested in unpublished Beta.11;
-not in public Beta.10**.
-The existing public bootstrap still selects immutable Beta.10, whose native
-conversion profile requires GPT. Do not patch that release's binaries or change
-partition tables to bypass its check. A new exact-candidate installation and
-release qualification is required before advertising public MBR installation.
+Status: **published in immutable experimental Beta.11, for fresh installations
+only; not included in Beta.10**.
+The public bootstrap selects Beta.11. Exact-candidate MBR and GPT onboarding,
+security/resource isolation, WAF/cache, rootless OCI and failure quarantine
+passed, with same-target full-OS removal separately qualified on GPT.
+Upgrades from Beta.10 are unsupported. Do not patch old installed binaries,
+reset journals or change partition tables to bypass a check.
 
 ## Accepted layout
 
-The development installer additionally accepts fresh Debian 13 amd64 hosts with:
+Beta.11 additionally accepts fresh Debian 13 amd64 hosts with:
 
 - BIOS boot using the existing GRUB installation;
 - an active primary DOS/MBR Linux partition (number 1–4, type `0x83`, flag `0x80`);
@@ -45,7 +46,7 @@ the filesystem-UUID search and exact `root=PARTUUID=...` binding. GPT still uses
 requirement, quota conversion and no-replay rules are unchanged. `fstab` handling
 accepts either the bound filesystem UUID or the exact primary-MBR PARTUUID.
 
-## Test status and next release
+## Test status and release scope
 
 The [dated MBR evidence](../infra/host-tests/results/2026-09-24-native-mbr.md)
 separates successful storage/boot tests from an unsuccessful full installation
@@ -54,18 +55,17 @@ while the test repository supplies `deb13u9`; the exact-version check correctly
 stopped installation and retained closed admission. No package downgrade,
 dependency bypass or journal reset was used.
 
-The next candidate must carry the new installer and matching current platform
-packages, pass the complete fresh MBR and existing GPT installation flows,
-normal reboot, panel/ingress and applicable release/upgrade/removal gates, and
-receive publication approval. Internal storage tests do not satisfy those gates.
-
 The [exact Beta.11 attempt](../infra/host-tests/results/2026-09-24-beta11-candidate-qualification.md)
 subsequently passed both full fresh installation flows, original setup/login,
 installed hosting/API smoke, idempotent rerun and normal reboot using genuine
-tag provenance and current packages. It remains unpublished: the predecessor
-upgrade tests exposed GitHub-normalized carrier filenames that Beta.10's updater
-does not accept. The subsequent source correction requires a new candidate and
-does not retroactively qualify either an upgrade or a public MBR release.
+tag provenance and current packages. The predecessor upgrade tests exposed
+GitHub-normalized carrier filenames that Beta.10's updater does not accept.
+Those failures remain failures; the subsequent source correction is not in the
+frozen release. RTBGG explicitly authorized a
+[fresh-install-only publication](release-evidence/2026-09-24-beta11-fresh-install-scope.md),
+without upgrade support and without waiving any remaining technical tests.
+After those tests passed, the original bytes and tag attestation were published
+unchanged. This is not production approval or independent security review.
 
 ## Laboratory reproduction
 

@@ -1,6 +1,16 @@
 # Public one-line installation readiness
 
 Audit date: 2026-09-24. Status: **experimental public Debian 13 beta available**.
+[Beta.11](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.11)
+is the current immutable **fresh-install-only** prerelease. All 14 public assets
+were downloaded and verified; all 10 original build files remain byte-identical.
+It supports the qualified primary MBR/BIOS and GPT/UEFI ext4/GRUB profiles below.
+No upgrade from Beta.10 or another installed release is supported.
+The [public-GitHub fresh installation, setup, API, rerun and reboot test](../infra/host-tests/results/2026-09-24-beta11-public-installation.md)
+also passed on a fresh GPT/UEFI test host using the unchanged release.
+
+### Earlier public release
+
 [Beta.10](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.10)
 is a public immutable prerelease. All 14 assets were downloaded and verified;
 the [public-GitHub fresh installation, setup, rerun and reboot test](../infra/host-tests/results/2026-09-24-beta10-public-installation.md)
@@ -24,12 +34,16 @@ global IPv6, I/O-rate enforcement or public-control-API OCI workflow claim.
 
 The [2026-09-24 Beta.11 qualification](../infra/host-tests/results/2026-09-24-beta11-candidate-qualification.md)
 passed complete fresh Debian MBR/BIOS and GPT/UEFI onboarding, original setup/login,
-installed API smoke, rerun and normal reboot. This is an unpublished retained
-candidate, not a change to the public Beta.10 bootstrap. All three predecessor
+installed API smoke, rerun and normal reboot. All three predecessor
 upgrade attempts stopped at Beta.10's incorrect expectations for GitHub-normalized
 DEB/RPM filenames, before any upgrade scenario. The stager correction is in later
-source only; a verified legacy transition and new candidate qualification remain
-required. No predecessor was retired and no failed gate was waived.
+source only, not in Beta.11. RTBGG authorized
+[fresh-only publication without upgrade support](release-evidence/2026-09-24-beta11-fresh-install-scope.md).
+All remaining technical gates subsequently passed: host security, resource and
+tenant isolation, WAF/cache, rootless OCI, process-loss quarantine on both profiles,
+and actual same-target GPT OS reprovision/removal. Beta.11 was published unchanged.
+No predecessor was globally retired, no upgrade success was claimed, and no
+remaining technical gate was waived.
 
 The [exact beta.4 onboarding attempt](../infra/host-tests/results/2026-09-12-beta4-onboarding-php-capability-failure.md)
 completed automatic quota preparation, installation and original setup redemption,
@@ -85,7 +99,7 @@ The implementation commit's GitHub CI and Security workflows also passed.
 
 ## Qualification sequence and remaining boundaries
 
-The following sequence governed the release. Beta.10's completed evidence is
+The following sequence governs publication. Exact-candidate evidence is
 linked above; this checklist does not broaden those reports' tested scope or
 waive remaining production, recovery, capacity and browser-review limitations.
 
@@ -139,11 +153,12 @@ waive remaining production, recovery, capacity and browser-review limitations.
 
 ## Scope
 
-The public Beta.10 native conversion profile is Debian 13 amd64, fresh disposable
-plain GPT/ext4 root with GRUB. Ubuntu/Rocky native conversion, LVM/RAID, separate
+The public Beta.11 native conversion profile is Debian 13 amd64, fresh disposable
+plain GPT/UEFI or active primary MBR/BIOS ext4 root with GRUB.
+Ubuntu/Rocky native conversion, LVM/RAID, separate
 persistent boot/state filesystems and retained-data conversion are not qualified.
-[Primary MBR/BIOS support](native-installer-mbr.md) is a development follow-up;
-it is not included in Beta.10 or qualified by that release's historical evidence.
+See the exact [primary MBR/BIOS limits](native-installer-mbr.md).
+Beta.10 remains GPT-only; its historical evidence does not qualify MBR.
 Existing installation on already quota-prepared storage is a separate path; do
 not describe those tests as native fresh-root qualification.
 
@@ -161,11 +176,12 @@ fail-closed boot, firewall or exact-candidate functional tests.
 
 ### Bootstrap selection and availability
 
-The bare bootstrap now explicitly selects `0.1.0-beta.10` for a fresh invocation,
+The bare bootstrap now explicitly selects `0.1.0-beta.11` for a fresh invocation,
 not GitHub's latest-stable channel. Explicit versions and existing journal pins
 remain supported; a beta is never relabeled stable. The public handler is
-registered; exact tagged-candidate qualification, public immutable release assets
-and the public transport test are complete for Beta.10. The [installation guide](installer-installation.md) documents
+registered; Beta.11's exact tagged-candidate qualification and public immutable
+release assets are complete. Upgrades are not supported.
+The [installation guide](installer-installation.md) documents
 the real-terminal consent/reboot/setup flow and completed-rerun restrictions.
 
 The current carrier wrapper also cannot be advertised as native conversion:

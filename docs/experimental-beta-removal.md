@@ -11,6 +11,10 @@ product-policy decision, not by itself a claim that a particular release has
 passed its removal test. The
 [exact beta.10 same-target removal qualification](../infra/host-tests/results/2026-09-19-beta10-os-removal.md)
 passed on2026-09-19; publication approval is separate.
+The [exact Beta.11 same-target removal](../infra/host-tests/results/2026-09-24-beta11-os-removal.md)
+also passed on 2026-09-24, using independent vendor OS disks on the original GPT
+test VM, not snapshot rollback. Its report identifies preserved old laboratory
+disks and does not claim secure erasure or a separate MBR removal test.
 Community-only support does not guarantee recovery or provider reinstallation.
 
 ## Operator boundary
