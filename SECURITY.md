@@ -31,29 +31,37 @@ Stackfort is currently an experimental beta. No version is supported for
 production use. Findings against `main` are welcome;
 development artifacts and local rehearsal versions are not supported releases.
 
-## Unpublished candidate
+## Beta.15: fresh installations only
 
-`0.1.0-beta.15` is being prepared for qualification and is
-**not published or approved for use**. RTBGG has authorized publication only
-after successful exact-candidate qualification. Beta.14 remains unpublished
-after its GPT package-maintenance conflict; its tag is unchanged. Beta.13 remains
-the public installer's selected release. No in-place upgrade is offered.
+[`0.1.0-beta.15`](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.15)
+was published on 2026-09-26 as an immutable experimental prerelease under
+[RTBGG's candidate-specific approval](docs/release-evidence/2026-09-26-beta15-publication-approval.md).
+The public bootstrap selects Beta.15 for fresh disposable Debian 13 amd64 hosts,
+using qualified ext4/GRUB GPT/UEFI or primary-MBR/BIOS storage. It fixes ACME
+registration, service-state presentation, the database wizard and package/boot
+coordination, and adds administrator-only panel-domain setup with automatic TLS.
+Exact-candidate onboarding, installed API, host security, resource/isolation,
+WAF/cache, rootless OCI, process-loss quarantine and same-target OS removal
+passed, alongside the original live CI/security and provenance gates.
+All 14 public downloads were verified; all 12 original tag-qualified files are unchanged.
 
-The candidate addresses ACME registration, service-state presentation and the
-database wizard, and adds administrator-only panel-domain setup with automatic
-certificates. Its intended test scope remains fresh disposable Debian 13 amd64
-servers with qualified ext4/GRUB storage, not production or important data.
-Community-only support, no independent security review, and destructive complete
-OS reinstallation as the only removal method remain explicit limitations.
-These proposed terms do not replace exact-candidate host tests or RTBGG's
-publication decision. See the [candidate plan](docs/beta15-candidate.md).
+**No upgrades from any installed release are supported.** Use a fresh OS;
+interrupted conversions cannot be resumed or reset. No independent security
+review, production use or important data. Community-only support and complete
+OS reinstallation as the only removal method remain unchanged.
+Beta.14 remains unpublished after its failed GPT qualification; its tag is unchanged.
+See [candidate evidence](infra/host-tests/results/2026-09-26-beta15-candidate-qualification.md)
+and [public installation status](infra/host-tests/results/2026-09-26-beta15-public-installation.md).
+The frozen candidate's earlier unpublished-status text remains historical;
+this publication decision does not alter the release's bound terms.
 
-## Beta.13: fresh installations only
+## Earlier published release (Beta.13)
 
 [`0.1.0-beta.13`](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.13)
 was published on 2026-09-26 as an immutable experimental prerelease under
 [RTBGG's candidate-specific approval](docs/release-evidence/2026-09-26-beta13-publication-approval.md).
-The public bootstrap selects Beta.13 for fresh disposable Debian 13 amd64 hosts,
+The public bootstrap selected Beta.13 at publication; it now selects the current
+release above. Beta.13 was qualified for fresh disposable Debian 13 amd64 hosts,
 using qualified ext4/GRUB GPT/UEFI or primary-MBR/BIOS storage. It fixes rejection
 of larger valid initramfs inventories and retains bounded, redacted arming diagnostics.
 Exact-candidate onboarding on both profiles, host security, resource/isolation,

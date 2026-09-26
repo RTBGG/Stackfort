@@ -2,10 +2,10 @@
 
 After installation, Stackfort can serve its panel at `https://panel.example.com/`
 on standard port 443. The original `https://<server-address>:8443/` remains a
-fallback with its local bootstrap certificate. In the development version after
-Beta.13, configuration is also available under **Administration → Settings →
-Panel domain**. Published Beta.13 does not contain this form or the native
-post-installation panel-management fix.
+fallback with its local bootstrap certificate. Starting with published Beta.15,
+configuration is also available under **Administration → Settings → Panel domain**,
+including native post-installation panel management. Older published betas do
+not contain this form and cannot be upgraded in place.
 
 ## Set up in the panel
 

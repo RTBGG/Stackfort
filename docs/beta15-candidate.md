@@ -1,7 +1,8 @@
 # Beta.15 candidate preparation
 
-Status: **unpublished; required host qualification passed**. The public installer remains
-on Beta.13 until immutable, qualified Beta.15 assets exist and have been verified.
+Status: **published; required host qualification and public asset checks passed**.
+The public installer selects Beta.15. The separate literal README installation
+test is recorded in the [public installation report](../infra/host-tests/results/2026-09-26-beta15-public-installation.md).
 Beta.14's frozen tag and its failed GPT qualification are retained unchanged.
 
 Beta.15 retains the [Beta.14 product fixes](beta14-candidate.md) for ACME account
@@ -53,5 +54,6 @@ installer-equality checks. The [mechanical selection](../packaging/releases/prom
 only permits exact-tag provenance for these same bytes. The
 [host qualification report](../infra/host-tests/results/2026-09-26-beta15-candidate-qualification.md)
 and [same-target removal report](../infra/host-tests/results/2026-09-26-beta15-os-removal.md)
-record completed checks. Publication gates and anonymous public download checks
-remain required; neither a tag nor this record publishes a release.
+record completed checks. The [publication workflow](https://github.com/RTBGG/Stackfort/actions/runs/36262976996)
+passed all remaining gates and published the unchanged assets. All 14 anonymous
+downloads passed size/hash checks; the 12 original tag-qualified files are identical.

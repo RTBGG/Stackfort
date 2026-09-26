@@ -1,8 +1,22 @@
 # Public one-line installation readiness
 
 Audit date: 2026-09-26. Status: **experimental public Debian 13 beta available**.
-[Beta.13](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.13) is the
+[Beta.15](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.15) is the
 current immutable fresh-install-only prerelease. All 14 public assets were
+downloaded and verified; the 12 original tag-qualified files are unchanged.
+It retains the earlier installation corrections and adds ACME/UI/panel-domain
+fixes plus continuous package locking through the sealed boot handoff.
+Exact-candidate MBR/BIOS and GPT/UEFI onboarding, installed API, host security,
+resources/isolation, WAF/cache, rootless OCI, process-loss quarantine and
+same-target OS removal passed, as did original CI/security and provenance gates.
+The separate literal README/default-selector installation test is tracked in the
+[public installation report](../infra/host-tests/results/2026-09-26-beta15-public-installation.md).
+No upgrades, independent security review or production approval are implied.
+
+### Earlier public Beta.13
+
+[Beta.13](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.13) is the
+earlier immutable fresh-install-only prerelease. All 14 public assets were
 downloaded and verified; the 12 tag-qualified original files are byte-identical.
 It fixes rejection of [larger valid initramfs inventories](native-installer-initrd-inventory.md).
 Exact-candidate MBR/BIOS and GPT/UEFI onboarding, installed-host/resource/isolation,
@@ -179,7 +193,7 @@ waive remaining production, recovery, capacity and browser-review limitations.
 
 ## Scope
 
-The public Beta.13 native conversion profile is Debian 13 amd64, fresh disposable
+The public Beta.15 native conversion profile is Debian 13 amd64, fresh disposable
 plain GPT/UEFI or active primary MBR/BIOS ext4 root with GRUB.
 Ubuntu/Rocky native conversion, LVM/RAID, separate
 persistent boot/state filesystems and retained-data conversion are not qualified.
@@ -202,10 +216,10 @@ fail-closed boot, firewall or exact-candidate functional tests.
 
 ### Bootstrap selection and availability
 
-The bare bootstrap now explicitly selects `0.1.0-beta.13` for a fresh invocation,
+The bare bootstrap now explicitly selects `0.1.0-beta.15` for a fresh invocation,
 not GitHub's latest-stable channel. Explicit versions and existing journal pins
 remain supported; a beta is never relabeled stable. The public handler is
-registered; Beta.13's exact tagged-candidate qualification and public immutable
+registered; Beta.15's exact tagged-candidate qualification and public immutable
 release assets are complete. Upgrades are not supported.
 The [installation guide](installer-installation.md) documents
 the real-terminal consent/reboot/setup flow and completed-rerun restrictions.
