@@ -50,6 +50,23 @@ full-OS-reinstallation removal requirement below apply unchanged.
 See [candidate evidence](infra/host-tests/results/2026-09-24-beta12-candidate-qualification.md)
 and [publication evidence](infra/host-tests/results/2026-09-24-beta12-public-installation.md).
 
+Known installation limitation reported on 2026-09-26: the initramfs inventory's
+64 KiB output limit rejects larger valid listings during boot preparation. The
+[candidate fix and stopped-host guidance](docs/native-installer-initrd-inventory.md)
+do not authorize journal resets, sealed-runtime replacement or resuming a failed
+conversion. Historical qualification remains scoped to its tested hosts.
+
+## Unpublished candidate
+
+`0.1.0-beta.13` is **not published or approved for use**. RTBGG authorized
+preparing an initramfs-inventory correction with bounded streaming verification,
+regression tests and improved arming diagnostics. Preparation is not publication
+approval, an upgrade promise or a recovery path for an interrupted installation.
+Candidate-specific CI, build provenance, real host qualification and publication
+decisions remain required. No independent security review has been performed;
+the intended scope remains experimental disposable Debian 13 amd64 testing,
+community-only support and removal by complete OS reinstallation.
+
 ## Earlier published release (Beta.11)
 
 [`0.1.0-beta.11`](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.11)

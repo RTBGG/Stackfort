@@ -208,6 +208,14 @@ also passed on a fresh GPT/UEFI Debian 13 host, including setup, hosting/API
 checks, same-release rerun and normal reboot/persistence.
 See [publication and final public installation status](../infra/host-tests/results/2026-09-24-beta12-public-installation.md).
 
+**2026-09-26 candidate preparation:** A provider's valid 93,120-byte initramfs
+inventory exposed Beta.12's shared 64 KiB command-output cap. The
+[Beta.13 correction](native-installer-initrd-inventory.md) streams inventory
+verification with separate bounds and exposes bounded arming diagnostics.
+Source regression tests are distinct from the still-required exact-candidate
+build, Linux/host qualification and publication approval. No upgrade or stopped
+conversion resume is enabled, and the public installer default is unchanged.
+
 - [x] Versioned DEB/RPM packages where appropriate.
 - [x] Verified one-line and manual installers for clean hosts.
 - [x] Stable/beta GitHub Release channels and update checks.

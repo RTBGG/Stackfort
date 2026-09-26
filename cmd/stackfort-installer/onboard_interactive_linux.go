@@ -120,15 +120,23 @@ func armOnboardRuntime(ctx context.Context, prepared installapply.NativeOnboardi
 	defer cancel()
 	// #nosec G204 -- Fixed sealed runtime path and action; VerifyManifest validated the canonical operation UUID and the root-owned executable digest immediately above. No shell is used.
 	command := exec.CommandContext(bounded, installapply.NativeRuntimePath, "native-boot", "arm", "--operation-id="+prepared.OperationID)
+	return runOnboardArmCommand(bounded, command)
+}
+
+// Private execution seam: production supplies only the verified fixed runtime
+// command above. Tests exercise pipe draining and failures without arming a host.
+func runOnboardArmCommand(ctx context.Context, command *exec.Cmd) error {
 	command.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LANG=C", "LC_ALL=C"}
 	command.Dir = "/"
 	command.WaitDelay = 5 * time.Second
+	var diagnostic onboardArmDiagnostic
+	command.Stderr = &diagnostic
 	// The runtime rechecks its running inode, sealed intent, journal and live
 	// host before any boot mutation. Neither setup code nor tty input is passed.
 	if err := command.Run(); err != nil {
-		return errors.New("native one-shot boot arming did not complete; reboot was not requested; preserve installer state for inspection")
+		return onboardArmFailure(err, ctx.Err(), &diagnostic)
 	}
-	return bounded.Err()
+	return ctx.Err()
 }
 
 func rebootOnboardHost(ctx context.Context) error {

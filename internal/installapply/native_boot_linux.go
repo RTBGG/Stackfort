@@ -309,7 +309,7 @@ func nativeBootDirectory(path string) error {
 // Private closed executable list and call sites; never accepts a command from
 // a journal, environment, user input, or shell expansion. fsck accepts 0/1 only.
 func nativeBootCommand(ctx context.Context, executable string, args ...string) (string, error) {
-	allowed := []string{"/usr/sbin/e2fsck", "/usr/sbin/tune2fs", "/usr/sbin/debugfs", "/usr/sbin/mkinitramfs", "/usr/bin/lsinitramfs", "/usr/bin/grub-script-check", "/usr/bin/grub-editenv", "/usr/sbin/grub-reboot", "/usr/sbin/grub-probe", "/usr/bin/mount", "/usr/sbin/quotaon"}
+	allowed := []string{"/usr/sbin/e2fsck", "/usr/sbin/tune2fs", "/usr/sbin/debugfs", "/usr/sbin/mkinitramfs", "/usr/bin/grub-script-check", "/usr/bin/grub-editenv", "/usr/sbin/grub-reboot", "/usr/sbin/grub-probe", "/usr/bin/mount", "/usr/sbin/quotaon"}
 	if ctx == nil || !slices.Contains(allowed, executable) {
 		return "", errors.New("invalid boot command")
 	}
@@ -469,22 +469,13 @@ func (b nativeBootBackend) Arm(ctx context.Context, plan storageprep.Plan) error
 		return err
 	}
 	if _, err := nativeBootCommand(ctx, "/usr/sbin/mkinitramfs", "-d", filepath.Join(build.path, "config"), "-o", imagePath, plan.Kernel); err != nil {
-		return err
+		return fmt.Errorf("build one-shot initrd: %w", err)
 	}
 	if err := build.verify(ctx); err != nil {
-		return err
+		return fmt.Errorf("verify private initramfs configuration: %w", err)
 	}
-	listing, err := nativeBootCommand(ctx, "/usr/bin/lsinitramfs", imagePath)
-	if err != nil {
-		return err
-	}
-	for _, required := range []string{strings.TrimPrefix(nativeBootEmbeddedInstaller, "/"), strings.TrimPrefix(nativeBootEmbeddedManifest, "/"), strings.TrimPrefix(nativeBootEmbeddedRuntime, "/"), "scripts/local-premount/stackfort-native-quota", "usr/sbin/debugfs"} {
-		if !slices.Contains(strings.Split(strings.TrimSpace(listing), "\n"), required) {
-			return errors.New("incomplete one-shot initrd: " + required)
-		}
-	}
-	if strings.Contains(listing, "stackfort-native-quota.test") {
-		return errors.New("test executable in initrd")
+	if err := verifyNativeBootInitrd(ctx, imagePath); err != nil {
+		return fmt.Errorf("verify one-shot initrd: %w", err)
 	}
 	entry, _ := nativeBootGRUBEntry(plan, b.intent)
 	if err := nativeBootCreate("/boot/grub/custom.cfg", []byte(entry), 0644); err != nil {

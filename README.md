@@ -46,6 +46,9 @@ See the
 It also accepts the qualified inactive optional CD-ROM entries that earlier betas rejected.
 See the [MBR profile](docs/native-installer-mbr.md) and [optical-media limits](docs/native-installer-optical-media.md).
 Use a fresh OS installation; do not install it over an existing Stackfort system.
+**Known installation issue:** larger initramfs file listings can stop Beta.12
+during one-shot boot preparation. Do not reset or retry a stopped installation;
+see the [diagnosis and candidate fix](docs/native-installer-initrd-inventory.md).
 Existing tests on already quota-prepared Debian, Ubuntu and Rocky storage are a
 separate installation path, not qualification of their default root filesystems.
 Disk/inode exhaustion can still make the shared-root test server unavailable;

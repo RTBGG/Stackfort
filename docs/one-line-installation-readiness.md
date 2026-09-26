@@ -11,6 +11,12 @@ Debian 13 host without a version override, including original setup/login,
 installed hosting/API smoke, same-release rerun and normal reboot/persistence.
 See [publication and public installation evidence](../infra/host-tests/results/2026-09-24-beta12-public-installation.md).
 
+**2026-09-26 field finding:** Beta.12 can reject a valid initramfs inventory over
+64 KiB before arming completes. [Beta.13 source preparation](native-installer-initrd-inventory.md)
+addresses that limit and hidden diagnostics, but is not a qualified or published
+replacement. The historical host passes do not establish support for every
+provider image; stopped installations must not be reset or blindly retried.
+
 ### Earlier public Beta.11
 
 [Beta.11](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.11)
