@@ -1,10 +1,10 @@
 # Beta.13 retained candidate and qualification — 2026-09-26
 
-Status: **large-initrd regression and fresh onboarding/API/rerun/reboot tests
-passed on MBR/BIOS and GPT/UEFI**; the last persistence test completed at
-`2026-09-26T11:06:06Z`. Remaining release gates are listed below. This record does
-not approve publication, upgrades or recovery of an interrupted Beta.12
-installation. The public one-line default remains Beta.12.
+Status: **exact-candidate host qualification passed**, completed
+`2026-09-26T11:54:13Z`. Large-initrd onboarding, security, resources, real OCI,
+process-loss containment and same-target OS removal passed. RTBGG authorized
+[fresh-install-only publication](../../../docs/release-evidence/2026-09-26-beta13-publication-approval.md).
+This report does not claim publication or public-download validation.
 
 ## Frozen candidate
 
@@ -169,10 +169,85 @@ phpMyAdmin verification, full-account/database backups, actual OCI deployment,
 a performance benchmark or product removal. Those exclusions are not converted
 into passing results.
 
-## Still required
+## Installed security, resources and actual OCI
 
-- Complete the remaining exact-candidate resource/isolation, real OCI,
-  installed-host security collection, failure-containment and same-target
-  full-OS-removal gates. Do not relabel Beta.12 evidence as Beta.13 results.
-- Obtain candidate-specific publication/scope approval after genuine evidence;
-  do not advance the public one-line selector before verified public assets exist.
+On each host the read-only collector passed **65 checks, zero failures** and
+explicitly left ten unexercised. It verified eight installed artifact hashes,
+service hardening, actual broker mount boundaries, AppArmor and private listeners.
+These observations are not an independent audit or pressure test.
+
+A new helper ELF was built from all **1,122 exact frozen Git blobs**, independently
+verified by Git object hashes, plus seven reviewed test overlays and their fixed
+test-server ELF. An initial Windows archive export had CRLF conversion; the
+source check rejected it before host execution. Re-export with LF yielded exact
+blob equality and an identical helper build. No installed payload was replaced.
+Helper SHA-256: `b83c9a1c95db7bd458cbbc1eef0a23f84d507ab09e6b817f13f10769559cc1d3`.
+
+Both installed-broker RPC resource probes passed: 25% CPU throttling, 32-task
+ceiling, 64-MiB memory limit with actual OOM, 2-MiB/128-inode quotas returning
+EDQUOT, unchanged peer limits, positive own-home access and peer-home denial.
+Tenant and subordinate identities could not open controller/migration files
+for writing. No migration write, throughput limit or OS reserve guarantee is
+claimed. Successful probes removed only their guarded fresh test fixtures.
+
+Both OCI probes built/exported a real rootless scratch image with RUN, scanned
+with installed Trivy 0.74.0 without bypass, verified exact replay and changed-source
+rejection, deployed USER 1000 with correct subordinate identity, loopback reply
+and cgroup, and completed scoped fixture cleanup. This is installed-agent RPC
+coverage, not public OCI API routing or a performance benchmark.
+
+| Receipt | SHA-256 |
+| --- | --- |
+| `observe-mbr.json` | `1ad80d8b53cba31ba59121c09950794d79a9e9b6e20bad65b1e70ce3096e1d54` |
+| `observe-gpt.json` | `35e2ce0c6f8949e6a45f6704f2642bd2a976ae1950f16572ab0e04483f27e7f4` |
+| `resources-mbr.log` | `e13320c5f5c64314dce3a3674cabbaf3c031119ae3c69d80a6c8339460520e09` |
+| `resources-gpt.log` | `8daa81fe4f6d23ac79f39f6913ed4622db83d899550f8f42e5b59ae075aa78c6` |
+| `oci-mbr.log` | `782bf46ffd21f3a14e1751ef4a0dde38f8e81e8873467d9fd2bad8e3c6864ac5` |
+| `oci-gpt.log` | `497d0caff9cd47da0b2a59809291696aee65f416156061ac33d8eaec6427a87c` |
+
+## Real completed-recheck MainPID loss
+
+The [guarded plan](../native-completed-recheck-fault-plan.md) ran on both variants
+after five observer contracts passed. Before-fault healthy checkpoints:
+MBR `c1454ed6-dfe6-4fef-882c-f712cb308667`;
+GPT `968920b6-57b6-47c5-af5a-57e71043b6f9`.
+
+The actual pinned-bootstrap completed rerun created the real transient unit.
+Its exact MainPID, executable digest, argv, cgroup, invocation and durable
+checking attempt were verified before pidfd STOP/revalidation/KILL. No whole-
+cgroup kill, product patch or manual quarantine was used. Both observers returned
+`injected-quarantine-verified`: consumers stopped, exact non-loopback TCP/UDP
+80/443/8443 gate closed, storage stayed ready, admission stayed checking at
+attempt + 1, package/source/setup records unchanged. Recovery-plan returned
+admission-review/exit 2 with public resume disabled.
+
+Independent IPv4 and link-local IPv6 TCP/UDP probes verified before/after
+behavior. Real privilege-dropped UDP echo controls ran on all three web ports
+and control port 49173; the control stayed reachable after web ports closed.
+SSH remained reachable. No global IPv6 claim. Interrupted callers failed without
+success/setup output; ordinary subsequent reruns rejected unchanged state without
+reboot. Invocation-only journals were empty, explicitly recorded; separate
+fixed-unit journals confirmed SIGKILL and signal failure. This is containment
+and rerun rejection, **not automatic recovery or power-loss qualification**.
+
+| Receipt | MBR SHA-256 | GPT SHA-256 |
+| --- | --- | --- |
+| `observe` | `4205548755149d2b9c589e7d53600d63c1f75bd3d0d98abde3d1ea230918d07c` | `da015423f758a1a4ba42fdeb7e0af596798f92e977221d84606a3b73b80926c7` |
+| `positive-preflight` | `4a8a8ccab755e9ea56f6181f37d6b0b81e4f188b530e41aa2f61976ccc5f218d` | `a1ec0c5af400f0d21e4973a636a6fe1179f1986d9f2696f5a79293d75ea4029e` |
+| `quarantined-tcp` | `f4e577d3feb0a94b845e14f7cb587f24bf252b2db7f92c9b89ff37c5c5696a66` | `abc85a395003b1a42fd760a62279d81a8ca887cb0067c8ff7e214c9e92354ddb` |
+| `quarantined-udp` | `8af6cbe99d408d61a22d4044c0cd6b813b25154099b18c0130acf74b1da1da27` | `ab686bbbea52df9962bbeaffaa6f41978c204a8e93017d225eebb824757465fb` |
+| `interrupted` | `8bdc43c083537653925b8a6faafd17398e1de8f01731d411b28fce3636dc72fb` | `d228380fe9d7b2cf524bd03c1b0109a736b5d41ee5ecf2b270e04ba95ba1836b` |
+| `rejection` | `ea5184f1efca7489812e4cbb0f50fc9cb080faed97a31719eab8663470cbbaf1` | `04876a8bff0acf788f22f67f35662c1f6dcd9d7eaae2e557b45127ad5652afee` |
+| `supervisor` | `9ed006b48412c92413205346536ed2485ac85235c1c9dec24af919e6699c8103` | `e78797e6a5f917ec0fcb57908399919f50c4b5eec72a48f4ba3b46281a64f90f` |
+
+## Removal and publication boundary
+
+[Same-target full OS reprovision](2026-09-26-beta13-os-removal.md) passed on the
+GPT VM at `2026-09-26T11:54:13Z`. Old disks/checkpoints were preserved, not
+deleted; the fresh OS independently lacked all platform state/data/services.
+The MBR failure fixture remains preserved. The user VPS was untouched.
+
+All listed host gates now have Beta.13-specific evidence. Publication still
+requires the unchanged readiness validator with live exact-source CI/security,
+the explicit fresh-only scope, genuine tag provenance, immutable original assets
+and public-download verification. Never advance the public selector first.
