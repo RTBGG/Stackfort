@@ -48,6 +48,13 @@ enough to accept the result:
 - Arming acquires a new guard and checks the current full package inventory
   against the sealed completed-prerequisite receipt before touching boot artifacts.
   It retains the guard through initramfs construction and GRUB selection.
+- Interactive onboarding additionally retains the **original preparation guard**
+  across source-lock closure, sealed-runtime verification, child arming and the
+  acknowledged reboot request. The child acquires compatible read locks without
+  inheriting descriptors. Its exit cannot release the parent's guard. The
+  continuation is invoked only after the authenticated manifest matches the
+  reviewed host and the source lock has successfully closed; all refusal,
+  cancellation, error and panic paths release the guard.
 
 A failed consumed preparation or arming attempt is not reset or silently retried.
 Use the existing read-only recovery handoff and preserve evidence.
@@ -57,8 +64,11 @@ Use the existing read-only recovery handoff and preserve evidence.
 These locks coordinate **cooperating package-manager writers during the guarded
 process lifetime**. They are not a durable maintenance fence:
 
-- They are released when the owning process exits or is killed and do not span
-  the interval between successful preparation, a later Arm call and reboot.
+- They are released when the owning process exits or is killed. Public
+  interactive onboarding now spans successful preparation through its reboot
+  request. Separate laboratory preparation/Arm invocations do not share a guard;
+  the interval after the reboot request/process exit until shutdown is not a
+  persistent maintenance fence.
 - Direct administrator commands such as `update-initramfs`/`update-grub`, manual
   boot-file edits and tools that ignore dpkg locks are not excluded.
 - The APT handoff gap is checked, not prevented. Concurrent APT index/cache refresh

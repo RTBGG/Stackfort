@@ -41,7 +41,7 @@ func TestDisposableNativePackageGuard(t *testing.T) {
 		return
 	}
 	nativePackageTestNamespace(t)
-	for _, scenario := range []string{"held", "busy-front", "busy-db", "nested", "close-unrelated", "cancelled", "nil-context", "missing", "symlink", "hardlink", "fifo", "directory", "writable", "foreign-owner", "replacement", "handoff-replacement", "handoff-busy", "guard-owner-exit", "real-clients", "apt-handoff"} {
+	for _, scenario := range []string{"held", "busy-front", "busy-db", "nested", "close-unrelated", "cancelled", "nil-context", "missing", "symlink", "hardlink", "fifo", "directory", "writable", "foreign-owner", "replacement", "handoff-replacement", "handoff-busy", "guard-owner-exit", "real-clients", "apt-handoff", "sealed-handoff", "sealed-handoff-failure", "sealed-handoff-cancel", "sealed-handoff-panic"} {
 		t.Run(scenario, func(t *testing.T) {
 			fixture := t.TempDir()
 			for _, name := range []string{"lock-frontend", "lock", "status"} {
@@ -118,7 +118,7 @@ func TestDisposableNativePackageGuard(t *testing.T) {
 				ctx = nil
 			}
 			guard, err := acquireNativePackageGuard(ctx)
-			valid := scenario == "held" || scenario == "nested" || scenario == "close-unrelated" || scenario == "replacement" || scenario == "handoff-replacement" || scenario == "handoff-busy" || scenario == "real-clients" || scenario == "apt-handoff"
+			valid := scenario == "held" || scenario == "nested" || scenario == "close-unrelated" || scenario == "replacement" || scenario == "handoff-replacement" || scenario == "handoff-busy" || scenario == "real-clients" || scenario == "apt-handoff" || strings.HasPrefix(scenario, "sealed-handoff")
 			if (err == nil) != valid {
 				t.Fatalf("unexpected acquire: %v", err)
 			}
@@ -237,6 +237,44 @@ func TestDisposableNativePackageGuard(t *testing.T) {
 					t.Fatal(err)
 				}
 				nativePackageTestPOSIX(t, path, true)
+			}
+			if strings.HasPrefix(scenario, "sealed-handoff") {
+				ctx, cancel := context.WithCancel(t.Context())
+				defer cancel()
+				var continued bool
+				var recovered any
+				func() {
+					defer func() { recovered = recover() }()
+					defer guard.close()
+					err = guard.finish(ctx, func() error {
+						continued = true
+						for _, name := range []string{"lock", "lock-frontend"} {
+							nativePackageTestPOSIX(t, "/var/lib/dpkg/"+name, true)
+						}
+						// The sealed child can acquire compatible read locks and exit
+						// without dropping the original parent's still-held locks.
+						stop := nativePackageTestWriter(t, "guard")
+						stop()
+						for _, name := range []string{"lock", "lock-frontend"} {
+							nativePackageTestPOSIX(t, "/var/lib/dpkg/"+name, true)
+						}
+						switch scenario {
+						case "sealed-handoff-failure":
+							return errors.New("continuation failed")
+						case "sealed-handoff-cancel":
+							cancel()
+						case "sealed-handoff-panic":
+							panic("continuation panic")
+						}
+						return nil
+					})
+				}()
+				if !continued || (scenario == "sealed-handoff-panic" && recovered != "continuation panic") || (scenario != "sealed-handoff-panic" && (err == nil) != (scenario == "sealed-handoff")) {
+					t.Fatal("handoff result", err, recovered)
+				}
+				for _, name := range []string{"lock", "lock-frontend"} {
+					nativePackageTestPOSIX(t, "/var/lib/dpkg/"+name, false)
+				}
 			}
 			guard.close()
 			guard.close()

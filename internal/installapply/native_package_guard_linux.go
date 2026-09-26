@@ -28,6 +28,20 @@ type nativePackageLock struct {
 	ino  uint64
 }
 
+// finish runs the sealed-runtime continuation without releasing the original
+// preparation locks. The owner must still defer close, including on panic.
+func (guard *nativePackageGuard) finish(ctx context.Context, complete func() error) error {
+	if err := guard.check(ctx); err != nil {
+		return err
+	}
+	if complete != nil {
+		if err := complete(); err != nil {
+			return err
+		}
+	}
+	return guard.check(ctx)
+}
+
 func acquireNativePackageGuard(ctx context.Context) (*nativePackageGuard, error) {
 	guard := &nativePackageGuard{files: []nativePackageLock{
 		{path: "/var/lib/dpkg/lock-frontend", fd: -1},

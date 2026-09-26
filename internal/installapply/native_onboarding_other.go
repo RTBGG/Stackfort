@@ -20,3 +20,7 @@ func PrepareNativeOnboarding(context.Context, NativeOnboardingRequest, NativeOnb
 func PrepareNativeOnboardingWithSetup(context.Context, NativeOnboardingRequest, NativeOnboardingReview, NativeSetupCommitment) (NativeOnboardingPrepared, error) {
 	return NativeOnboardingPrepared{}, errors.New("native onboarding requires a qualified Linux host")
 }
+
+func WithNativeOnboardingSetup(context.Context, NativeOnboardingRequest, NativeOnboardingReview, NativeSetupCommitment, func(NativeOnboardingPrepared) error) error {
+	return errors.New("native onboarding requires a qualified Linux host")
+}

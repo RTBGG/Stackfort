@@ -33,9 +33,10 @@ development artifacts and local rehearsal versions are not supported releases.
 
 ## Unpublished candidate
 
-`0.1.0-beta.14` is being prepared for qualification and is
-**not published or approved for use**. It has no candidate-specific publication
-approval. Beta.13 remains
+`0.1.0-beta.15` is being prepared for qualification and is
+**not published or approved for use**. RTBGG has authorized publication only
+after successful exact-candidate qualification. Beta.14 remains unpublished
+after its GPT package-maintenance conflict; its tag is unchanged. Beta.13 remains
 the public installer's selected release. No in-place upgrade is offered.
 
 The candidate addresses ACME registration, service-state presentation and the
@@ -45,7 +46,7 @@ servers with qualified ext4/GRUB storage, not production or important data.
 Community-only support, no independent security review, and destructive complete
 OS reinstallation as the only removal method remain explicit limitations.
 These proposed terms do not replace exact-candidate host tests or RTBGG's
-publication decision. See the [candidate plan](docs/beta14-candidate.md).
+publication decision. See the [candidate plan](docs/beta15-candidate.md).
 
 ## Beta.13: fresh installations only
 

@@ -61,6 +61,33 @@ public sealed class StackfortOnboardRedemption {
     public bool Redeemed, ReuseRejected, LoginVerified;
 }
 public static class StackfortNativeOnboardProbeV1 {
+    // Classify only known bounded arming diagnostics. Never return transcript
+    // fragments, exception text, paths, setup codes, command lines or secrets.
+    public static string FailureCode(string transcript) {
+        if (transcript == null || transcript.Length > 2097152) return "unclassified";
+        int start = transcript.LastIndexOf("native one-shot boot arming did not complete; reboot was not requested; preserve installer state for inspection", StringComparison.Ordinal);
+        if (start < 0) return "unclassified";
+        string tail = transcript.Substring(start, Math.Min(16384, transcript.Length - start));
+        var markers = new Dictionary<string, string> {
+            { "package manager busy or OFD locking unavailable", "arm-package-lock" },
+            { "packages changed after native preparation", "arm-package-drift" },
+            { "normal boot artifact changed", "arm-boot-drift" },
+            { "offline tool changed", "arm-tool-drift" },
+            { "build one-shot initrd", "arm-initrd-build" },
+            { "verify private initramfs configuration", "arm-private-config" },
+            { "verify one-shot initrd", "arm-initrd-inventory" },
+            { "one-shot boot selection not persisted", "arm-grub-selection" },
+            { "arming timed out", "arm-timeout" },
+            { "arming was cancelled", "arm-cancelled" }
+        };
+        string code = null;
+        foreach (var marker in markers) {
+            if (!tail.Contains(marker.Key, StringComparison.Ordinal)) continue;
+            if (code != null) return "arm-multiple-causes";
+            code = marker.Value;
+        }
+        return code ?? "arm-unclassified";
+    }
     public static bool IsPartitionUUID(string value) {
         return value != null && ((Regex.IsMatch(value, @"\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z") && value != Guid.Empty.ToString("D")) ||
             (Regex.IsMatch(value, @"\A[0-9a-f]{8}-0[1-4]\z") && !value.StartsWith("00000000-")));
@@ -186,7 +213,7 @@ public static class StackfortNativeOnboardProbeV1 {
                 if (stage != 3 || !armObserved || capture.SetupCode == null || (process.ExitCode != 0 && process.ExitCode != 255))
                     throw new InvalidOperationException("Interactive onboarding did not reach its acknowledged reboot boundary; preserve guest state.");
                 success = true; return capture;
-            } catch { throw new InvalidOperationException("Interactive onboarding qualification failed; raw terminal output was deliberately not logged. Preserve the guest for inspection."); }
+            } catch { throw new InvalidOperationException("Interactive onboarding qualification failed [" + FailureCode(transcript.ToString()) + "]; raw terminal output was deliberately not logged. Preserve the guest for inspection."); }
             finally {
                 Stop(process); transcript.Clear(); Array.Clear(outBuffer, 0, outBuffer.Length); Array.Clear(errBuffer, 0, errBuffer.Length);
                 if (!success) capture.Dispose();

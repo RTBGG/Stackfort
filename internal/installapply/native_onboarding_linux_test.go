@@ -17,15 +17,16 @@ import (
 // Flow doubles never claim signature verification or execute release fixtures.
 // The public entry points cannot receive these private dependencies.
 type onboardingStageDouble struct {
-	t        *testing.T
-	request  NativeOnboardingRequest
-	review   NativeOnboardingReview
-	events   []string
-	fail     string
-	drift    string
-	closed   bool
-	prepared bool
-	selfRuns int
+	t         *testing.T
+	request   NativeOnboardingRequest
+	review    NativeOnboardingReview
+	events    []string
+	fail      string
+	drift     string
+	closed    bool
+	prepared  bool
+	selfRuns  int
+	guardHeld bool
 }
 
 func (stage *onboardingStageDouble) event(name string) error {
@@ -71,7 +72,7 @@ func (stage *onboardingStageDouble) ReviewNativeBootRecovery(_ context.Context, 
 	return review, stage.event("review-host")
 }
 
-func (stage *onboardingStageDouble) PrepareNativeBoot(_ context.Context, binding ReleaseBinding, dispatcher string, decision NativeRecoveryDecision) (NativeReleaseManifest, error) {
+func (stage *onboardingStageDouble) prepareNativeBoot(_ context.Context, binding ReleaseBinding, dispatcher string, decision NativeRecoveryDecision, complete func(NativeReleaseManifest) error) (NativeReleaseManifest, error) {
 	if binding != stage.review.Recovery.Release || dispatcher != "/var/lib/stackfort-installer/resume-source/source/bin/stackfort-installer" || decision != stage.request.Decision {
 		stage.t.Fatal("preparation did not receive exact authenticated consent")
 	}
@@ -80,7 +81,71 @@ func (stage *onboardingStageDouble) PrepareNativeBoot(_ context.Context, binding
 	if stage.drift == "sealed-manifest" {
 		manifest.Release.Source.OperationID = "11111111-1111-4111-8111-111111111111"
 	}
-	return manifest, stage.event("prepare-boot")
+	if err := stage.event("prepare-boot"); err != nil {
+		return manifest, err
+	}
+	stage.guardHeld = true
+	defer func() { stage.guardHeld = false }()
+	return manifest, complete(manifest)
+}
+
+func TestNativeOnboardingGuardedHandoffClosesSourceBeforeContinuation(t *testing.T) {
+	for _, scenario := range []string{"success", "prepare-boot", "close", "sealed-manifest", "continuation", "cancelled", "panic"} {
+		t.Run(scenario, func(t *testing.T) {
+			coordinator, stage := onboardingFlowFixture(t)
+			_, setup, err := IssueNativeSetup(stage.review)
+			if err != nil {
+				t.Fatal(err)
+			}
+			stage.fail = scenario
+			stage.drift = scenario
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			called := false
+			var result NativeOnboardingPrepared
+			var recovered any
+			func() {
+				defer func() { recovered = recover() }()
+				result, err = coordinator.prepareWithHandoff(ctx, stage.request, stage.review, &setup, func(prepared NativeOnboardingPrepared) error {
+					called = true
+					if !stage.closed || !stage.guardHeld || prepared.OperationID != sourceOperation {
+						t.Fatal("unsafe handoff")
+					}
+					switch scenario {
+					case "continuation":
+						return errors.New("continuation failed")
+					case "cancelled":
+						cancel()
+						return ctx.Err()
+					case "panic":
+						panic("continuation panic")
+					}
+					return nil
+				})
+			}()
+			if !stage.closed || stage.guardHeld || strings.Count(strings.Join(stage.events, ","), "close") != 1 {
+				t.Fatal("lock cleanup/order", stage.events)
+			}
+			if scenario == "panic" {
+				if recovered != "continuation panic" || !called {
+					t.Fatal("panic lost", recovered)
+				}
+				return
+			}
+			if (err == nil) != (scenario == "success") {
+				t.Fatal(err)
+			}
+			if err != nil && result != (NativeOnboardingPrepared{}) {
+				t.Fatal("failed handoff returned usable result")
+			}
+			if called != (scenario == "success" || scenario == "continuation" || scenario == "cancelled") {
+				t.Fatal("unexpected continuation", scenario)
+			}
+		})
+	}
+	if err := WithNativeOnboardingSetup(t.Context(), NativeOnboardingRequest{}, NativeOnboardingReview{}, NativeSetupCommitment{}, nil); err == nil {
+		t.Fatal("nil continuation accepted")
+	}
 }
 
 func (stage *onboardingStageDouble) saveNativeOnboardingSource(_ context.Context, source NativeOnboardingSource, binding ReleaseBinding) error {

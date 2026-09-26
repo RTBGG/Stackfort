@@ -71,6 +71,23 @@ func PrepareNativeOnboardingWithSetup(ctx context.Context, request NativeOnboard
 	return newNativeOnboardingCoordinator().prepareWithSetup(ctx, request, expected, &setup)
 }
 
+// WithNativeOnboardingSetup keeps the preparation's package locks held while
+// consume verifies and arms the sealed runtime and requests the consented reboot.
+// The source lock is closed before consume, allowing the verified child runtime
+// to acquire it. No descriptors, raw setup codes or authority are passed to the
+// child. Locks are released on every return/panic and by the kernel on process
+// death; this is not a durable reboot fence or permission to retry a failed run.
+func WithNativeOnboardingSetup(ctx context.Context, request NativeOnboardingRequest, expected NativeOnboardingReview, setup NativeSetupCommitment, consume func(NativeOnboardingPrepared) error) error {
+	if consume == nil {
+		return errors.New("native onboarding requires a sealed-runtime continuation")
+	}
+	if err := nativeOnboardingEntry(ctx, request.Source); err != nil {
+		return err
+	}
+	_, err := newNativeOnboardingCoordinator().prepareWithHandoff(ctx, request, expected, &setup, consume)
+	return err
+}
+
 func nativeOnboardingEntry(ctx context.Context, source NativeOnboardingSource) error {
 	if err := source.Validate(); err != nil {
 		return err
@@ -90,7 +107,7 @@ type nativeOnboardingStage interface {
 	BindOrigin(context.Context, SourcePin, OriginPolicy, string, string) (ReleaseBinding, error)
 	VerifyBinding(context.Context, ReleaseBinding) (Source, error)
 	ReviewNativeBootRecovery(context.Context, ReleaseBinding, string) (NativeRecoveryReview, error)
-	PrepareNativeBoot(context.Context, ReleaseBinding, string, NativeRecoveryDecision) (NativeReleaseManifest, error)
+	prepareNativeBoot(context.Context, ReleaseBinding, string, NativeRecoveryDecision, func(NativeReleaseManifest) error) (NativeReleaseManifest, error)
 	saveNativeOnboardingSource(context.Context, NativeOnboardingSource, ReleaseBinding) error
 	verifyNativeOnboardingSource(NativeOnboardingSource, ReleaseBinding) error
 	saveNativeSetup(context.Context, ReleaseBinding, NativeSetupCommitment) error
@@ -182,6 +199,10 @@ func (coordinator nativeOnboardingCoordinator) prepare(ctx context.Context, requ
 }
 
 func (coordinator nativeOnboardingCoordinator) prepareWithSetup(ctx context.Context, request NativeOnboardingRequest, expected NativeOnboardingReview, setup *NativeSetupCommitment) (result NativeOnboardingPrepared, err error) {
+	return coordinator.prepareWithHandoff(ctx, request, expected, setup, nil)
+}
+
+func (coordinator nativeOnboardingCoordinator) prepareWithHandoff(ctx context.Context, request NativeOnboardingRequest, expected NativeOnboardingReview, setup *NativeSetupCommitment, consume func(NativeOnboardingPrepared) error) (result NativeOnboardingPrepared, err error) {
 	if err := request.ValidateReview(expected); err != nil {
 		return result, err
 	}
@@ -202,8 +223,11 @@ func (coordinator nativeOnboardingCoordinator) prepareWithSetup(ctx context.Cont
 		return result, errors.Join(err, errors.New("no matching authenticated onboarding source exists"))
 	}
 	var manifest NativeReleaseManifest
+	closed := false
 	defer func() {
-		err = errors.Join(err, stage.Close())
+		if !closed {
+			err = errors.Join(err, stage.Close())
+		}
 		if err == nil {
 			result = NativeOnboardingPrepared{OperationID: manifest.Release.Source.OperationID,
 				RuntimePath: NativeRuntimePath, InstallerSHA256: manifest.Release.Source.InstallerSHA256, Manifest: manifest}
@@ -244,7 +268,23 @@ func (coordinator nativeOnboardingCoordinator) prepareWithSetup(ctx context.Cont
 			return result, err
 		}
 	}
-	manifest, err = stage.PrepareNativeBoot(ctx, binding, dispatcher, request.Decision)
+	manifest, err = stage.prepareNativeBoot(ctx, binding, dispatcher, request.Decision, func(sealed NativeReleaseManifest) error {
+		if _, err := sealed.Plan(); err != nil || sealed.Release != binding || sealed.Host != recovery.Snapshot.Host {
+			return errors.Join(err, errors.New("prepared runtime differs from authenticated onboarding review"))
+		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if consume == nil {
+			return nil
+		}
+		closed = true
+		if err := stage.Close(); err != nil {
+			return err
+		}
+		return consume(NativeOnboardingPrepared{OperationID: sealed.Release.Source.OperationID,
+			RuntimePath: NativeRuntimePath, InstallerSHA256: sealed.Release.Source.InstallerSHA256, Manifest: sealed})
+	})
 	if err != nil {
 		return result, err
 	}

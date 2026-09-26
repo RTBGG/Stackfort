@@ -20,7 +20,7 @@ import (
 
 func newOnboardInteractiveController() onboardInteractiveController {
 	return onboardInteractiveController{tty: openOnboardTerminal, review: installapply.ReviewNativeOnboarding,
-		setup: installapply.IssueNativeSetup, prepare: installapply.PrepareNativeOnboardingWithSetup,
+		setup: installapply.IssueNativeSetup, prepare: installapply.WithNativeOnboardingSetup,
 		verify: verifyOnboardSealedRuntime, arm: armOnboardRuntime, reboot: rebootOnboardHost}
 }
 

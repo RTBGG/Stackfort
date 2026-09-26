@@ -27,6 +27,14 @@ import (
 // first retain/authenticate a release under this same lock. This API is not
 // exposed by the public installer, and does not reboot or convert a filesystem.
 func (stage *SourceStage) PrepareNativeBoot(ctx context.Context, binding ReleaseBinding, dispatcher string, decision NativeRecoveryDecision) (NativeReleaseManifest, error) {
+	return stage.prepareNativeBoot(ctx, binding, dispatcher, decision, nil)
+}
+
+// The continuation runs before the preparation guard closes. Public onboarding
+// closes its source lock first, then verifies/executes the sealed arm runtime and
+// requests the acknowledged reboot while these compatible read locks stay held.
+// APT prerequisites still use their normal, separately checked lock handoff.
+func (stage *SourceStage) prepareNativeBoot(ctx context.Context, binding ReleaseBinding, dispatcher string, decision NativeRecoveryDecision, complete func(NativeReleaseManifest) error) (NativeReleaseManifest, error) {
 	var manifest NativeReleaseManifest
 	if err := stage.check(); err != nil {
 		return manifest, err
@@ -204,7 +212,12 @@ func (stage *SourceStage) PrepareNativeBoot(ctx context.Context, binding Release
 	if err := verifyNativeProfileUnits(ctx, plan.OperationID, intent.Profile); err != nil {
 		return manifest, err
 	}
-	return manifest, packagesGuard.check(ctx)
+	return manifest, packagesGuard.finish(ctx, func() error {
+		if complete != nil {
+			return complete(manifest)
+		}
+		return nil
+	})
 }
 
 func nativeBootConsumers() []string {

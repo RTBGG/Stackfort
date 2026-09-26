@@ -91,16 +91,17 @@ func (terminal *onboardTerminalDouble) Close() error {
 }
 
 type onboardControllerFixture struct {
-	t              *testing.T
-	controller     onboardInteractiveController
-	terminal       *onboardTerminalDouble
-	review         installapply.NativeOnboardingReview
-	code           string
-	setup          installapply.NativeSetupCommitment
-	prepared       installapply.NativeOnboardingPrepared
-	events         []string
-	failure        string
-	preparedClosed bool
+	t                *testing.T
+	controller       onboardInteractiveController
+	terminal         *onboardTerminalDouble
+	review           installapply.NativeOnboardingReview
+	code             string
+	setup            installapply.NativeSetupCommitment
+	prepared         installapply.NativeOnboardingPrepared
+	events           []string
+	failure          string
+	preparedClosed   bool
+	packageGuardHeld bool
 }
 
 func newOnboardControllerFixture(t *testing.T, input string) *onboardControllerFixture {
@@ -142,12 +143,17 @@ func newOnboardControllerFixture(t *testing.T, input string) *onboardControllerF
 			}
 			return fixture.code, fixture.setup, fixture.event("setup")
 		},
-		prepare: func(_ context.Context, request installapply.NativeOnboardingRequest, review installapply.NativeOnboardingReview, setup installapply.NativeSetupCommitment) (installapply.NativeOnboardingPrepared, error) {
+		prepare: func(_ context.Context, request installapply.NativeOnboardingRequest, review installapply.NativeOnboardingReview, setup installapply.NativeSetupCommitment, consume func(installapply.NativeOnboardingPrepared) error) error {
 			if request.ValidateReview(fixture.review) != nil || !reflect.DeepEqual(review, fixture.review) || setup != fixture.setup {
 				t.Fatal("preparation lost exact consent or setup binding")
 			}
 			fixture.preparedClosed = true // model only a successful closed-source handoff
-			return fixture.prepared, fixture.event("prepare")
+			if err := fixture.event("prepare"); err != nil {
+				return err
+			}
+			fixture.packageGuardHeld = true
+			defer func() { fixture.packageGuardHeld = false }()
+			return consume(fixture.prepared)
 		},
 		verify: func(_ context.Context, prepared installapply.NativeOnboardingPrepared) error {
 			if prepared != fixture.prepared || !fixture.preparedClosed {
@@ -167,6 +173,9 @@ func newOnboardControllerFixture(t *testing.T, input string) *onboardControllerF
 }
 
 func (fixture *onboardControllerFixture) event(name string) error {
+	if (name == "verify" || name == "arm" || name == "reboot") && !fixture.packageGuardHeld {
+		fixture.t.Fatal("package guard released before sealed-runtime handoff completed", name)
+	}
 	fixture.events = append(fixture.events, name)
 	if fixture.failure == name {
 		return errors.New("injected " + name)
@@ -186,6 +195,9 @@ func TestOnboardInteractiveExactConsentAndSecretOnlyOnTerminal(t *testing.T) {
 	}
 	if !reflect.DeepEqual(fixture.events, []string{"tty", "review", "setup", "prepare", "verify", "arm", "reboot"}) {
 		t.Fatal(fixture.events)
+	}
+	if fixture.packageGuardHeld {
+		t.Fatal("package guard leaked")
 	}
 	if strings.Contains(stdout.String(), fixture.code) || strings.Contains(stdout.String(), "sfb_") || !strings.Contains(fixture.terminal.String(), fixture.code) {
 		t.Fatal("setup secret delivery boundary violated")

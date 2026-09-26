@@ -66,6 +66,20 @@ $contractDefinition = $contractAst.FindAll({ param($node)
     $node -is [System.Management.Automation.Language.StringConstantExpressionAst] -and $node.Value.StartsWith('using System;')
 }, $true) | Select-Object -First 1
 if (-not ('StackfortNativeOnboardProbeV1' -as [type])) { Add-Type -TypeDefinition $contractDefinition.Value }
+$contractArmPrefix = 'native one-shot boot arming did not complete; reboot was not requested; preserve installer state for inspection'
+foreach ($sample in @(
+    @{ Text = ''; Code = 'unclassified' },
+    @{ Text = 'sfb_private'; Code = 'unclassified' },
+    @{ Text = 'packages changed after native preparation'; Code = 'unclassified' },
+    @{ Text = ($contractArmPrefix + '; runtime diagnostic: packages changed after native preparation sfb_private password=hidden'); Code = 'arm-package-drift' },
+    @{ Text = ($contractArmPrefix + '; package manager busy or OFD locking unavailable'); Code = 'arm-package-lock' },
+    @{ Text = ($contractArmPrefix + '; verify one-shot initrd'); Code = 'arm-initrd-inventory' },
+    @{ Text = ($contractArmPrefix + '; offline tool changed; normal boot artifact changed'); Code = 'arm-multiple-causes' },
+    @{ Text = ($contractArmPrefix + '; unrecognized sfb_private'); Code = 'arm-unclassified' },
+    @{ Text = ($contractArmPrefix + ('x' * 2097152)); Code = 'unclassified' }
+)) {
+    if ([StackfortNativeOnboardProbeV1]::FailureCode($sample.Text) -cne $sample.Code) { throw 'Bounded closed-vocabulary failure classification changed or reflected terminal content.' }
+}
 foreach ($partition in @('a7d6a899-01', '00000001-04', '11111111-1111-4111-8111-111111111111')) {
     if (-not [StackfortNativeOnboardProbeV1]::IsPartitionUUID($partition)) { throw 'Canonical partition rejected.' }
 }

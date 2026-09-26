@@ -60,7 +60,7 @@ type onboardInteractiveController struct {
 	tty     func() (io.ReadWriteCloser, error)
 	review  func(context.Context, installapply.NativeOnboardingSource) (installapply.NativeOnboardingReview, error)
 	setup   func(installapply.NativeOnboardingReview) (string, installapply.NativeSetupCommitment, error)
-	prepare func(context.Context, installapply.NativeOnboardingRequest, installapply.NativeOnboardingReview, installapply.NativeSetupCommitment) (installapply.NativeOnboardingPrepared, error)
+	prepare func(context.Context, installapply.NativeOnboardingRequest, installapply.NativeOnboardingReview, installapply.NativeSetupCommitment, func(installapply.NativeOnboardingPrepared) error) error
 	verify  func(context.Context, installapply.NativeOnboardingPrepared) error
 	arm     func(context.Context, installapply.NativeOnboardingPrepared) error
 	reboot  func(context.Context) error
@@ -144,41 +144,39 @@ func (controller onboardInteractiveController) run(ctx context.Context, selectio
 	if err := onboardWrite(output, "Exact host and reboot consent recorded interactively; preparing authenticated native installation.\n"); err != nil {
 		return err
 	}
-	prepared, err := controller.prepare(ctx, request, review, setup)
-	if err != nil {
-		return err
-	}
-	if err := validateOnboardPrepared(prepared, review); err != nil {
-		return err
-	}
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
-	if err := controller.verify(ctx, prepared); err != nil {
-		return err
-	}
-	// All output and terminal closure must succeed before arming. There are no
-	// fallible progress writes between successful arm and its authorized reboot.
-	if err := onboardWrite(terminal, "The exact sealed runtime is prepared. Arming the one-shot boot and rebooting now.\n"); err != nil {
-		return err
-	}
-	if err := onboardWrite(output, "Prepared runtime verified; arming the authorized one-shot boot and rebooting.\n"); err != nil {
-		return err
-	}
-	closed = true
-	if err := terminal.Close(); err != nil {
-		return errors.New("controlling terminal could not be closed; boot was not armed")
-	}
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
-	if err := controller.arm(ctx, prepared); err != nil {
-		return err
-	}
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
-	return controller.reboot(ctx)
+	return controller.prepare(ctx, request, review, setup, func(prepared installapply.NativeOnboardingPrepared) error {
+		if err := validateOnboardPrepared(prepared, review); err != nil {
+			return err
+		}
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if err := controller.verify(ctx, prepared); err != nil {
+			return err
+		}
+		// All output and terminal closure must succeed before arming. There are no
+		// fallible progress writes between successful arm and its authorized reboot.
+		if err := onboardWrite(terminal, "The exact sealed runtime is prepared. Arming the one-shot boot and rebooting now.\n"); err != nil {
+			return err
+		}
+		if err := onboardWrite(output, "Prepared runtime verified; arming the authorized one-shot boot and rebooting.\n"); err != nil {
+			return err
+		}
+		closed = true
+		if err := terminal.Close(); err != nil {
+			return errors.New("controlling terminal could not be closed; boot was not armed")
+		}
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if err := controller.arm(ctx, prepared); err != nil {
+			return err
+		}
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		return controller.reboot(ctx)
+	})
 }
 
 func onboardWrite(output io.Writer, text string) error {
