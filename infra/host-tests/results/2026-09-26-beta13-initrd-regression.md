@@ -5,6 +5,12 @@ RTBGG authorized implementing the correction/tests and preparing Beta.13.
 This is not candidate publication approval. No previous immutable release,
 public bootstrap default, customer VPS or native recovery journal was changed.
 
+Subsequent work is recorded separately in the
+[exact-candidate report](2026-09-26-beta13-candidate-qualification.md): retained
+build and cryptographic provenance verified, then real large-inventory
+MBR/BIOS and GPT/UEFI onboarding/API/rerun/reboot checks passed. The environment
+limits below describe the earlier source-preparation session, not that later run.
+
 ## Evidence and implementation
 
 The operator's read-only check returned 1,578 lines / 93,120 bytes, exit 0, with

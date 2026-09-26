@@ -1,7 +1,8 @@
 # Large native initramfs inventories
 
-Status: **source correction prepared for unpublished Beta.13**. This is not an
-upgrade, recovery procedure, qualified release or publication approval. The
+Status: **correction verified on fresh MBR/BIOS and GPT/UEFI hosts with real
+large initrd inventories for unpublished Beta.13**. This is not an
+upgrade, recovery procedure, fully qualified release or publication approval. The
 public bootstrap and immutable Beta.12 assets remain unchanged.
 
 ## Reported failure
@@ -58,3 +59,6 @@ candidate pass reports. Future provider reinstallation requires the owner's
 explicit decision; it is not performed by this fix.
 
 See [regression results and remaining candidate checks](../infra/host-tests/results/2026-09-26-beta13-initrd-regression.md).
+The subsequent [exact-candidate onboarding results](../infra/host-tests/results/2026-09-26-beta13-candidate-qualification.md)
+record genuine provenance and successful 90,649-byte one-shot inventories on
+both fixtures, with remaining release gates explicitly unclaimed.
