@@ -31,10 +31,11 @@ Stackfort is currently an experimental beta. No version is supported for
 production use. Findings against `main` are welcome;
 development artifacts and local rehearsal versions are not supported releases.
 
-## Unpublished Beta.14 candidate
+## Unpublished candidate
 
-`0.1.0-beta.14` is being prepared for qualification; it is **not a published
-release** and has no candidate-specific publication approval. Beta.13 remains
+`0.1.0-beta.14` is being prepared for qualification and is
+**not published or approved for use**. It has no candidate-specific publication
+approval. Beta.13 remains
 the public installer's selected release. No in-place upgrade is offered.
 
 The candidate addresses ACME registration, service-state presentation and the
