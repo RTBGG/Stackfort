@@ -215,7 +215,8 @@ process-loss containment and same-target OS removal. It corrects the shared
 64 KiB output cap and exposes bounded, redacted arming diagnostics. All 14 public
 downloads are verified. The bootstrap now selects Beta.13 for fresh disposable
 Debian 13 amd64 installations only; no upgrade or stopped-conversion resume.
-The final literal README command test is pending; see
+The literal README command also passed on fresh GPT/UEFI Debian 13, including
+original setup/login, hosting/API smoke, same-release rerun and normal reboot; see
 [public installation status](../infra/host-tests/results/2026-09-26-beta13-public-installation.md).
 
 - [x] Versioned DEB/RPM packages where appropriate.

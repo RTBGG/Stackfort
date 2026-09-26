@@ -8,8 +8,10 @@ It fixes rejection of [larger valid initramfs inventories](native-installer-init
 Exact-candidate MBR/BIOS and GPT/UEFI onboarding, installed-host/resource/isolation,
 WAF/cache, real OCI, process-loss containment, same-target OS removal, original
 live CI/security and provenance gates passed. No upgrades from any installed release.
-The final literal README command test against public GitHub is pending; retained
-candidate tests are not represented as that transport test.
+The literal README command passed on an independently fresh GPT/UEFI Debian 13
+host using public GitHub without a version override: original setup/login,
+installed hosting/API smoke, completed same-release rerun and normal reboot
+persistence all passed. Retained candidate tests are recorded separately.
 See [publication and public installation evidence](../infra/host-tests/results/2026-09-26-beta13-public-installation.md).
 Stopped older installations must not be reset or blindly retried. Historical
 qualification does not establish support for every provider image.

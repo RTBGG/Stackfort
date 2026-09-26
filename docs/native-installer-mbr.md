@@ -2,7 +2,8 @@
 
 Status: **published in immutable experimental Beta.11, for fresh installations
 only; not included in Beta.10**.
-The public bootstrap selects Beta.11. Exact-candidate MBR and GPT onboarding,
+The public bootstrap now selects Beta.13, retaining this profile. Beta.11's
+historical exact-candidate MBR and GPT onboarding,
 security/resource isolation, WAF/cache, rootless OCI and failure quarantine
 passed, with same-target full-OS removal separately qualified on GPT.
 Upgrades from Beta.10 are unsupported. Do not patch old installed binaries,

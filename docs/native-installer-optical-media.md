@@ -1,7 +1,8 @@
 # Optional optical installation-media entries
 
 Status: **published in experimental Beta.12 for fresh installations only**.
-The public bootstrap selects Beta.12; the immutable Beta.11 release is unchanged.
+This correction remains in the current public Beta.13 bootstrap selection;
+the earlier immutable releases are unchanged.
 
 A provider's fresh Debian MBR image can retain these ordinary fstab entries
 even when neither optical filesystem is mounted:
