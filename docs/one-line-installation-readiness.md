@@ -1,21 +1,27 @@
 # Public one-line installation readiness
 
-Audit date: 2026-09-24. Status: **experimental public Debian 13 beta available**.
-[Beta.12](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.12) is the
+Audit date: 2026-09-26. Status: **experimental public Debian 13 beta available**.
+[Beta.13](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.13) is the
 current immutable fresh-install-only prerelease. All 14 public assets were
-downloaded and verified against the retained original bytes. It adds the narrow
-[inactive optical-media exception](native-installer-optical-media.md) to the
-qualified MBR/BIOS and GPT/UEFI profiles. No upgrades from any installed release.
-The literal public README command also passed on a freshly reprovisioned GPT/UEFI
-Debian 13 host without a version override, including original setup/login,
-installed hosting/API smoke, same-release rerun and normal reboot/persistence.
-See [publication and public installation evidence](../infra/host-tests/results/2026-09-24-beta12-public-installation.md).
+downloaded and verified; the 12 tag-qualified original files are byte-identical.
+It fixes rejection of [larger valid initramfs inventories](native-installer-initrd-inventory.md).
+Exact-candidate MBR/BIOS and GPT/UEFI onboarding, installed-host/resource/isolation,
+WAF/cache, real OCI, process-loss containment, same-target OS removal, original
+live CI/security and provenance gates passed. No upgrades from any installed release.
+The final literal README command test against public GitHub is pending; retained
+candidate tests are not represented as that transport test.
+See [publication and public installation evidence](../infra/host-tests/results/2026-09-26-beta13-public-installation.md).
+Stopped older installations must not be reset or blindly retried. Historical
+qualification does not establish support for every provider image.
 
-**2026-09-26 field finding:** Beta.12 can reject a valid initramfs inventory over
-64 KiB before arming completes. [Beta.13 source preparation](native-installer-initrd-inventory.md)
-addresses that limit and hidden diagnostics, but is not a qualified or published
-replacement. The historical host passes do not establish support for every
-provider image; stopped installations must not be reset or blindly retried.
+### Earlier public Beta.12
+
+[Beta.12](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.12) was published
+on 2026-09-24 with the narrow inactive optional optical-media exception.
+Its [public README installation, setup, API, rerun and reboot test](../infra/host-tests/results/2026-09-24-beta12-public-installation.md)
+passed on its fresh GPT/UEFI fixture. A later field report exposed its 64 KiB
+initramfs-inventory limit, corrected by the current release without enabling
+recovery or upgrades.
 
 ### Earlier public Beta.11
 
@@ -171,7 +177,7 @@ waive remaining production, recovery, capacity and browser-review limitations.
 
 ## Scope
 
-The public Beta.12 native conversion profile is Debian 13 amd64, fresh disposable
+The public Beta.13 native conversion profile is Debian 13 amd64, fresh disposable
 plain GPT/UEFI or active primary MBR/BIOS ext4 root with GRUB.
 Ubuntu/Rocky native conversion, LVM/RAID, separate
 persistent boot/state filesystems and retained-data conversion are not qualified.
@@ -194,10 +200,10 @@ fail-closed boot, firewall or exact-candidate functional tests.
 
 ### Bootstrap selection and availability
 
-The bare bootstrap now explicitly selects `0.1.0-beta.12` for a fresh invocation,
+The bare bootstrap now explicitly selects `0.1.0-beta.13` for a fresh invocation,
 not GitHub's latest-stable channel. Explicit versions and existing journal pins
 remain supported; a beta is never relabeled stable. The public handler is
-registered; Beta.12's exact tagged-candidate qualification and public immutable
+registered; Beta.13's exact tagged-candidate qualification and public immutable
 release assets are complete. Upgrades are not supported.
 The [installation guide](installer-installation.md) documents
 the real-terminal consent/reboot/setup flow and completed-rerun restrictions.

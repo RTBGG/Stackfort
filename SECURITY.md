@@ -31,12 +31,35 @@ Stackfort is currently an experimental beta. No version is supported for
 production use. Findings against `main` are welcome;
 development artifacts and local rehearsal versions are not supported releases.
 
-## Beta.12: fresh installations only
+## Beta.13: fresh installations only
+
+[`0.1.0-beta.13`](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.13)
+was published on 2026-09-26 as an immutable experimental prerelease under
+[RTBGG's candidate-specific approval](docs/release-evidence/2026-09-26-beta13-publication-approval.md).
+The public bootstrap selects Beta.13 for fresh disposable Debian 13 amd64 hosts,
+using qualified ext4/GRUB GPT/UEFI or primary-MBR/BIOS storage. It fixes rejection
+of larger valid initramfs inventories and retains bounded, redacted arming diagnostics.
+Exact-candidate onboarding on both profiles, host security, resource/isolation,
+WAF/cache, real rootless OCI, process-loss quarantine and same-target OS removal
+passed, as did the original live CI/security, checksum and provenance gates.
+All 14 public downloads were verified; the 12 original tag-qualified files are unchanged.
+
+**No upgrades from any installed release are supported.** Use a fresh OS;
+interrupted conversions cannot be resumed or reset. No independent security
+review, production use or important data. Community-only support and complete
+OS reinstallation as the only removal method remain unchanged.
+See [candidate evidence](infra/host-tests/results/2026-09-26-beta13-candidate-qualification.md)
+and [public installation status](infra/host-tests/results/2026-09-26-beta13-public-installation.md).
+The frozen candidate's earlier unpublished-status text remains historical;
+this later publication decision does not alter the release's bound terms.
+
+## Earlier published release (Beta.12)
 
 [`0.1.0-beta.12`](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.12)
 was published on 2026-09-24 as an immutable experimental prerelease under
 [RTBGG's candidate-specific approval](docs/release-evidence/2026-09-24-beta12-publication-approval.md).
-The public bootstrap selects Beta.12 for fresh disposable Debian 13 amd64 hosts,
+The public bootstrap selected Beta.12 at publication; it now selects the current
+release above. Beta.12 was qualified for fresh disposable Debian 13 amd64 hosts,
 using qualified ext4/GRUB GPT/UEFI or primary-MBR/BIOS storage.
 It fixes rejection of [inactive optional optical-media entries](docs/native-installer-optical-media.md).
 Exact-candidate host qualification, failure containment, same-target OS removal,
@@ -52,20 +75,9 @@ and [publication evidence](infra/host-tests/results/2026-09-24-beta12-public-ins
 
 Known installation limitation reported on 2026-09-26: the initramfs inventory's
 64 KiB output limit rejects larger valid listings during boot preparation. The
-[candidate fix and stopped-host guidance](docs/native-installer-initrd-inventory.md)
+[fix and stopped-host guidance](docs/native-installer-initrd-inventory.md)
 do not authorize journal resets, sealed-runtime replacement or resuming a failed
 conversion. Historical qualification remains scoped to its tested hosts.
-
-## Unpublished candidate
-
-`0.1.0-beta.13` is **not published or approved for use**. RTBGG authorized
-preparing an initramfs-inventory correction with bounded streaming verification,
-regression tests and improved arming diagnostics. Preparation is not publication
-approval, an upgrade promise or a recovery path for an interrupted installation.
-Candidate-specific CI, build provenance, real host qualification and publication
-decisions remain required. No independent security review has been performed;
-the intended scope remains experimental disposable Debian 13 amd64 testing,
-community-only support and removal by complete OS reinstallation.
 
 ## Earlier published release (Beta.11)
 

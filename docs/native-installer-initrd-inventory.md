@@ -1,9 +1,9 @@
 # Large native initramfs inventories
 
-Status: **correction verified on fresh MBR/BIOS and GPT/UEFI hosts with real
-large initrd inventories for unpublished Beta.13**. This is not an
-upgrade, recovery procedure, fully qualified release or publication approval. The
-public bootstrap and immutable Beta.12 assets remain unchanged.
+Status: **corrected in published experimental Beta.13**, verified on fresh
+MBR/BIOS and GPT/UEFI hosts with real 90,649-byte one-shot inventories.
+The public bootstrap selects Beta.13. This is not an upgrade or recovery path;
+use only fresh disposable Debian 13 amd64 test hosts within the qualified scope.
 
 ## Reported failure
 
@@ -51,14 +51,13 @@ recorded `recovery-required` state is terminal for this conversion attempt.
 See the [read-only recovery policy](native-installer-recovery-policy.md).
 Source fixes do not make an interrupted Beta.12 installation resumable.
 
-Beta.13 preparation is authorized, but publication is a separate decision after
-its exact candidate passes release gates. A fresh disposable Debian 13 host with
-a generic kernel and a verified inventory over 64 KiB must be included in those
-tests, alongside the existing MBR/BIOS and GPT/UEFI scope. Do not reuse older
-candidate pass reports. Future provider reinstallation requires the owner's
-explicit decision; it is not performed by this fix.
+Beta.13 passed its exact-candidate release gates and was published unchanged
+after RTBGG's explicit fresh-only experimental authorization. Real generic-kernel
+inventories exceeding 64 KiB passed on both the MBR/BIOS and GPT/UEFI fixtures.
+Future provider reinstallation still requires the owner's explicit decision;
+it is not performed by this fix.
 
-See [regression results and remaining candidate checks](../infra/host-tests/results/2026-09-26-beta13-initrd-regression.md).
-The subsequent [exact-candidate onboarding results](../infra/host-tests/results/2026-09-26-beta13-candidate-qualification.md)
-record genuine provenance and successful 90,649-byte one-shot inventories on
-both fixtures, with remaining release gates explicitly unclaimed.
+See [source regression results](../infra/host-tests/results/2026-09-26-beta13-initrd-regression.md),
+[completed exact-candidate qualification](../infra/host-tests/results/2026-09-26-beta13-candidate-qualification.md)
+and [public installation status](../infra/host-tests/results/2026-09-26-beta13-public-installation.md).
+No independent security review, upgrade, public resume or production claim is implied.

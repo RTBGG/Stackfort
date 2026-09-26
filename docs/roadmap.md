@@ -202,19 +202,21 @@ is published unchanged after fresh MBR/GPT, installed-host, resource/isolation,
 WAF/cache, real OCI, process-loss containment and same-target OS-removal checks.
 It accepts the qualified inactive optional CD-ROM entries while preserving them.
 All 14 public assets match their hashes and original package bytes. The bootstrap
-selects Beta.12 only for fresh installations; no upgrades are offered. The
+selected Beta.12 at publication only for fresh installations; no upgrades are offered. The
 [literal public README-command test](../infra/host-tests/results/2026-09-24-beta12-public-installation.md)
 also passed on a fresh GPT/UEFI Debian 13 host, including setup, hosting/API
 checks, same-release rerun and normal reboot/persistence.
 See [publication and final public installation status](../infra/host-tests/results/2026-09-24-beta12-public-installation.md).
 
-**2026-09-26 candidate preparation:** A provider's valid 93,120-byte initramfs
-inventory exposed Beta.12's shared 64 KiB command-output cap. The
-[Beta.13 correction](native-installer-initrd-inventory.md) streams inventory
-verification with separate bounds and exposes bounded arming diagnostics.
-Source regression tests are distinct from the still-required exact-candidate
-build, Linux/host qualification and publication approval. No upgrade or stopped
-conversion resume is enabled, and the public installer default is unchanged.
+**2026-09-26 initramfs fix:** [Beta.13](native-installer-initrd-inventory.md)
+is published unchanged after exact-candidate MBR/BIOS and GPT/UEFI qualification,
+including real 90,649-byte inventories, host/resource/isolation, WAF/cache, OCI,
+process-loss containment and same-target OS removal. It corrects the shared
+64 KiB output cap and exposes bounded, redacted arming diagnostics. All 14 public
+downloads are verified. The bootstrap now selects Beta.13 for fresh disposable
+Debian 13 amd64 installations only; no upgrade or stopped-conversion resume.
+The final literal README command test is pending; see
+[public installation status](../infra/host-tests/results/2026-09-26-beta13-public-installation.md).
 
 - [x] Versioned DEB/RPM packages where appropriate.
 - [x] Verified one-line and manual installers for clean hosts.
