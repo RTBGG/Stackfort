@@ -321,6 +321,11 @@ issuance, fixes the hosted-domain account-registration event, and qualifies
 panel management after completed native onboarding. See the
 [development test report](../infra/host-tests/results/2026-09-26-panel-ui-fixes.md).
 These changes are not part of the published Beta.13 installer.
+The [Beta.14 exact-candidate test](../infra/host-tests/results/2026-09-26-beta14-candidate-qualification.md)
+passed MBR/BIOS onboarding and installed panel/service inspection, but the GPT
+test stopped safely during concurrent automatic package updates between sealed
+preparation and arming. Publication remains blocked pending coordination and
+diagnostic follow-up; no tag is moved and the public selector remains Beta.13.
 The exact unpublished `0.1.0-beta.3` candidate passed native installation,
 panel/private-CA and selected hosting regressions on all three supported
 distributions; see the [artifact-bound evidence](../infra/host-tests/results/2026-09-08-panel-hostname-candidate.md).

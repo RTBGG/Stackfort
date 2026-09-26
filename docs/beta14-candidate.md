@@ -1,6 +1,8 @@
 # Beta.14 candidate preparation
 
-Status: **unpublished candidate preparation**, not release approval or a passing
+Status: **unpublished; public qualification blocked by concurrent package activity
+during the GPT/UEFI arming test**. MBR/BIOS onboarding, rerun/reboot and installed
+panel/service inspection passed. This is not release approval or a complete
 exact-archive installation qualification. The public installer still selects
 Beta.13. No tag, release, automatic update or predecessor upgrade is authorized
 by this document. Existing installations must not receive manually mixed API,
@@ -51,3 +53,11 @@ The [candidate report](../infra/host-tests/results/2026-09-26-beta14-candidate-q
 records the frozen build and completed checks. RTBGG has separately
 [authorized unpublished tag qualification and public one-line preparation](release-evidence/2026-09-26-beta14-test-qualification.md),
 not final publication or an in-place upgrade.
+
+The candidate's tag-origin proof is verified, but the GPT test stopped safely
+while Debian's background package updater ran between sealed preparation and
+boot arming. See the candidate report for the preserved failure, confirmed
+package/tool drift and limitations of the original diagnostic capture. Do not
+clear its journal, bypass the protection or change the public selector. Changes
+to the frozen runtime require a newly built and qualified candidate, never a
+moved tag or replacement release assets.
