@@ -1,6 +1,6 @@
 # Beta.15 candidate preparation
 
-Status: **unpublished; qualification in progress**. The public installer remains
+Status: **unpublished; required host qualification passed**. The public installer remains
 on Beta.13 until immutable, qualified Beta.15 assets exist and have been verified.
 Beta.14's frozen tag and its failed GPT qualification are retained unchanged.
 
@@ -50,5 +50,8 @@ reset failed conversion journals or replace/move existing release identities.
 
 The original ten-file artifact passed bounded extraction, checksum, source and
 installer-equality checks. The [mechanical selection](../packaging/releases/promotion/0.1.0-beta.15.json)
-only permits exact-tag provenance for these same bytes. Host qualification and
-publication gates remain open; neither a tag nor this record publishes a release.
+only permits exact-tag provenance for these same bytes. The
+[host qualification report](../infra/host-tests/results/2026-09-26-beta15-candidate-qualification.md)
+and [same-target removal report](../infra/host-tests/results/2026-09-26-beta15-os-removal.md)
+record completed checks. Publication gates and anonymous public download checks
+remain required; neither a tag nor this record publishes a release.
