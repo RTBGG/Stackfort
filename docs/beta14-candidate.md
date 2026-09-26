@@ -47,3 +47,7 @@ require matched API and agent binaries from the same archive.
 
 The [development report](../infra/host-tests/results/2026-09-26-panel-ui-fixes.md)
 records useful regression evidence, but does not qualify a future release archive.
+The [candidate report](../infra/host-tests/results/2026-09-26-beta14-candidate-qualification.md)
+records the frozen build and completed checks. RTBGG has separately
+[authorized unpublished tag qualification and public one-line preparation](release-evidence/2026-09-26-beta14-test-qualification.md),
+not final publication or an in-place upgrade.
