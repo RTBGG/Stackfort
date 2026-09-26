@@ -1,8 +1,9 @@
 # Beta.15 candidate preparation
 
 Status: **published; required host qualification and public asset checks passed**.
-The public installer selects Beta.15. The separate literal README installation
-test is recorded in the [public installation report](../infra/host-tests/results/2026-09-26-beta15-public-installation.md).
+The public installer selects Beta.15. The literal README installation, original
+setup/login, hosting/API smoke, rerun and normal reboot all passed, as recorded
+in the [public installation report](../infra/host-tests/results/2026-09-26-beta15-public-installation.md).
 Beta.14's frozen tag and its failed GPT qualification are retained unchanged.
 
 Beta.15 retains the [Beta.14 product fixes](beta14-candidate.md) for ACME account

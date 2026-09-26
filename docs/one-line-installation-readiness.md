@@ -9,7 +9,10 @@ fixes plus continuous package locking through the sealed boot handoff.
 Exact-candidate MBR/BIOS and GPT/UEFI onboarding, installed API, host security,
 resources/isolation, WAF/cache, rootless OCI, process-loss quarantine and
 same-target OS removal passed, as did original CI/security and provenance gates.
-The separate literal README/default-selector installation test is tracked in the
+The separate literal README/default-selector installation passed on a fresh
+GPT/UEFI Debian 13 host using public GitHub, without a version override. Original
+setup/login, all seven hosting/API groups, completed rerun and normal reboot
+persistence passed; see the
 [public installation report](../infra/host-tests/results/2026-09-26-beta15-public-installation.md).
 No upgrades, independent security review or production approval are implied.
 
