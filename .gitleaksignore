@@ -26,3 +26,13 @@ fb4dc378b50c434b83084a3fc6834a27d5612a5d:internal/operations/oci_resources_test.
 # independently extracted from the retained archive; not an API credential.
 # Limit this exception to its original report line, rule and commit.
 a27492d25d04028e7d2a0898e4d3e9b822d3df3c:infra/host-tests/results/2026-09-19-beta7-candidate-qualification.md:generic-api-key:22
+
+# Reviewed historical report false positives found by a full-history manual scan:
+# the two Beta.11 lines contain the same test-helper executable SHA-256, not an
+# API credential. The restore JSON lines contain SHA-256 digests of the public
+# SSH host-key file (.pub), not a private key or an authentication secret.
+# Each exception is restricted to its exact original commit, file, rule and line.
+84a338912635fe5577a3a0a5cd7f665424abbbbb:infra/host-tests/results/2026-09-24-beta11-public-installation.md:generic-api-key:66
+4fb53f6000cbed2bf79af27fbce725fdbf8d4e73:infra/host-tests/results/2026-09-24-beta11-candidate-qualification.md:generic-api-key:112
+ca22f11a414bb5cba28a4cff82cf1b340b70e401:infra/host-tests/results/2026-09-11-native-whole-disk-restore.json:generic-api-key:44
+ca22f11a414bb5cba28a4cff82cf1b340b70e401:infra/host-tests/results/2026-09-11-native-whole-disk-restore.json:generic-api-key:66
