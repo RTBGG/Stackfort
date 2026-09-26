@@ -38,6 +38,7 @@ type Services struct {
 	Sessions              SessionManagementService
 	Domains               DomainLifecycleService
 	ACMEAccounts          ACMEAccountService
+	PanelHostname         PanelHostnameService
 	TLSCertificates       TLSCertificateService
 	AdminConsole          AdminConsoleService
 	AccountProvisioning   AccountProvisioningService
@@ -112,6 +113,9 @@ func NewWithServices(logger *slog.Logger, state HealthChecker, services Services
 	}
 	if services.Authentication != nil && services.ACMEAccounts != nil {
 		registerACMEAccountRoutes(mux, logger, services.Authentication, services.ACMEAccounts)
+	}
+	if services.Authentication != nil && services.PanelHostname != nil {
+		registerPanelRoutes(mux, logger, services.Authentication, services.PanelHostname)
 	}
 	if services.Authentication != nil && services.TLSCertificates != nil {
 		registerTLSCertificateRoutes(mux, logger, services.Authentication, services.TLSCertificates)

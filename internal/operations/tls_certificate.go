@@ -701,6 +701,8 @@ func tlsChallengeIdempotencyKey(action string, operationID core.ID, token string
 
 func classifyTLSRepositoryFailure(err error) error {
 	switch {
+	case errors.Is(err, core.ErrACMEAccountRequired):
+		return &Failure{Code: "tls.acme_account_required"}
 	case errors.Is(err, core.ErrInvalidInput), errors.Is(err, core.ErrNotFound):
 		return &Failure{Code: "tls.lifecycle_state_invalid"}
 	case errors.Is(err, core.ErrConflict):

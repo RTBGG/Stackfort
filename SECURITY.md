@@ -31,6 +31,21 @@ Stackfort is currently an experimental beta. No version is supported for
 production use. Findings against `main` are welcome;
 development artifacts and local rehearsal versions are not supported releases.
 
+## Unpublished Beta.14 candidate
+
+`0.1.0-beta.14` is being prepared for qualification; it is **not a published
+release** and has no candidate-specific publication approval. Beta.13 remains
+the public installer's selected release. No in-place upgrade is offered.
+
+The candidate addresses ACME registration, service-state presentation and the
+database wizard, and adds administrator-only panel-domain setup with automatic
+certificates. Its intended test scope remains fresh disposable Debian 13 amd64
+servers with qualified ext4/GRUB storage, not production or important data.
+Community-only support, no independent security review, and destructive complete
+OS reinstallation as the only removal method remain explicit limitations.
+These proposed terms do not replace exact-candidate host tests or RTBGG's
+publication decision. See the [candidate plan](docs/beta14-candidate.md).
+
 ## Beta.13: fresh installations only
 
 [`0.1.0-beta.13`](https://github.com/RTBGG/Stackfort/releases/tag/v0.1.0-beta.13)

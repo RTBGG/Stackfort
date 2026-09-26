@@ -2,6 +2,7 @@
 
 import { createI18n } from 'vue-i18n'
 import { identitySecurityMessages } from './identity-security-messages'
+import { panelHostnameMessages } from './panel-hostname-messages'
 
 export const supportedLocales = ['en', 'de'] as const
 export type SupportedLocale = (typeof supportedLocales)[number]
@@ -13,6 +14,7 @@ export function isSupportedLocale(value: unknown): value is SupportedLocale {
 export const messages = {
   en: {
     identitySecurity: identitySecurityMessages.en,
+    panelHostname: panelHostnameMessages.en,
     brand: { name: 'Stackfort', tagline: 'Secure hosting. Simple operations.' },
     localeNames: { en: 'English', de: 'Deutsch' },
     accessibility: { skipToContent: 'Skip to main content' },
@@ -150,7 +152,7 @@ export const messages = {
       notIncluded: 'PHP is not available for this package on the current host.', version: 'PHP {version}',
       versionLabel: 'PHP version', domains: 'Configured domains', memory: 'Current memory',
       processes: 'Processes', cpuTime: 'CPU time', versionNoLongerAvailable: 'This PHP version is no longer available. Select another target.',
-      domainSummary: 'PHP {version} · {root}',
+      domainSummary: 'PHP {version} · {root}', poolNotCreated: 'Account pool not created yet',
     },
     databases: {
       wizardTitle: 'Database wizard', wizardSteps: 'Database wizard progress', step: 'Step {current} of {total}',
@@ -325,6 +327,10 @@ export const messages = {
     },
     services: {
       operatingSystem: 'Operating system', kernel: 'Kernel', architecture: 'Architecture',
+      unitPresence: 'Unit presence', present: 'Present',
+      stateHint: 'A present unit is not necessarily running. inactive/dead describes its current runtime state, not whether the software is installed. Inspect unexpected stops of NGINX, MariaDB, the API or the agent.',
+      phpHint: 'Hosting uses isolated account pools, not this global vendor PHP-FPM unit.',
+      podmanHint: 'Rootful Podman API units are intentionally disabled; managed applications run rootlessly without this socket.',
       service: 'Service', unit: 'Unit', activeState: 'Runtime state', unavailable: 'Host inspection unavailable',
       unavailableBody: 'The privileged host agent did not provide a capability report.',
     },
@@ -362,7 +368,8 @@ export const messages = {
       body: 'Register the server once before requesting production certificates for hosted domains.',
       environment: 'Environment', production: 'Production', contactEmail: 'Contact email',
       registeredAt: 'Registered', acceptTerms: 'I accept the certificate authority’s current terms of service.',
-      registrationPending: 'Registration is running. Refresh this view after the operation completes.',
+      registrationPending: 'Registration is running. The result will update automatically.',
+      retryHint: 'The account registration is incomplete. You can retry using the existing account key and contact email.',
       productionHint: 'This creates a real production account. Automated tests continue to use a private staging authority.',
       registerAction: 'Register Let’s Encrypt account',
     },
@@ -393,6 +400,7 @@ export const messages = {
       databaseCredentialRotationQueued: 'The database password rotation was queued.',
       databaseDeletionQueued: 'The destructive database operation was queued.',
       acmeAccountQueued: 'Let’s Encrypt account registration was queued.',
+      acmeAccountRegistered: 'The Let’s Encrypt account is registered. You can now retry certificate issuance for your domains.',
       sessionRevoked: 'Session revoked.', sessionsRevoked: 'Other sessions revoked.', noSessionsRevoked: 'There were no other sessions to revoke.',
       updatePolicySaved: 'Update-check policy saved.', updateCheckCompleted: 'Release check completed.',
 		platformUpdateAccepted: 'The verified update was accepted. This page will reconnect automatically.',
@@ -420,6 +428,9 @@ export const messages = {
       csrf_token_missing: 'The browser security token is unavailable. Sign in again.', cross_site_request: 'Cross-site changes are not allowed.',
       password_mismatch: 'The passwords do not match.', forbidden: 'You do not have permission for this action.',
       operation_failed: 'The background operation failed. The previous configuration remains visible.',
+      acme_account_required: 'A valid Let’s Encrypt account is missing. Ask an administrator to register it in Settings, then retry certificate issuance.',
+      acme_registration_failed: 'ACME account registration failed. Check the operation status and retry registration in Settings.',
+      panel_issuance_failed: 'The panel certificate could not be activated. Check DNS for this hostname, public port 80, hostname conflicts and CA limits. Wait at least one hour after the last issuance attempt before retrying. Port 8443 remains available.',
       operation_status_unavailable: 'The operation status could not be refreshed. Refresh this page to try again.',
       php_status_unavailable: 'PHP runtime status could not be refreshed. Refresh this page to try again.',
       invalid_file_path: 'The requested file path is invalid.', file_workspace_not_ready: 'The account file workspace is not ready yet.',
@@ -441,6 +452,7 @@ export const messages = {
   },
   de: {
     identitySecurity: identitySecurityMessages.de,
+    panelHostname: panelHostnameMessages.de,
     brand: { name: 'Stackfort', tagline: 'Sicheres Hosting. Einfache Verwaltung.' },
     localeNames: { en: 'English', de: 'Deutsch' },
     accessibility: { skipToContent: 'Zum Hauptinhalt springen' },
@@ -578,7 +590,7 @@ export const messages = {
       notIncluded: 'PHP ist für dieses Paket auf dem aktuellen Host nicht verfügbar.', version: 'PHP {version}',
       versionLabel: 'PHP-Version', domains: 'Konfigurierte Domains', memory: 'Aktueller Arbeitsspeicher',
       processes: 'Prozesse', cpuTime: 'CPU-Zeit', versionNoLongerAvailable: 'Diese PHP-Version ist nicht mehr verfügbar. Wähle ein anderes Ziel.',
-      domainSummary: 'PHP {version} · {root}',
+      domainSummary: 'PHP {version} · {root}', poolNotCreated: 'Kontopool noch nicht angelegt',
     },
     databases: {
       wizardTitle: 'Datenbank-Assistent', wizardSteps: 'Fortschritt des Datenbank-Assistenten', step: 'Schritt {current} von {total}',
@@ -753,6 +765,10 @@ export const messages = {
     },
     services: {
       operatingSystem: 'Betriebssystem', kernel: 'Kernel', architecture: 'Architektur',
+      unitPresence: 'Unit vorhanden', present: 'Vorhanden',
+      stateHint: 'Eine vorhandene Unit läuft nicht zwingend. inactive/dead beschreibt den Laufzeitstatus, nicht die Installation. Unerwartete Stopps von NGINX, MariaDB, API oder Agent müssen geprüft werden.',
+      phpHint: 'Hosting nutzt isolierte Kontopools, nicht diese globale PHP-FPM-Unit der Distribution.',
+      podmanHint: 'Die rootful Podman-API ist absichtlich deaktiviert; verwaltete Anwendungen laufen rootless ohne diesen Socket.',
       service: 'Dienst', unit: 'Unit', activeState: 'Laufzeitstatus', unavailable: 'Host-Inspektion nicht verfügbar',
       unavailableBody: 'Der privilegierte Host-Agent hat keinen Fähigkeitsbericht geliefert.',
     },
@@ -790,7 +806,8 @@ export const messages = {
       body: 'Registriere den Server einmalig, bevor Produktionszertifikate für gehostete Domains angefordert werden.',
       environment: 'Umgebung', production: 'Produktion', contactEmail: 'Kontakt-E-Mail',
       registeredAt: 'Registriert', acceptTerms: 'Ich akzeptiere die aktuellen Nutzungsbedingungen der Zertifizierungsstelle.',
-      registrationPending: 'Die Registrierung läuft. Aktualisiere diese Ansicht nach Abschluss der Operation.',
+      registrationPending: 'Die Registrierung läuft. Das Ergebnis wird automatisch aktualisiert.',
+      retryHint: 'Die Registrierung ist unvollständig. Du kannst sie mit dem bestehenden Kontoschlüssel und der bisherigen Kontakt-E-Mail erneut versuchen.',
       productionHint: 'Hiermit wird ein echtes Produktionskonto erstellt. Automatisierte Tests verwenden weiterhin eine private Staging-Stelle.',
       registerAction: 'Let’s-Encrypt-Konto registrieren',
     },
@@ -821,6 +838,7 @@ export const messages = {
       databaseCredentialRotationQueued: 'Die Datenbank-Passwortrotation wurde eingestellt.',
       databaseDeletionQueued: 'Die destruktive Datenbankoperation wurde eingestellt.',
       acmeAccountQueued: 'Die Registrierung des Let’s-Encrypt-Kontos wurde in die Warteschlange gestellt.',
+      acmeAccountRegistered: 'Das Let’s-Encrypt-Konto ist registriert. Du kannst die Zertifikatsausstellung für deine Domains nun erneut versuchen.',
       sessionRevoked: 'Sitzung widerrufen.', sessionsRevoked: 'Andere Sitzungen widerrufen.', noSessionsRevoked: 'Es gab keine anderen Sitzungen zum Widerrufen.',
       updatePolicySaved: 'Updateprüfungsrichtlinie gespeichert.', updateCheckCompleted: 'Release-Prüfung abgeschlossen.',
 		platformUpdateAccepted: 'Das verifizierte Update wurde angenommen. Diese Seite verbindet sich automatisch neu.',
@@ -848,6 +866,9 @@ export const messages = {
       csrf_token_missing: 'Das Browser-Sicherheitstoken fehlt. Melde dich erneut an.', cross_site_request: 'Domainübergreifende Änderungen sind nicht erlaubt.',
       password_mismatch: 'Die Passwörter stimmen nicht überein.', forbidden: 'Du hast keine Berechtigung für diese Aktion.',
       operation_failed: 'Die Hintergrundoperation ist fehlgeschlagen. Die vorherige Konfiguration bleibt sichtbar.',
+      acme_account_required: 'Ein gültiges Let’s-Encrypt-Konto fehlt. Bitte einen Administrator um Registrierung unter Einstellungen und versuche die Zertifikatsausstellung danach erneut.',
+      acme_registration_failed: 'Die ACME-Kontoregistrierung ist fehlgeschlagen. Prüfe den Operationsstatus und versuche die Registrierung unter Einstellungen erneut.',
+      panel_issuance_failed: 'Das Panel-Zertifikat konnte nicht aktiviert werden. Prüfe DNS für diesen Hostnamen, den öffentlichen Port 80, Hostnamenkonflikte und CA-Limits. Warte vor einem erneuten Versuch mindestens eine Stunde seit dem letzten Ausstellungsversuch. Port 8443 bleibt verfügbar.',
       operation_status_unavailable: 'Der Operationsstatus konnte nicht aktualisiert werden. Aktualisiere die Seite, um es erneut zu versuchen.',
       php_status_unavailable: 'Der PHP-Laufzeitstatus konnte nicht aktualisiert werden. Aktualisiere die Seite, um es erneut zu versuchen.',
       invalid_file_path: 'Der angeforderte Dateipfad ist ungültig.', file_workspace_not_ready: 'Der Dateibereich des Kontos ist noch nicht bereit.',

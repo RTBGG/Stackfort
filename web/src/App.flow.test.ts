@@ -42,6 +42,7 @@ function authenticatedResource(input: string) {
   if (input.includes('/admin/operations')) return response(200, { operations: [] })
   if (input.includes('/admin/audit-events')) return response(200, { events: [] })
   if (input.endsWith('/admin/acme/accounts')) return response(200, { accounts: [] })
+  if (input.endsWith('/admin/panel')) return response(200, { enabled: false, autoRenew: false, recoveryRequired: false })
   if (input.endsWith('/admin/host/capabilities')) return response(503, { code: 'host_agent_unavailable' })
   if (input.endsWith('/admin/updates')) return response(200, {
     currentVersion: '1.0.0', currentVersionValid: true, channel: 'stable', automaticChecks: true,
@@ -73,10 +74,56 @@ afterEach(() => {
   document.body.innerHTML = ''
   document.body.className = ''
   vi.restoreAllMocks()
+  vi.useRealTimers()
   vi.unstubAllGlobals()
 })
 
 describe('administrator entry flows', () => {
+  it('connects the real ACME registration form to the authenticated HTTP request', async () => {
+    vi.useFakeTimers()
+    let registered = false
+    let completed = false
+    vi.spyOn(document, 'cookie', 'get').mockReturnValue('__Host-sf-csrf=csrf-bound')
+    const fetchMock = vi.fn().mockImplementation((input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input)
+      if (url.endsWith('/admin/acme/accounts') && init?.method === 'POST') {
+        registered = true
+        return response(202, { operationId: 'registration-id', status: 'pending' })
+      }
+      if (registered && url.includes('/admin/operations')) return response(200, { operations: [
+        { id: 'registration-id', kind: 'acme.account.register', status: completed ? 'succeeded' : 'running' },
+      ] })
+      if (completed && url.endsWith('/admin/acme/accounts')) return response(200, { accounts: [
+        { id: 'acme-id', environment: 'letsencrypt-production', status: 'valid', contactEmail: 'tls@example.test' },
+      ] })
+      const resource = authenticatedResource(url)
+      if (resource) return resource
+      if (url.endsWith('/bootstrap')) return response(200, { required: false })
+      if (url.endsWith('/session')) return response(200, sessionResponse())
+      if (url.endsWith('/mfa/totp')) return response(200, { enabled: false, recoveryCodesRemaining: 0 })
+      return response(404, { code: 'resource_not_found' })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const application = mountApplication(); await flushPromises()
+    await application.get('.identity-summary').trigger('click'); await flushPromises()
+    const form = application.get('.acme-settings form')
+    expect(form.get<HTMLButtonElement>('button').element.disabled).toBe(true)
+    await form.get('input[type="email"]').setValue('tls@example.test')
+    await form.get('input[type="checkbox"]').setValue(true)
+    await form.trigger('submit'); await flushPromises()
+    const posts = fetchMock.mock.calls.filter(([url, init]) => String(url).endsWith('/admin/acme/accounts') && init?.method === 'POST')
+    expect(posts).toHaveLength(1)
+    expect(JSON.parse(posts[0]?.[1]?.body as string)).toEqual({
+      environment: 'letsencrypt-production', contactEmail: 'tls@example.test', termsAccepted: true,
+    })
+    expect(application.text()).toContain('Let’s Encrypt account registration was queued.')
+    expect(application.text()).toContain('Registration is running.')
+    completed = true
+    await vi.advanceTimersByTimeAsync(2000); await flushPromises()
+    expect(application.text()).toContain('The Let’s Encrypt account is registered.')
+    expect(application.find('.acme-settings form').exists()).toBe(false)
+  })
+
   it('replaces the authenticated shell with a one-time recovery view after MFA setup', async () => {
     vi.spyOn(document, 'cookie', 'get').mockReturnValue('__Host-sf-csrf=csrf-bound')
     const fetchMock = vi.fn().mockImplementation((input: string | URL | Request) => {

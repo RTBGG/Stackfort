@@ -458,6 +458,9 @@ describe('account-owner content', () => {
 
   it('bounds database and new-user aliases by the escaped grant-pattern budget', async () => {
     const wrapper = mountContent('databases')
+    expect(wrapper.findAll('.wizard-steps li').map((item) => item.text())).toEqual([
+      '1Create a database', '2Create or select a database user', '3Access preset', '4Review and apply',
+    ])
     await wrapper.setProps({ accounts: [{
       ...account,
       effectiveLimits: { ...account.effectiveLimits, maxDatabases: 2, maxDatabaseUsers: 2 },

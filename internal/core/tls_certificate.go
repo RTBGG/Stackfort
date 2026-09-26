@@ -75,11 +75,14 @@ func (r *Repository) PrepareTLSCertificateOrder(
 		return TLSCertificateOrder{}, fmt.Errorf("%w: wildcard names require DNS-01", ErrConflict)
 	}
 	account, err := r.ACMEAccountByEnvironment(ctx, params.Environment)
+	if errors.Is(err, ErrNotFound) {
+		return TLSCertificateOrder{}, ErrACMEAccountRequired
+	}
 	if err != nil {
 		return TLSCertificateOrder{}, err
 	}
 	if account.Status != ACMEAccountValid {
-		return TLSCertificateOrder{}, fmt.Errorf("%w: ACME account is not valid", ErrConflict)
+		return TLSCertificateOrder{}, ErrACMEAccountRequired
 	}
 
 	certificateID, err := r.newID()

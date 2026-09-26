@@ -45,6 +45,7 @@ import (
 	"github.com/RTBGG/stackfort/internal/hostresources"
 	"github.com/RTBGG/stackfort/internal/hosttls"
 	"github.com/RTBGG/stackfort/internal/hostupdates"
+	"github.com/RTBGG/stackfort/internal/installedpanel"
 	"github.com/RTBGG/stackfort/internal/nginxbaseline"
 	"github.com/RTBGG/stackfort/internal/ocideployment"
 	"github.com/RTBGG/stackfort/internal/ociimage"
@@ -86,6 +87,7 @@ type Handler struct {
 	ociResources    ociResourceReconciler
 	ociDeployments  ociDeploymentReconciler
 	platformUpdates platformUpdateManager
+	panel           func(context.Context, hostnginx.PanelRequest) (hostnginx.PanelStatus, error)
 }
 
 type capabilityInspector interface {
@@ -312,6 +314,7 @@ func newHandlerWithNGINXActivationServices(
 		ociResources:    hostociresources.NewManager(),
 		ociDeployments:  hostocideployment.NewManager(),
 		platformUpdates: hostupdates.NewManager(),
+		panel:           installedpanel.Manage,
 	}
 }
 
@@ -786,6 +789,8 @@ func (handler *Handler) handleRPC(w http.ResponseWriter, request *http.Request) 
 		)
 	} else if decoded.Operation == agentprotocol.OperationReconcileOCIDeployment {
 		_ = http.NewResponseController(w).SetWriteDeadline(handler.now().UTC().Add(4 * time.Minute))
+	} else if decoded.Operation == agentprotocol.OperationIssuePanel {
+		_ = http.NewResponseController(w).SetWriteDeadline(handler.now().UTC().Add(agentprotocol.MaximumPanelIssueDuration))
 	}
 	digest, err := agentprotocol.SemanticDigest(decoded)
 	if err != nil {
@@ -1132,6 +1137,22 @@ func (handler *Handler) dispatch(ctx context.Context, request agentprotocol.Requ
 			return handler.platformUpdateError(response, request, err)
 		}
 		response.PlatformUpdateStatus = &result
+		return http.StatusOK, response
+	case agentprotocol.OperationInspectPanel, agentprotocol.OperationIssuePanel:
+		input := hostnginx.PanelRequest{Action: "status"}
+		if request.IssuePanel != nil {
+			input = hostnginx.PanelRequest{Action: "issue", Hostname: request.IssuePanel.Hostname, Email: request.IssuePanel.Email, AcceptTerms: request.IssuePanel.AcceptTerms}
+		}
+		panelContext, cancel := context.WithTimeout(ctx, 4*time.Minute)
+		defer cancel()
+		result, err := handler.panel(panelContext, input)
+		if err != nil {
+			// Do not expose root file paths, account material, or CA responses.
+			response.Error = &agentprotocol.ResponseError{Code: agentprotocol.ErrorNGINXUnavailable, Message: "Panel hostname operation failed; check DNS, HTTP reachability, conflicts and issuance cooldown."}
+			return http.StatusServiceUnavailable, response
+		}
+		status := agentprotocol.PanelStatusResponse(result)
+		response.PanelStatus = &status
 		return http.StatusOK, response
 	case agentprotocol.OperationStartPlatformUpdate:
 		version := request.StartPlatformUpdate.Version

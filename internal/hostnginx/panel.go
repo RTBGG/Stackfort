@@ -25,8 +25,8 @@ type PanelStatus struct {
 	AutoRenew            bool      `json:"autoRenew"`
 }
 
-// ManagePanel is a root-console boundary, intentionally not an agent RPC or
-// browser endpoint that accepts private-key paths from a remote caller.
+// ManagePanel is the root management boundary. Browser requests are constrained
+// by the agent to status/ACME issuance only; private-key paths are console-only.
 func ManagePanel(ctx context.Context, request PanelRequest) (PanelStatus, error) {
 	return managePanel(ctx, request)
 }

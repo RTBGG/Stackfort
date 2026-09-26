@@ -302,6 +302,14 @@ td progress { width: 130px; max-width: 100%; accent-color: #2f9e68; }
 .settings-panel .danger-action { justify-self: end; grid-column: 2; }
 
 .account-content .content-toolbar { align-items: flex-end; }
+.wizard-steps { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 0; }
+.wizard-steps li { display: flex; align-items: center; gap: 8px; color: #586d65; font-size: 12px; line-height: 1.4; }
+.wizard-step-number { display: grid; place-items: center; flex: 0 0 28px; height: 28px; border: 1px solid #becfc8; border-radius: 50%; }
+.wizard-steps li[data-state="active"] .wizard-step-number { color: #fff; background: #176b4b; border-color: #176b4b; }
+.wizard-steps li[aria-current="step"] { color: #183329; font-weight: 750; }
+.acme-settings { grid-template-columns: 1fr; }
+.panel-hostname-settings { display: grid; gap: 16px; align-content: start; }
+.panel-hostname-settings fieldset { min-width: 0; margin: 0; padding: 0; border: 0; display: grid; gap: 16px; }
 .compact-picker { max-width: 310px; margin-left: auto; }
 .owner-empty { min-height: 310px; }
 .usage-overview > p, .usage-plan-card > p, .measurement-note, .session-toolbar > p { color: #61756e; font-size: 12px; line-height: 1.55; }

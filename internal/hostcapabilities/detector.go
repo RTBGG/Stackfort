@@ -597,7 +597,9 @@ func serviceDefinitions(distribution string) []serviceDefinition {
 	firewallUnit := "firewalld.service"
 	switch distribution {
 	case "debian", "ubuntu":
-		firewallUnit = "nftables.service"
+		// The distro loader is deliberately inactive on native hosts. Inspect
+		// the unit that actually owns Stackfort's dedicated nftables table.
+		firewallUnit = "stackfort-firewall.service"
 	}
 	return []serviceDefinition{
 		{"nginx", "nginx.service"}, {"php-fpm", phpUnit}, {"mariadb", "mariadb.service"},

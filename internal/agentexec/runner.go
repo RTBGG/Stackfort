@@ -192,7 +192,7 @@ func NewRunner() *Runner {
 	units := stringSet(
 		"nginx.service",
 		"mariadb.service", "vinyl.service", "podman.socket", "nftables.service",
-		"firewalld.service", "stackfort-api.service", "stackfort-agent.service",
+		"firewalld.service", "stackfort-firewall.service", "stackfort-api.service", "stackfort-agent.service",
 	)
 	dpkgPackages, rpmPackages := maps.Clone(packages), maps.Clone(packages)
 	// PHP query authority is limited to the same native profiles used by the

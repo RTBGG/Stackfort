@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { monitorAdminOperation, operationPending } from './adminOperation'
 import { useI18n } from 'vue-i18n'
 import AccountContent from './AccountContent.vue'
 import { accountNavigation, type AccountPageKey } from './account'
@@ -85,6 +86,8 @@ let accountOperationTimer: ReturnType<typeof setTimeout> | null = null
 let accountOperationGeneration = 0
 let platformUpdateTimer: ReturnType<typeof setTimeout> | null = null
 let platformUpdateDeadline = 0
+let stopAcmeTracking: (() => void) | undefined
+let acmeTrackingId = ''
 
 const accountOperationPollInterval = 1000
 const platformUpdatePollInterval = 2000
@@ -240,6 +243,8 @@ async function refreshAdminData() {
 		beginPlatformUpdateTracking()
 	}
   handleDataFailures(results.slice(0, 5))
+  const registration = operations.value.find((item) => item.kind === 'acme.account.register' && operationPending(item))
+  if (registration && registration.id !== acmeTrackingId) trackAcmeRegistration(registration.id)
   dataLoading.value = false
 }
 
@@ -399,11 +404,28 @@ async function registerACMEAccount(input: {
   termsAccepted: boolean
 }) {
   await runAction(async () => {
-    await api.registerACMEAccount(input)
+    const result = await api.registerACMEAccount(input)
+    noticeCode.value = 'acmeAccountQueued'
+    trackAcmeRegistration(result.operationId)
     acmeAccounts.value = await api.acmeAccounts()
     operations.value = await api.operations()
-    noticeCode.value = 'acmeAccountQueued'
   })
+}
+
+function trackAcmeRegistration(id: string) {
+  const trackedSession = session.value?.sessionId
+  stopAcmeTracking?.()
+  acmeTrackingId = id
+  stopAcmeTracking = monitorAdminOperation(id, (items) => { operations.value = items }, async (operation) => {
+    acmeTrackingId = ''
+    if (operation.status === 'succeeded') {
+      const current = await api.acmeAccounts()
+      if (session.value?.sessionId === trackedSession) { acmeAccounts.value = current; noticeCode.value = 'acmeAccountRegistered' }
+    } else {
+      noticeCode.value = ''
+      errorCode.value = 'acme_registration_failed'
+    }
+  }, () => { acmeTrackingId = ''; errorCode.value = 'operation_status_unavailable' })
 }
 
 async function createDomain(input: {
@@ -597,7 +619,7 @@ function trackAccountOperation(accountId: string, operationId: string, certifica
           noticeCode.value = 'operationSucceeded'
         } else {
           noticeCode.value = ''
-          errorCode.value = 'operation_failed'
+          errorCode.value = operation.errorCode === 'tls.acme_account_required' ? 'acme_account_required' : 'operation_failed'
         }
         return
       }
@@ -730,6 +752,8 @@ async function runAction(action: () => Promise<void>) {
 }
 
 function clearAuthenticatedState() {
+  stopAcmeTracking?.()
+  acmeTrackingId = ''
 	stopAccountOperationTracking(true)
 	stopPlatformUpdateTracking()
   session.value = null
@@ -802,6 +826,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  stopAcmeTracking?.()
 	recoveryCodes.value.fill('')
 	recoveryCodes.value = []
 	stopAccountOperationTracking()

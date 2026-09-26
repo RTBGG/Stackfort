@@ -283,6 +283,9 @@ func oneOf(value string, allowed ...string) bool {
 
 func validateCapabilityUnion(response Response, expected Operation) error {
 	resultCount := 0
+	if response.PanelStatus != nil {
+		resultCount++
+	}
 	if response.Handshake != nil {
 		resultCount++
 	}
@@ -374,6 +377,10 @@ func validateCapabilityUnion(response Response, expected Operation) error {
 		return nil
 	}
 	switch expected {
+	case OperationInspectPanel, OperationIssuePanel:
+		if response.PanelStatus == nil {
+			return fmt.Errorf("agent protocol response does not match %s", expected)
+		}
 	case OperationHandshake:
 		if response.Handshake == nil {
 			return fmt.Errorf("agent protocol response does not match %s", expected)

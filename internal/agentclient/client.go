@@ -1319,6 +1319,16 @@ func (client *Client) call(
 		return agentprotocol.Response{}, 0, errors.New("encoded agent request exceeds the protocol limit")
 	}
 	timeout := requestTimeout
+	httpClient := client.httpClient
+	if request.Operation == agentprotocol.OperationIssuePanel {
+		timeout = agentprotocol.MaximumPanelIssueDuration
+		// Use the existing long-header transport, but keep the panel-specific
+		// overall deadline. Ordinary RPCs retain their short header timeout.
+		httpClient = client.writeHTTPClient
+		if httpClient == nil {
+			return agentprotocol.Response{}, 0, errors.New("panel transport unavailable")
+		}
+	}
 	if request.Operation == agentprotocol.OperationPrepareOCIImage {
 		timeout = time.Duration(ociimage.PreparationTimeoutSeconds+60) * time.Second
 	} else if request.Operation == agentprotocol.OperationReconcileOCIResources {
@@ -1337,7 +1347,7 @@ func (client *Client) call(
 	httpRequest.Header.Set("Content-Type", agentprotocol.MediaType)
 	httpRequest.Header.Set("Accept", agentprotocol.MediaType)
 	httpRequest.Header.Set("X-Stackfort-Protocol", strconv.Itoa(agentprotocol.WireVersion))
-	httpResponse, err := client.httpClient.Do(httpRequest)
+	httpResponse, err := httpClient.Do(httpRequest)
 	if err != nil {
 		return agentprotocol.Response{}, 0, fmt.Errorf("call local agent: %w", err)
 	}

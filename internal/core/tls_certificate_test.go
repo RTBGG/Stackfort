@@ -57,6 +57,18 @@ func TestTLSCertificateLifecycleRetainsValidPredecessorOnRenewalFailure(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
+	assertAccountRequired := func(stage string) {
+		t.Helper()
+		op := createTLSCoreTestOperation(t, repository, account.ID, actor.ID, "tls-no-account-"+stage)
+		_, err := repository.PrepareTLSCertificateOrder(ctx, PrepareTLSCertificateOrderParams{
+			AccountID: account.ID, DomainID: domain.ID, OperationID: op.ID,
+			Environment: ACMELetsEncryptProduction, ActorID: &actor.ID, RequestID: "tls-no-account-" + stage,
+		})
+		if !errors.Is(err, ErrACMEAccountRequired) {
+			t.Fatalf("%s account: %v", stage, err)
+		}
+	}
+	assertAccountRequired("missing")
 	acmeAccount, err := repository.EnsureACMEAccount(ctx, EnsureACMEAccountParams{
 		Environment: ACMELetsEncryptProduction, ContactEmail: "tls-owner@example.test", TermsAccepted: true,
 		ActorID: &actor.ID, OperationID: &registrationOperation.ID, RequestID: "tls-acme-account",
@@ -64,6 +76,7 @@ func TestTLSCertificateLifecycleRetainsValidPredecessorOnRenewalFailure(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
+	assertAccountRequired("pending")
 	_, err = repository.CompleteACMERegistration(ctx, CompleteACMERegistrationParams{
 		AccountID: acmeAccount.ID, AccountURI: "https://acme.example/acct/1",
 		OrdersURL: "https://acme.example/acct/1/orders", TermsURL: "https://acme.example/terms",

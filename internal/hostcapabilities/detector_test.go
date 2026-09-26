@@ -61,6 +61,13 @@ func TestSupportedDistributionFixtures(t *testing.T) {
 				t.Fatalf("security = %#v", report.Security)
 			}
 			assertPortFixture(t, report.Ports, test.occupiedPort)
+			firewallUnit := "stackfort-firewall.service"
+			if test.distribution == "rocky" {
+				firewallUnit = "firewalld.service"
+			}
+			if service := findService(t, report.Services, "firewall"); service.Unit != firewallUnit {
+				t.Fatalf("firewall service = %#v, want managed unit %s", service, firewallUnit)
+			}
 			if len(report.Packages) != 12 || len(report.Services) != 8 {
 				t.Fatalf("packages/services = %d/%d", len(report.Packages), len(report.Services))
 			}

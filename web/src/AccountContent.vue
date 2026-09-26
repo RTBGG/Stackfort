@@ -1316,7 +1316,7 @@ function revokeManagedSession(item: ManagedSession) {
             <p>{{ availablePHPVersions.length > 0 ? t('php.availableVersions', { versions: availablePHPVersions.join(', ') }) : t('php.notIncluded') }}</p>
             <div class="php-pool-list">
               <article v-for="pool in phpStatus.pools" :key="pool.version" class="php-pool-card">
-                <header><strong>{{ t('php.version', { version: pool.version }) }}</strong><span class="state-badge" :data-state="pool.state">{{ t(`states.${pool.state}`) }}</span></header>
+                <header><strong>{{ t('php.version', { version: pool.version }) }}</strong><span class="state-badge" :data-state="pool.state">{{ pool.state === 'missing' ? t('php.poolNotCreated') : t(`states.${pool.state}`) }}</span></header>
                 <dl class="detail-list compact">
                   <div><dt>{{ t('php.domains') }}</dt><dd>{{ formatNumber(pool.configuredDomains, activeLocale) }}</dd></div>
                   <div><dt>{{ t('php.memory') }}</dt><dd>{{ pool.memoryBytes === undefined ? t('common.notAvailable') : formatBytes(pool.memoryBytes, activeLocale) }}</dd></div>
@@ -1623,7 +1623,7 @@ function revokeManagedSession(item: ManagedSession) {
           <form class="panel management-form database-wizard" @submit.prevent="submitDatabaseWizard">
             <div class="panel-heading"><div><p class="eyebrow">{{ t('databases.step', { current: databaseWizard.step, total: 4 }) }}</p><h2>{{ t('databases.wizardTitle') }}</h2></div></div>
             <ol class="wizard-steps" :aria-label="t('databases.wizardSteps')">
-              <li v-for="step in 4" :key="step" :aria-current="databaseWizard.step === step ? 'step' : undefined" :data-state="databaseWizard.step >= step ? 'active' : 'pending'">{{ step }}</li>
+              <li v-for="(label, index) in ['createDatabase', 'chooseUser', 'accessPreset', 'review']" :key="label" :aria-current="databaseWizard.step === index + 1 ? 'step' : undefined" :data-state="databaseWizard.step >= index + 1 ? 'active' : 'pending'"><span class="wizard-step-number" aria-hidden="true">{{ index + 1 }}</span><span>{{ t(`databases.${label}`) }}</span></li>
             </ol>
             <template v-if="databaseWizard.step === 1">
               <h3>{{ t('databases.createDatabase') }}</h3>

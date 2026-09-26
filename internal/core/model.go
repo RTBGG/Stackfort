@@ -22,6 +22,9 @@ var (
 	ErrInvalidInput = errors.New("invalid core record input")
 	// ErrNotFound identifies a requested record that does not exist.
 	ErrNotFound = errors.New("core record not found")
+
+	// ErrACMEAccountRequired is safe to disclose without account credentials.
+	ErrACMEAccountRequired = errors.New("a valid ACME account must be registered first")
 	// ErrConflict identifies a uniqueness, revision, or relational conflict.
 	ErrConflict = errors.New("core record conflict")
 	// ErrNoOperationAvailable means no eligible operation can currently be

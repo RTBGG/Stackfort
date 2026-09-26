@@ -32,6 +32,7 @@ import (
 	"github.com/RTBGG/stackfort/internal/jobworkspace"
 	"github.com/RTBGG/stackfort/internal/logworkspace"
 	"github.com/RTBGG/stackfort/internal/operations"
+	"github.com/RTBGG/stackfort/internal/panelworkspace"
 	"github.com/RTBGG/stackfort/internal/phpmyadminbroker"
 	"github.com/RTBGG/stackfort/internal/phpworkspace"
 	"github.com/RTBGG/stackfort/internal/secretstore"
@@ -134,6 +135,7 @@ func run(logger *slog.Logger) (returnErr error) {
 		return fmt.Errorf("initialize scheduled job workspace service: %w", err)
 	}
 	var hostCapabilityClient *agentclient.Client
+	var panelService httpapi.PanelHostnameService
 	var phpWorkspaceService *phpworkspace.Service
 	var fileWorkspaceService *fileworkspace.Service
 	var backupWorkspaceService *backupworkspace.Service
@@ -147,6 +149,7 @@ func run(logger *slog.Logger) (returnErr error) {
 			return fmt.Errorf("initialize local agent client: %w", err)
 		}
 		defer hostCapabilityClient.Close()
+		panelService = &panelworkspace.Service{Repository: repository, Agent: hostCapabilityClient}
 		updateHTTPService, err = updateworkspace.New(updateCheckService, repository, hostCapabilityClient)
 		if err != nil {
 			return fmt.Errorf("initialize functional update workspace: %w", err)
@@ -204,7 +207,8 @@ func run(logger *slog.Logger) (returnErr error) {
 			PlatformAuthorization: repository, HostCapabilities: hostCapabilityClient,
 			MultiFactor: repository, Sessions: repository, Domains: domainService,
 			ACMEAccounts: acmeAccountService, TLSCertificates: certificateService,
-			AdminConsole: repository, AccountProvisioning: accountProvisioningService,
+			PanelHostname: panelService,
+			AdminConsole:  repository, AccountProvisioning: accountProvisioningService,
 			SelfService:       repository,
 			PHPWorkspace:      phpWorkspaceService,
 			DatabaseWorkspace: databaseWorkspaceService,
@@ -232,6 +236,7 @@ func run(logger *slog.Logger) (returnErr error) {
 		operations.ACMEAccountRegistrationKind: acmeHandler,
 	}
 	if hostCapabilityClient != nil {
+		handlers[operations.PanelIssueKind] = &operations.PanelIssueHandler{Agent: hostCapabilityClient}
 		accountHandler, handlerErr := operations.NewHostingAccountReconcileHandler(repository, hostCapabilityClient)
 		if handlerErr != nil {
 			return fmt.Errorf("initialize hosting account operation handler: %w", handlerErr)

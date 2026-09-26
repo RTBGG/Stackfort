@@ -59,6 +59,12 @@ export type UpdateStatus = {
 
 export type UpdateAcceptance = { version: string; accepted: true }
 
+export type PanelHostnameStatus = {
+  enabled: boolean; hostname?: string; url?: string; certificateExpiresAt?: string
+  recoveryRequired: boolean; autoRenew: boolean
+}
+export type PanelHostnameInput = { hostname: string; email: string; acceptTerms: boolean; confirmOriginChange: boolean }
+
 export type PackageLimits = {
   maxDomains: number
   maxDatabases: number
@@ -715,6 +721,10 @@ export const api = {
     { method: 'DELETE', csrf: true, idempotent: true },
   ),
   hostCapabilities: () => request<HostCapabilities>('/api/v1/admin/host/capabilities'),
+  panelHostname: () => request<PanelHostnameStatus>('/api/v1/admin/panel'),
+  issuePanelHostname: (input: PanelHostnameInput) => request<{ operationId: string; status: string }>(
+    '/api/v1/admin/panel/issue', { method: 'POST', body: input, csrf: true, idempotent: true },
+  ),
   updateStatus: () => request<UpdateStatus>('/api/v1/admin/updates'),
   updatePolicy: (input: { channel: UpdateStatus['channel']; automaticChecks: boolean }) => request<UpdateStatus>(
     '/api/v1/admin/updates/policy', { method: 'PATCH', body: input, csrf: true },

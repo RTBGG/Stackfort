@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
 import IdentitySecurity from './IdentitySecurity.vue'
+import PanelHostnameSettings from './PanelHostnameSettings.vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { AdminPageKey } from './admin'
@@ -48,7 +49,7 @@ const emit = defineEmits<{
   refresh: []
   createPackage: [input: { name: string; slug: string; limits: PackageLimits }]
   createAccount: [input: { name: string; slug: string; packageId: string; ownerIdentityId?: string }]
-  registerACMEAccount: [input: {
+  registerAcmeAccount: [input: {
     environment: 'letsencrypt-production'; contactEmail: string; termsAccepted: boolean
   }]
   selectAccount: [accountId: string]
@@ -63,11 +64,11 @@ const emit = defineEmits<{
     cachePreset: NonNullable<Domain['cache']>['preset']
   }]
   domainAction: [input: { accountId: string; domainId: string; action: 'suspend' | 'resume' | 'remove' }]
-  loadWAFExceptions: [input: { accountId: string; domainId: string }]
-  createWAFException: [input: {
+  loadWafExceptions: [input: { accountId: string; domainId: string }]
+  createWafException: [input: {
     accountId: string; domainId: string; ruleId: number; requestPath?: string; parameter?: string; expiresAt: string
   }]
-  removeWAFException: [input: { accountId: string; domainId: string; exceptionId: string }]
+  removeWafException: [input: { accountId: string; domainId: string; exceptionId: string }]
   updatePolicy: [input: { channel: UpdateStatus['channel']; automaticChecks: boolean }]
   checkUpdates: []
 	applyUpdate: [version: string]
@@ -252,10 +253,10 @@ function submitAccount() {
 }
 
 function submitACMEAccount() {
-  if (productionACMEAccount.value || !acmeForm.termsAccepted) return
-  emit('registerACMEAccount', {
+  if ((productionACMEAccount.value && productionACMEAccount.value.status !== 'pending') || acmeRegistrationPending.value || !acmeForm.termsAccepted) return
+  emit('registerAcmeAccount', {
     environment: 'letsencrypt-production',
-    contactEmail: acmeForm.contactEmail,
+    contactEmail: productionACMEAccount.value?.contactEmail ?? acmeForm.contactEmail,
     termsAccepted: acmeForm.termsAccepted,
   })
 }
@@ -295,7 +296,7 @@ function runDomainAction(domain: Domain, action: 'suspend' | 'resume' | 'remove'
 function manageWAFExceptions(domain: Domain) {
   if (!selectedAccountId.value) return
   selectedWAFDomainId.value = domain.id
-  emit('loadWAFExceptions', { accountId: selectedAccountId.value, domainId: domain.id })
+  emit('loadWafExceptions', { accountId: selectedAccountId.value, domainId: domain.id })
 }
 
 function submitWAFException() {
@@ -303,7 +304,7 @@ function submitWAFException() {
       (!wafExceptionForm.requestPath && !wafExceptionForm.parameter)) return
   const expiry = new Date(wafExceptionForm.expiresAt)
   if (!Number.isFinite(expiry.getTime())) return
-  emit('createWAFException', {
+  emit('createWafException', {
     accountId: selectedAccountId.value,
     domainId: selectedWAFDomain.value.id,
     ruleId: wafExceptionForm.ruleId,
@@ -313,10 +314,10 @@ function submitWAFException() {
   })
 }
 
-function removeWAFException(exception: DomainWAFException) {
+function removeWafException(exception: DomainWAFException) {
   if (!selectedAccountId.value || !selectedWAFDomain.value ||
       !window.confirm(t('wafExceptions.confirmRemove'))) return
-  emit('removeWAFException', {
+  emit('removeWafException', {
     accountId: selectedAccountId.value,
     domainId: selectedWAFDomain.value.id,
     exceptionId: exception.id,
@@ -470,15 +471,16 @@ function removeWAFException(exception: DomainWAFException) {
             <label><span>{{ t('wafExceptions.expiresAt') }}</span><input v-model="wafExceptionForm.expiresAt" required type="datetime-local"></label>
             <button class="primary-action" type="submit" :disabled="actionBusy || (!wafExceptionForm.requestPath && !wafExceptionForm.parameter)">{{ t('wafExceptions.create') }}</button>
           </form>
-          <div v-if="wafExceptions.length" class="responsive-table"><table><thead><tr><th>{{ t('wafExceptions.ruleId') }}</th><th>{{ t('wafExceptions.scope') }}</th><th>{{ t('wafExceptions.expiresAt') }}</th><th>{{ t('common.actions') }}</th></tr></thead><tbody><tr v-for="exception in wafExceptions" :key="exception.id"><td><code>{{ exception.ruleId }}</code></td><td><code>{{ exception.requestPath || t('wafExceptions.allPaths') }}</code><small v-if="exception.parameter">{{ t('wafExceptions.parameterValue', { parameter: exception.parameter }) }}</small></td><td>{{ displayDate(exception.expiresAt) }}</td><td><button class="danger-action" type="button" :disabled="actionBusy" @click="removeWAFException(exception)">{{ t('common.remove') }}</button></td></tr></tbody></table></div>
+          <div v-if="wafExceptions.length" class="responsive-table"><table><thead><tr><th>{{ t('wafExceptions.ruleId') }}</th><th>{{ t('wafExceptions.scope') }}</th><th>{{ t('wafExceptions.expiresAt') }}</th><th>{{ t('common.actions') }}</th></tr></thead><tbody><tr v-for="exception in wafExceptions" :key="exception.id"><td><code>{{ exception.ruleId }}</code></td><td><code>{{ exception.requestPath || t('wafExceptions.allPaths') }}</code><small v-if="exception.parameter">{{ t('wafExceptions.parameterValue', { parameter: exception.parameter }) }}</small></td><td>{{ displayDate(exception.expiresAt) }}</td><td><button class="danger-action" type="button" :disabled="actionBusy" @click="removeWafException(exception)">{{ t('common.remove') }}</button></td></tr></tbody></table></div>
           <div v-else class="empty-state"><strong>{{ t('wafExceptions.empty') }}</strong><p>{{ t('wafExceptions.emptyBody') }}</p></div>
         </section>
       </div>
     </section>
 
     <section v-else-if="page === 'services'" class="panel table-panel">
+      <p class="form-hint">{{ t('services.stateHint') }}</p>
       <div class="host-summary"><div><span>{{ t('services.operatingSystem') }}</span><strong>{{ platformLabel }}</strong></div><div><span>{{ t('services.kernel') }}</span><strong>{{ capabilities?.platform.kernelRelease ?? t('common.notAvailable') }}</strong></div><div><span>{{ t('services.architecture') }}</span><strong>{{ capabilities?.platform.architecture ?? t('common.notAvailable') }}</strong></div></div>
-      <div class="responsive-table"><table><thead><tr><th>{{ t('services.service') }}</th><th>{{ t('services.unit') }}</th><th>{{ t('services.activeState') }}</th><th>{{ t('common.status') }}</th></tr></thead><tbody><tr v-for="service in capabilities?.services ?? []" :key="service.key"><td><strong>{{ service.key }}</strong></td><td><code>{{ service.unit }}</code></td><td>{{ service.activeState }} / {{ service.subState }}</td><td><span class="state-badge" :data-state="service.availability.status">{{ t(`states.${service.availability.status}`) }}</span></td></tr></tbody></table></div>
+      <div class="responsive-table"><table><thead><tr><th>{{ t('services.service') }}</th><th>{{ t('services.unit') }}</th><th>{{ t('services.activeState') }}</th><th>{{ t('services.unitPresence') }}</th></tr></thead><tbody><tr v-for="service in capabilities?.services ?? []" :key="service.key"><td><strong>{{ service.key }}</strong><small v-if="service.key === 'php-fpm'">{{ t('services.phpHint') }}</small><small v-if="service.key === 'podman'">{{ t('services.podmanHint') }}</small></td><td><code>{{ service.unit }}</code></td><td>{{ service.activeState }} / {{ service.subState }}</td><td><span class="state-badge" :data-state="service.availability.status">{{ service.availability.status === 'available' ? t('services.present') : t(`states.${service.availability.status}`) }}</span></td></tr></tbody></table></div>
       <div v-if="!capabilities" class="empty-state"><strong>{{ t('services.unavailable') }}</strong><p>{{ t('services.unavailableBody') }}</p></div>
     </section>
 
@@ -553,14 +555,16 @@ function removeWAFException(exception: DomainWAFException) {
           <div><dt>{{ t('acme.contactEmail') }}</dt><dd>{{ productionACMEAccount.contactEmail }}</dd></div>
           <div><dt>{{ t('acme.registeredAt') }}</dt><dd>{{ displayDate(productionACMEAccount.registeredAt) }}</dd></div>
         </dl>
-        <p v-else-if="acmeRegistrationPending" class="inline-feedback" role="status">{{ t('acme.registrationPending') }}</p>
-        <form v-else class="management-form" @submit.prevent="submitACMEAccount">
-          <label><span>{{ t('acme.contactEmail') }}</span><input v-model="acmeForm.contactEmail" required type="email" autocomplete="email" maxlength="320"></label>
+        <p v-if="acmeRegistrationPending" class="inline-feedback" role="status">{{ t('acme.registrationPending') }}</p>
+        <form v-if="!acmeRegistrationPending && (!productionACMEAccount || productionACMEAccount.status === 'pending')" class="management-form" @submit.prevent="submitACMEAccount">
+          <p v-if="productionACMEAccount" class="form-hint">{{ t('acme.retryHint') }}</p>
+          <label v-if="!productionACMEAccount"><span>{{ t('acme.contactEmail') }}</span><input v-model="acmeForm.contactEmail" required type="email" autocomplete="email" maxlength="320"></label>
           <label class="check-field"><input v-model="acmeForm.termsAccepted" required type="checkbox"><span>{{ t('acme.acceptTerms') }}</span></label>
           <p class="form-hint">{{ t('acme.productionHint') }}</p>
           <button class="primary-action" type="submit" :disabled="actionBusy || !acmeForm.termsAccepted">{{ t('acme.registerAction') }}</button>
         </form>
       </section>
+      <PanelHostnameSettings :key="session.sessionId" />
     </div>
   </div>
 </template>

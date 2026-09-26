@@ -62,7 +62,7 @@ const updateStatus: UpdateStatus = {
 }
 
 function mountContent(
-  page: 'settings' | 'packages' | 'domains' | 'updates',
+  page: 'settings' | 'packages' | 'domains' | 'updates' | 'services',
   packages: HostingPackage[] = [],
   accounts: HostingAccount[] = [],
 ) {
@@ -80,6 +80,38 @@ function mountContent(
 afterEach(() => { document.body.innerHTML = '' })
 
 describe('administrator certificate authority settings', () => {
+  it('offers an explicit retry for an incomplete account without changing its contact', async () => {
+    const wrapper = mountContent('settings')
+    await wrapper.setProps({ acmeAccounts: [{
+      id: 'pending-id', environment: 'letsencrypt-production', directoryUrl: 'https://acme-v02.api.letsencrypt.org/directory',
+      contactEmail: 'original@example.test', status: 'pending', termsAgreedAt: '2026-09-26T10:00:00Z',
+      createdAt: '2026-09-26T10:00:00Z', updatedAt: '2026-09-26T10:00:00Z',
+    }] })
+    const form = wrapper.get('.acme-settings form')
+    expect(form.find('input[type="email"]').exists()).toBe(false)
+    expect(form.get<HTMLButtonElement>('button').element.disabled).toBe(true)
+    await form.get('input[type="checkbox"]').setValue(true)
+    await form.trigger('submit')
+    expect(wrapper.emitted('registerAcmeAccount')?.[0]).toEqual([{
+      environment: 'letsencrypt-production', contactEmail: 'original@example.test', termsAccepted: true,
+    }])
+    wrapper.unmount()
+  })
+
+  it('distinguishes unit presence from runtime state', async () => {
+    const wrapper = mountContent('services')
+    await wrapper.setProps({ capabilities: { ...capabilities, services: [
+      { key: 'php-fpm', unit: 'php8.4-fpm.service', activeState: 'inactive', subState: 'dead', availability: { status: 'available' } },
+      { key: 'podman', unit: 'podman.socket', activeState: 'inactive', subState: 'dead', availability: { status: 'available' } },
+      { key: 'firewall', unit: 'stackfort-firewall.service', activeState: 'active', subState: 'exited', availability: { status: 'available' } },
+    ] } })
+    expect(wrapper.text()).toContain(messages.en.services.unitPresence)
+    expect(wrapper.text()).toContain('inactive / dead')
+    expect(wrapper.text()).toContain('stackfort-firewall.service')
+    expect(wrapper.text()).toContain(messages.en.services.phpHint)
+    expect(wrapper.text()).toContain(messages.en.services.podmanHint)
+    wrapper.unmount()
+  })
   it('is accessible and emits the fixed production registration intent', async () => {
     const wrapper = mountContent('settings')
     const results = await axe.run(wrapper.element, { rules: { 'color-contrast': { enabled: false } } })
@@ -88,7 +120,7 @@ describe('administrator certificate authority settings', () => {
     await wrapper.get<HTMLInputElement>('input[type="email"]').setValue('tls@example.test')
     await wrapper.get<HTMLInputElement>('input[type="checkbox"]').setValue(true)
     await wrapper.get('form').trigger('submit')
-    expect(wrapper.emitted('registerACMEAccount')?.[0]).toEqual([{
+    expect(wrapper.emitted('registerAcmeAccount')?.[0]).toEqual([{
       environment: 'letsencrypt-production', contactEmail: 'tls@example.test', termsAccepted: true,
     }])
     wrapper.unmount()

@@ -315,6 +315,12 @@ Panel-hostname follow-up: root-console configuration now adds a named management
 origin on 443 while retaining 8443. Production Let's Encrypt HTTP-01 issuance,
 automatic renewal, trusted certificate import, tenant hostname reservation and
 durable rollback are implemented; see [panel hostname](panel-hostname.md).
+
+Post-Beta.13 development adds administrator settings for panel-domain ACME
+issuance, fixes the hosted-domain account-registration event, and qualifies
+panel management after completed native onboarding. See the
+[development test report](../infra/host-tests/results/2026-09-26-panel-ui-fixes.md).
+These changes are not part of the published Beta.13 installer.
 The exact unpublished `0.1.0-beta.3` candidate passed native installation,
 panel/private-CA and selected hosting regressions on all three supported
 distributions; see the [artifact-bound evidence](../infra/host-tests/results/2026-09-08-panel-hostname-candidate.md).

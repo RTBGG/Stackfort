@@ -2,8 +2,33 @@
 
 After installation, Stackfort can serve its panel at `https://panel.example.com/`
 on standard port 443. The original `https://<server-address>:8443/` remains a
-fallback with its local bootstrap certificate. Configuration is currently
-through a root console/SSH command, not a browser settings form.
+fallback with its local bootstrap certificate. In the development version after
+Beta.13, configuration is also available under **Administration → Settings →
+Panel domain**. Published Beta.13 does not contain this form or the native
+post-installation panel-management fix.
+
+## Set up in the panel
+
+Prepare DNS and public ports as described below, then sign in as an administrator
+within the last five minutes. Enter the canonical hostname and contact email,
+review the subscriber agreement and explicitly confirm the address change.
+Issuance runs as a durable background operation, with no automatic retry after
+an interruption. The form observes completion and displays the new HTTPS link;
+it does not navigate away from the working fallback automatically.
+
+The hosted-domain ACME account and the root-managed **panel** account are
+separate. The panel form can register its own account during issuance. For
+hosted websites, register the account in **Let's Encrypt account** first and
+retry failed domain certificates afterwards. An incomplete account registration
+can be retried using the existing key and contact; a changed contact is not
+silently adopted.
+
+The browser cannot import key files, choose a CA, bypass rate limits, disable the
+endpoint, or execute recovery commands. Those console-only boundaries remain.
+On completed native installations, panel management retains the shared installer
+lock, requires complete/admitted records for the current boot and checks the
+live hosting bind mount and project-quota enforcement. It does not reopen native
+installation, upgrade, storage conversion, or recovery paths.
 
 ## Automatic Let's Encrypt certificate
 

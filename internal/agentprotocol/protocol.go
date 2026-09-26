@@ -65,6 +65,8 @@ const (
 	OperationReconcileOCIDeployment Operation = "oci.deployment.reconcile"
 	OperationReadOCIApplicationLogs Operation = "oci.logs.read"
 	OperationInspectPlatformUpdate  Operation = "platform.update.inspect"
+	OperationInspectPanel           Operation = "panel.hostname.inspect"
+	OperationIssuePanel             Operation = "panel.hostname.issue"
 	OperationStartPlatformUpdate    Operation = "platform.update.start"
 )
 
@@ -126,6 +128,8 @@ var operationPolicies = [...]operationPolicy{
 	{operation: OperationReconcileOCIDeployment, access: operationPrivilegedMutation},
 	{operation: OperationReadOCIApplicationLogs, access: operationReadOnly},
 	{operation: OperationInspectPlatformUpdate, access: operationReadOnly},
+	{operation: OperationInspectPanel, access: operationReadOnly},
+	{operation: OperationIssuePanel, access: operationPrivilegedMutation},
 	{operation: OperationStartPlatformUpdate, access: operationPrivilegedMutation},
 }
 
@@ -245,6 +249,8 @@ type Request struct {
 	ReconcileOCIDeployment *OCIDeploymentRequest          `json:"reconcileOciDeployment,omitempty"`
 	ReadOCIApplicationLogs *OCIApplicationLogReadRequest  `json:"readOciApplicationLogs,omitempty"`
 	InspectPlatformUpdate  *PlatformUpdateInspectRequest  `json:"inspectPlatformUpdate,omitempty"`
+	InspectPanel           *PanelInspectRequest           `json:"inspectPanel,omitempty"`
+	IssuePanel             *PanelIssueRequest             `json:"issuePanel,omitempty"`
 	StartPlatformUpdate    *PlatformUpdateStartRequest    `json:"startPlatformUpdate,omitempty"`
 }
 
@@ -284,6 +290,7 @@ type Response struct {
 	OCIApplicationLogs       *OCIApplicationLogReadResponse  `json:"ociApplicationLogs,omitempty"`
 	PlatformUpdateStart      *PlatformUpdateStartResponse    `json:"platformUpdateStart,omitempty"`
 	PlatformUpdateStatus     *PlatformUpdateStatusResponse   `json:"platformUpdateStatus,omitempty"`
+	PanelStatus              *PanelStatusResponse            `json:"panelStatus,omitempty"`
 	Error                    *ResponseError                  `json:"error,omitempty"`
 }
 
@@ -498,7 +505,15 @@ func ValidateRequest(request Request) error {
 		}
 	case OperationInspectPlatformUpdate:
 		if request.InspectPlatformUpdate == nil || requestPayloadCount(request) != 1 {
-			return fmt.Errorf("%w: platform update inspection payload is required", ErrInvalidRequest)
+			return ErrInvalidRequest
+		}
+	case OperationInspectPanel:
+		if request.InspectPanel == nil || requestPayloadCount(request) != 1 {
+			return ErrInvalidRequest
+		}
+	case OperationIssuePanel:
+		if request.IssuePanel == nil || requestPayloadCount(request) != 1 || ValidatePanelIssue(*request.IssuePanel) != nil || request.Correlation == nil || request.Correlation.ActorKind != ActorIdentity || request.Correlation.AccountID != "" {
+			return ErrInvalidRequest
 		}
 	case OperationStartPlatformUpdate:
 		if request.StartPlatformUpdate == nil || requestPayloadCount(request) != 1 ||
@@ -617,6 +632,9 @@ func ValidateResponse(response Response, requestID string, expectedOperation Ope
 	}
 	if response.PlatformUpdateStatus != nil {
 		return validatePlatformUpdateStatusResponse(*response.PlatformUpdateStatus, expectedOperation)
+	}
+	if response.PanelStatus != nil {
+		return validatePanelStatus(*response.PanelStatus)
 	}
 	if response.Handshake.AgentMinimumVersion < 1 ||
 		response.Handshake.AgentMaximumVersion < response.Handshake.AgentMinimumVersion ||
@@ -822,6 +840,7 @@ func requestPayloadCount(request Request) int {
 		request.ReconcileOCIDeployment != nil,
 		request.ReadOCIApplicationLogs != nil,
 		request.InspectPlatformUpdate != nil,
+		request.InspectPanel != nil, request.IssuePanel != nil,
 		request.StartPlatformUpdate != nil,
 	} {
 		if present {
