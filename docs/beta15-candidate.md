@@ -35,3 +35,20 @@ same-target OS removal; validate the explicit fresh-only publication exception;
 publish immutable assets; verify all anonymous public downloads; advance and test
 the public one-line selector. Never mix binaries into existing installations,
 reset failed conversion journals or replace/move existing release identities.
+
+## Frozen candidate and retained build
+
+- Source: `d93c4bfb9fb527e80a648eeb8482b159d0076b29` (PR #19).
+- Exact-source CI: [36260359106](https://github.com/RTBGG/Stackfort/actions/runs/36260359106), successful attempt 1.
+- Exact-source security: [36260378988](https://github.com/RTBGG/Stackfort/actions/runs/36260378988), successful attempt 1.
+- Build: [36260323807](https://github.com/RTBGG/Stackfort/actions/runs/36260323807), successful attempt 1.
+- Retained original artifact: `10911968743`, `stackfort-0.1.0-beta.15`.
+- Original ZIP SHA-256: `309ae1aa1cb4711eaa0f39c4a4730df871e0d3d6a6a280427fceb80144ea620b`.
+- Runtime archive SHA-256: `b5ac6c02a8f13bcabb72b527c677844ba007fb8b2c8ff435a231ddad510ba617`.
+- Standalone/archived installer SHA-256: `0050f649a384e3daedcab2d27a1cfdb123167f63f44236e1abbf7575e8eb3fff`.
+- `SHA256SUMS` SHA-256: `698dfb44e4f022d55c074515dbcfd33455b2ebd06d3f4d1688ce882b47539a4c`.
+
+The original ten-file artifact passed bounded extraction, checksum, source and
+installer-equality checks. The [mechanical selection](../packaging/releases/promotion/0.1.0-beta.15.json)
+only permits exact-tag provenance for these same bytes. Host qualification and
+publication gates remain open; neither a tag nor this record publishes a release.
