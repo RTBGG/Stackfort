@@ -86,7 +86,7 @@ jobs:
             bash "$GITHUB_WORKSPACE/packaging/waf/build-native-package.sh" \
             /var/tmp/stackfort-waf-bundle/*.tar.gz /var/tmp/stackfort-waf-native
       - name: Upload native WAF package
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: stackfort-waf-${{ matrix.id }}
           path: /var/tmp/stackfort-waf-native/*
@@ -130,7 +130,7 @@ jobs:
             bash "$GITHUB_WORKSPACE/packaging/vinyl/build-native-package.sh" \
             /var/tmp/stackfort-vinyl-native
       - name: Upload native Vinyl package
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: stackfort-vinyl-${{ matrix.id }}
           path: /var/tmp/stackfort-vinyl-native/*
@@ -234,7 +234,7 @@ jobs:
         with:
           subject-path: dist/*
       - name: Upload unpublished build candidate
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: stackfort-${{ needs.release_policy.outputs.version }}
           path: dist/*
@@ -283,7 +283,7 @@ jobs:
           BUNDLE_PATH: ${{ steps.qualification_attestation.outputs.bundle-path }}
         run: install -m 0644 "$BUNDLE_PATH" dist/build-attestation.jsonl
       - name: Upload unpublished tag-qualified candidate before publication gates
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: stackfort-tag-candidate-${{ needs.release_policy.outputs.version }}-attempt-${{ github.run_attempt }}
           path: dist/*
